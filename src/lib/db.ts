@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { Comfort, FeedbackValue, Item, Plan, Wear } from "./types";
+import type { Comfort, FeedbackValue, Item, Plan, Trip, Wear } from "./types";
 
 /**
  * The personal wardrobe lives only on this device, in IndexedDB. Photos are
@@ -13,6 +13,8 @@ export interface PersonalState {
   plans: Record<string, Plan>;
   feedback: Record<string, FeedbackValue>;
   comfort: Comfort;
+  /** Added after v1 shipped; older records simply have none. */
+  trips?: Trip[];
 }
 
 interface Schema extends DBSchema {
@@ -35,7 +37,7 @@ function db() {
 }
 
 export function emptyPersonal(): PersonalState {
-  return { version: 1, items: [], wears: [], plans: {}, feedback: {}, comfort: "neutral" };
+  return { version: 1, items: [], wears: [], plans: {}, feedback: {}, comfort: "neutral", trips: [] };
 }
 
 export async function loadPersonal(): Promise<PersonalState> {

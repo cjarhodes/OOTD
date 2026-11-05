@@ -3,7 +3,7 @@ import type { PersonalState } from "./db";
 import { KINDS } from "./kinds";
 import { COLOR_NAMES } from "./palette";
 import { MATERIALS, PATTERNS } from "./tagging";
-import type { FeedbackValue, Item, Kind, Occasion, Plan, Status, Tier, Wear } from "./types";
+import type { DayWeather, FeedbackValue, Item, Kind, Occasion, Plan, Status, Tier, Trip, TripKind, Wear } from "./types";
 
 export interface Backup {
   app: "ootd";
@@ -51,6 +51,65 @@ export function validItem(v: unknown): v is Item {
     typeof i.status === "string" &&
     (STATUSES as string[]).includes(i.status)
   );
+}
+
+const KINDS_OF_TRIP: TripKind[] = ["work", "leisure", "mixed"];
+
+function validWindow(w: unknown): boolean {
+  if (!w || typeof w !== "object") return false;
+  const x = w as Record<string, unknown>;
+  return num(x.feels, -60, 60) && num(x.rain, 0, 100) && num(x.wind, 0, 300);
+}
+
+function validWeather(w: unknown): w is DayWeather {
+  if (!w || typeof w !== "object") return false;
+  const x = w as Record<string, unknown>;
+  return isDateKey(x.date) && (x.source === "live" || x.source === "sample" || x.source === "history") && validWindow(x.morning) && validWindow(x.midday) && validWindow(x.evening);
+}
+
+/**
+ * Clean a stored trip against the pieces that exist. Returns null for anything
+ * malformed; references to deleted pieces are dropped.
+ */
+export function cleanTrip(v: unknown, ids: Set<string>): Trip | null {
+  if (!v || typeof v !== "object") return null;
+  const t = v as Partial<Trip>;
+  const c = t.city as Partial<Trip["city"]> | undefined;
+  if (
+    typeof t.id !== "string" ||
+    typeof t.name !== "string" ||
+    t.name.length > 80 ||
+    !isDateKey(t.start) ||
+    !isDateKey(t.end) ||
+    t.end < t.start ||
+    !KINDS_OF_TRIP.includes(t.kind as TripKind) ||
+    !c ||
+    typeof c.name !== "string" ||
+    !num(c.latitude, -90, 90) ||
+    !num(c.longitude, -180, 180) ||
+    !Array.isArray(t.days)
+  ) {
+    return null;
+  }
+  const keep = (list: unknown) => (Array.isArray(list) ? list.filter((id): id is string => typeof id === "string" && ids.has(id)) : []);
+  const days = t.days
+    .filter((d) => d && isDateKey(d.date) && OCCASIONS.includes(d.occasion) && validWeather(d.weather))
+    .map((d) => ({ date: d.date, occasion: d.occasion, weather: d.weather, itemIds: keep(d.itemIds) }));
+  return {
+    id: t.id,
+    name: t.name,
+    city: { name: c.name, admin: typeof c.admin === "string" ? c.admin : undefined, country: typeof c.country === "string" ? c.country : undefined, latitude: c.latitude!, longitude: c.longitude! },
+    start: t.start,
+    end: t.end,
+    kind: t.kind as TripKind,
+    days,
+    capsule: keep(t.capsule),
+    journey: keep(t.journey),
+    packed: keep(t.packed),
+    looksPossible: num(t.looksPossible, 0, 100000) ? t.looksPossible! : 0,
+    warnings: Array.isArray(t.warnings) ? t.warnings.filter((x): x is string => typeof x === "string").slice(0, 20) : [],
+    createdAt: typeof t.createdAt === "string" ? t.createdAt : new Date().toISOString(),
+  };
 }
 
 /**
@@ -102,6 +161,7 @@ export function parseBackup(value: unknown): { ok: true; backup: Backup } | { ok
         plans,
         feedback,
         comfort: s.comfort === "runs-cold" || s.comfort === "runs-warm" ? s.comfort : "neutral",
+        trips: (Array.isArray(s.trips) ? s.trips : []).map((t) => cleanTrip(t, ids)).filter((t): t is Trip => t !== null),
       },
       images,
     },

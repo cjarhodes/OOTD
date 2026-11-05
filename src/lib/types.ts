@@ -123,7 +123,8 @@ export interface WeatherWindow {
 
 export interface DayWeather {
   date: string;
-  source: "sample" | "live";
+  /** live = forecast; history = the same dates last year, used as a guide. */
+  source: "sample" | "live" | "history";
   morning: WeatherWindow;
   midday: WeatherWindow;
   evening: WeatherWindow;
@@ -166,4 +167,42 @@ export interface Look {
   shed?: Shed;
   /** Set when the wardrobe can't fully suit the weather and this is the closest look. */
   warning?: string;
+}
+
+export type TripKind = "work" | "leisure" | "mixed";
+
+export interface TripCity {
+  name: string;
+  admin?: string;
+  country?: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface TripDay {
+  date: string;
+  occasion: Occasion;
+  weather: DayWeather;
+  /** The look chosen for this day, from the capsule. */
+  itemIds: string[];
+}
+
+export interface Trip {
+  id: string;
+  name: string;
+  city: TripCity;
+  start: string;
+  end: string;
+  kind: TripKind;
+  days: TripDay[];
+  /** Everything to pack. */
+  capsule: string[];
+  /** Bulky pieces to wear while travelling instead of packing. */
+  journey: string[];
+  /** Capsule pieces ticked off the packing list. */
+  packed: string[];
+  /** How many different looks the capsule can make across the trip. */
+  looksPossible: number;
+  warnings: string[];
+  createdAt: string;
 }

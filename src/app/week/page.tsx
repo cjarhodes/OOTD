@@ -10,7 +10,7 @@ import { useForecast } from "@/state/forecast";
 import { defaultOccasion, useWardrobe } from "@/state/wardrobe";
 
 export default function WeekPage() {
-  const { ready, today, items, wears, plans, feedback, comfort } = useWardrobe();
+  const { ready, today, items, wears, plans, feedback, comfort, tripDayFor, trips } = useWardrobe();
   const forecast = useForecast();
 
   const days: WeekDay[] = useMemo(
@@ -18,9 +18,11 @@ export default function WeekPage() {
       Array.from({ length: 7 }, (_, n) => {
         const date = addDays(today, n);
         const plan = plans[date];
+        const trip = tripDayFor(date);
+        if (!plan && trip) return { date, occasion: trip.day.occasion, weather: trip.day.weather, planned: trip.day.itemIds };
         return { date, occasion: plan?.occasion ?? defaultOccasion(date), weather: forecast.weatherFor(date), planned: plan?.itemIds };
       }),
-    [today, plans, forecast],
+    [today, plans, forecast, tripDayFor],
   );
   const looks = useMemo(
     () => (ready ? planWeek(days, { items, wears, feedback, comfort }) : []),
@@ -32,11 +34,17 @@ export default function WeekPage() {
       <div className="page-head">
         <span className="eyebrow">Next 7 days · {forecast.status === "live" ? `live forecast, ${forecast.cityName}` : "sample forecast"}</span>
         <h1 className="display page-title">The week</h1>
+        <div className="head-actions">
+          <Link href={trips.length ? "/trips" : "/trips?new=1"} className="chip chip-add">
+            {trips.length ? `Trips · ${trips.filter((t) => t.end >= today).length} coming up` : "+ Plan a trip"}
+          </Link>
+        </div>
       </div>
       <div className="week">
         {ready &&
           days.map((d, i) => {
             const look = looks[i];
+            const trip = !plans[d.date] ? tripDayFor(d.date)?.trip : undefined;
             const temps = [d.weather.morning.feels, d.weather.midday.feels, d.weather.evening.feels];
             const wet = Math.max(d.weather.morning.rain, d.weather.midday.rain, d.weather.evening.rain) >= 50;
             return (
@@ -53,7 +61,7 @@ export default function WeekPage() {
                     {wet && <span className="wet"> · rain</span>}
                   </span>
                 </span>
-                <span className={`pill${d.planned ? " saved" : ""}`}>{d.planned ? "Saved" : "Suggested"}</span>
+                <span className={`pill${d.planned ? " saved" : ""}`}>{trip ? trip.city.name : d.planned ? "Saved" : "Suggested"}</span>
               </Link>
             );
           })}

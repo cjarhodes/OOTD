@@ -19,6 +19,10 @@ Status: v2. The sample demo and your own on-device wardrobe both work. See [the 
   - When nothing in the wardrobe is warm enough, it shows the closest look and says what to add.
 - **Three looks a day:** Easy, Fresh and Bold. Looks are named after their recipe and come with notes. You can swap or pin a piece, favourite or skip a look, save a plan and log a wear.
 - **Live weather.** Set a city in Settings to get a 16-day Open-Meteo forecast, split into morning, midday and evening. Without a city, the app uses a sample forecast and labels it as one.
+- **Trips and capsules** (`/trips`, linked from Week). Pick a destination, dates and the kind of trip, and OOTD packs a small capsule that dresses every day in that city's weather, with a packing checklist.
+  - **Re-wear limits:** a fresh base layer most days, knits and trousers re-worn, and the bulkiest jacket and shoes worn on the journey.
+  - **Weather:** the live forecast where it reaches, and last year's weather on the same dates for trips further ahead. Both are labelled.
+  - **Week and Today** show each trip day's look in the destination's weather.
 - **Week view**, with suggestions that vary from day to day. **Backup and restore** as a JSON file that includes the photos.
 - **Gallery brand:** Bodoni Moda, Hanken Grotesk and Azeret Mono. Museum-style look labels. Light and dark themes. Installable to the Home Screen.
 
