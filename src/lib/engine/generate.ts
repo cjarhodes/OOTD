@@ -11,7 +11,7 @@ import type {
   Wear,
 } from "../types";
 import { lookName, lookNotes, recipeOf, tonalFamily } from "./describe";
-import { stackIsValid, weatherFit } from "./rules";
+import { stackIsValid, upperLayers, weatherFit } from "./rules";
 import {
   buildHistory,
   colourScore,
@@ -81,7 +81,7 @@ function pools(input: GenerateInput, random: () => number): Record<Slot, Item[]>
   return bySlot;
 }
 
-function candidates(input: GenerateInput, requireRainLayer: boolean): Candidate[] {
+function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeather = false): Candidate[] {
   const seed = hash(`${input.date}|${input.occasion}|${input.shuffle ?? 0}`);
   const random = rng(seed);
   const pool = pools(input, random);
@@ -99,10 +99,13 @@ function candidates(input: GenerateInput, requireRainLayer: boolean): Candidate[
             const pieces: Pieces = { base, mid, outer, bottom, shoes };
             if (input.pin && ![base, mid, outer, bottom, shoes].some((i) => i?.id === input.pin)) continue;
             if (!stackIsValid(pieces)) continue;
-            const fit = weatherFit(pieces, needs, rainLayerAvailable);
+            const fit = ignoreWeather ? { ok: true, shed: undefined, backOn: false } : weatherFit(pieces, needs, rainLayerAvailable);
             if (!fit.ok) continue;
             const boldness = lookBoldness(pieces);
+            // Without a weather fit, prefer the warmest stacks so the closest look is the most useful one.
+            const warmthBias = ignoreWeather ? upperLayers(pieces).reduce((s, i) => s + i.warmth, 0) * 0.8 : 0;
             const score =
+              warmthBias +
               colourScore(pieces) +
               textureScore(pieces) +
               formalityScore(pieces, input.occasion) +
@@ -145,13 +148,20 @@ export function generateLooks(input: GenerateInput): Looks {
   let pool = candidates(input, true);
   // No rain layer can satisfy the warmth budget: fall back to ignoring the shell rule.
   if (pool.length === 0) pool = candidates(input, false);
+  // Nothing suits the weather at all: show the closest looks, clearly flagged.
+  let warning: string | undefined;
+  if (pool.length === 0) {
+    pool = candidates(input, false, true);
+    if (pool.length > 0) warning = weatherWarning(input);
+  }
   const history = buildHistory(input.wears ?? [], input.date);
   const feedback = input.feedback ?? {};
   const wet = dayNeeds(input.weather, input.comfort).wet;
 
   const result: Looks = { easy: null, fresh: null, bold: null };
   const chosen: Pieces[] = [];
-  for (const tier of TIERS) {
+  // In the fallback, only the warmest look is worth showing; it goes in the default tier.
+  for (const tier of warning ? (["fresh"] as Tier[]) : TIERS) {
     let best: { c: Candidate; s: number } | null = null;
     for (const c of pool) {
       if (chosen.some((p) => overlap(p, c.pieces) > 3)) continue;
@@ -159,11 +169,33 @@ export function generateLooks(input: GenerateInput): Looks {
       if (!best || s > best.s) best = { c, s };
     }
     if (best) {
-      result[tier] = toLook(best.c, best.s, input, wet);
+      const look = toLook(best.c, best.s, input, wet);
+      result[tier] = warning ? { ...look, warning } : look;
       chosen.push(best.c.pieces);
     }
   }
   return result;
+}
+
+/** Explain, in plain words, why the wardrobe can't suit the day. */
+export function weatherWarning(input: GenerateInput): string {
+  const needs = dayNeeds(input.weather, input.comfort);
+  const available = input.items.filter((i) => i.status === "available");
+  const upper = available.filter((i) => i.slot === "base" || i.slot === "mid" || i.slot === "outer");
+  const warmest = ["base", "mid", "outer"].reduce(
+    (sum, slot) => sum + Math.max(0, ...upper.filter((i) => i.slot === slot).map((i) => i.warmth)),
+    0,
+  );
+  if (warmest < needs.needCold - 1) {
+    const outer = available.some((i) => i.slot === "outer");
+    return `It feels like ${needs.coldest}°C at the coldest point, and nothing here is warm enough. ${
+      outer ? "Add a warmer coat" : "Add a jacket or coat"
+    } and OOTD can layer you properly.`;
+  }
+  if (needs.wet && available.every((i) => i.slot !== "outer" || !i.waterproof)) {
+    return "Rain is likely and there’s no rain-ready layer in this wardrobe yet. Add a waterproof jacket.";
+  }
+  return `None of these pieces suit ${needs.coldest}°→${needs.warmest}°C well. This is the closest look.`;
 }
 
 /**

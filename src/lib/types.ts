@@ -164,4 +164,6 @@ export interface Look {
   name: string;
   notes: string[];
   shed?: Shed;
+  /** Set when the wardrobe can't fully suit the weather and this is the closest look. */
+  warning?: string;
 }
