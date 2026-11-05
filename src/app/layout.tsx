@@ -22,7 +22,6 @@ export const metadata: Metadata = {
   title: { default: "OOTD", template: "%s · OOTD" },
   description: DESCRIPTION,
   applicationName: "OOTD",
-  alternates: { canonical: "/" },
   appleWebApp: { capable: true, title: "OOTD", statusBarStyle: "default" },
   icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
   authors: [{ name: "Alex Rhodes", url: "https://cjarhodes.com" }],
