@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   applicationName: "OOTD",
   appleWebApp: { capable: true, title: "OOTD", statusBarStyle: "default" },
   icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
-  authors: [{ name: "Alex Rhodes", url: "https://cjarhodes.com" }],
+  authors: [{ name: "Alex Rhodes", url: "https://www.cjarhodes.com" }],
   openGraph: {
     type: "website",
     siteName: "OOTD",

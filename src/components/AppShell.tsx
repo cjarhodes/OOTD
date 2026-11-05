@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { SOURCE_URL } from "@/components/CloudBackup";
 import { useCloud } from "@/state/cloud";
 import { lastExport, useWardrobe } from "@/state/wardrobe";
 
@@ -53,9 +54,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          <span className="avatar" aria-label="Alex Rhodes">
-            AR
-          </span>
+          <a className="label source-link" href={SOURCE_URL} target="_blank" rel="noopener noreferrer" aria-label="Source on GitHub (opens in a new tab)">
+            Source ↗
+          </a>
         </div>
       </header>
       <main id="main" className="main" tabIndex={-1}>

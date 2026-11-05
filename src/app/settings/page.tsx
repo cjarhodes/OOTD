@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CloudBackup, when } from "@/components/CloudBackup";
+import { CloudBackup, SOURCE_URL, when } from "@/components/CloudBackup";
 import { cityLabel, searchCities, type City } from "@/lib/forecast";
 import type { Comfort } from "@/lib/types";
 import { useOwner } from "@/state/owner";
@@ -155,7 +155,10 @@ export default function SettingsPage() {
 
         {owner.status.available && (
           <section className="setting">
-            <h2 className="setting-title">Owner</h2>
+            <h2 className="setting-title">Owner access</h2>
+            {!owner.status.owner && (
+              <p className="setting-note">For whoever runs this copy of OOTD. Visitors don’t need it: everything else works without it.</p>
+            )}
             {owner.status.owner ? (
               <>
                 <div className="setting-row">
@@ -252,11 +255,15 @@ export default function SettingsPage() {
         <section className="setting">
           <h2 className="setting-title">About</h2>
           <p className="setting-note">
-            OOTD is a personal project by{" "}
-            <a className="text-link" href="https://cjarhodes.com" target="_blank" rel="noopener noreferrer">
+            OOTD is an open-source project by{" "}
+            <a className="text-link" href="https://www.cjarhodes.com" target="_blank" rel="noopener noreferrer">
               Alex Rhodes
             </a>
-            . Weather by Open-Meteo.
+            . No accounts, no tracking: your wardrobe stays in your browser unless you run your own copy with cloud backup. The{" "}
+            <a className="text-link" href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
+              source is on GitHub
+            </a>{" "}
+            under the MIT licence. Weather by Open-Meteo.
           </p>
         </section>
       </div>
