@@ -7,7 +7,7 @@ import { ItemFields, type Draft } from "@/components/ItemFields";
 import { makeItem } from "@/lib/kinds";
 import { preparePhoto, taggingImage, type PreparedPhoto } from "@/lib/photo";
 import { applyTags } from "@/lib/tagging";
-import { requestTags, useOwner } from "@/state/owner";
+import { useAI } from "@/state/ai";
 import { newId, useWardrobe } from "@/state/wardrobe";
 
 interface Pending {
@@ -20,13 +20,12 @@ interface Pending {
 
 export default function AddPage() {
   const { mode, setMode, addPieces, storageError, personalCount } = useWardrobe();
-  const owner = useOwner();
+  const ai = useAI();
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [queue, setQueue] = useState<Pending[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [spent, setSpent] = useState(0);
 
   // Release preview URLs when leaving the page.
   const queueRef = useRef(queue);
@@ -65,14 +64,13 @@ export default function AddPage() {
 
   async function tag(p: Pending) {
     update(p.id, { state: "tagging", note: undefined });
-    const result = await requestTags(await taggingImage(p.photo.blob));
+    const result = await ai.requestTags(await taggingImage(p.photo.blob));
     if ("error" in result) {
       update(p.id, { state: "review", note: result.error });
       return;
     }
-    setSpent((s) => s + result.costUsd);
     update(p.id, { state: "review", draft: { ...result.tags, nameEdited: true }, note: "Tagged by Claude. Check it over." });
-    void owner.refresh();
+    void ai.refresh();
   }
 
   async function save(p: Pending) {
@@ -87,8 +85,6 @@ export default function AddPage() {
       update(p.id, { state: "review", note: "This piece couldn’t be saved on this device." });
     }
   }
-
-  const budget = owner.status.ai;
 
   return (
     <>
@@ -135,7 +131,8 @@ export default function AddPage() {
             )}
           </div>
           <p className="footer-note">
-            Photos stay on this device. {owner.canTag ? "AI tagging sends one small copy of a photo to Claude only when you tap Tag with AI." : ""}
+            Photos are saved to your account and kept on this device.{" "}
+            {ai.status.configured ? "AI tagging sends one small copy of a photo to Claude only when you tap Tag with AI." : ""}
           </p>
         </section>
       )}
@@ -172,14 +169,14 @@ export default function AddPage() {
               </p>
             )}
             {current.note && <p className="hint">{current.note}</p>}
-            {owner.canTag && (
+            {ai.status.configured && (
               <div className="ai-row">
-                <button type="button" className="btn alt" disabled={current.state !== "review"} onClick={() => void tag(current)}>
+                <button type="button" className="btn alt" disabled={current.state !== "review" || !ai.canTag} onClick={() => void tag(current)}>
                   {current.state === "tagging" ? "Tagging…" : "Tag with AI"}
                 </button>
-                {budget.capUsd !== null && (
+                {ai.left !== null && (
                   <span className="label">
-                    ${(budget.spentUsd ?? 0).toFixed(2)} of ${budget.capUsd.toFixed(2)} this month{spent > 0 ? ` · this session $${spent.toFixed(3)}` : ""}
+                    {ai.left} of {ai.status.limit} AI tags left this month
                   </span>
                 )}
               </div>

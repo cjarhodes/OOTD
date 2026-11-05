@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CloudBackup, SOURCE_URL, when } from "@/components/CloudBackup";
+import { SignIn } from "@/components/SignIn";
 import { cityLabel, searchCities, type City } from "@/lib/forecast";
 import type { Comfort } from "@/lib/types";
-import { useOwner } from "@/state/owner";
+import { useAI } from "@/state/ai";
+import { useAuth } from "@/state/auth";
+import { useCloud } from "@/state/cloud";
 import { lastExport, useWardrobe } from "@/state/wardrobe";
 
 const COMFORT: { value: Comfort; label: string }[] = [
@@ -15,12 +18,13 @@ const COMFORT: { value: Comfort; label: string }[] = [
 
 export default function SettingsPage() {
   const store = useWardrobe();
-  const owner = useOwner();
+  const auth = useAuth();
+  const ai = useAI();
+  const cloud = useCloud();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<City[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [passphrase, setPassphrase] = useState("");
   const [confirmRestore, setConfirmRestore] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -49,6 +53,25 @@ export default function SettingsPage() {
     setMessage("Export downloaded. On iPhone it’s in Files, under Downloads; move it to iCloud Drive to keep it.");
   }
 
+  async function signOut() {
+    const unsaved = cloud.status.phase !== "synced" && store.personalCount > 0;
+    if (unsaved && !window.confirm("Some changes on this device aren’t saved to your account yet. Sign out anyway?")) return;
+    await auth.signOut();
+    setMessage("Signed out. Your wardrobe stays in your account.");
+  }
+
+  // Arriving from a sign-in link: show your own wardrobe from here on.
+  const landed = useRef(false);
+  useEffect(() => {
+    if (landed.current || !auth.user) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("signed-in")) return;
+    landed.current = true;
+    store.setMode("personal");
+    setMessage("You’re signed in. Your wardrobe is saved to your account from now on.");
+    window.history.replaceState(null, "", "/settings");
+  }, [auth.user, store]);
+
   const [exported, setExported] = useState<ReturnType<typeof lastExport>>(null);
   useEffect(() => setExported(lastExport()), [message]);
 
@@ -76,6 +99,33 @@ export default function SettingsPage() {
       )}
 
       <div className="settings">
+        <section className="setting" id="account">
+          <h2 className="setting-title">Account</h2>
+          {!auth.ready ? (
+            <p className="setting-note">Checking…</p>
+          ) : auth.user ? (
+            <>
+              <div className="setting-row">
+                <span>
+                  Signed in as <strong>{auth.user.email ?? "you"}</strong>
+                </span>
+                <button type="button" className="text-link" onClick={() => void signOut()}>
+                  Sign out
+                </button>
+              </div>
+              <CloudBackup onExport={() => void download()} />
+              {ai.status.configured && (
+                <p className="setting-note">
+                  AI tagging is on.{" "}
+                  {ai.left === null ? "No monthly limit on this account." : `${ai.left} of ${ai.status.limit} AI tags left this month.`}
+                </p>
+              )}
+            </>
+          ) : (
+            <SignIn compact />
+          )}
+        </section>
+
         <section className="setting">
           <h2 className="setting-title">Wardrobe</h2>
           <div className="segmented" role="group" aria-label="Which wardrobe" style={{ ["--count" as string]: 2 }}>
@@ -87,8 +137,8 @@ export default function SettingsPage() {
             </button>
           </div>
           <p className="setting-note">
-            Your wardrobe, photos and history are stored in this browser, and in your private cloud backup when it’s on. The sample wardrobe is a demo with
-            illustrated pieces.
+            Your wardrobe, photos and history are saved to your account and kept on this device, so it works offline. The sample wardrobe is a demo
+            with illustrated pieces and needs no account.
           </p>
         </section>
 
@@ -153,68 +203,11 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {owner.status.available && (
-          <section className="setting">
-            <h2 className="setting-title">Owner access</h2>
-            {!owner.status.owner && (
-              <p className="setting-note">For whoever runs this copy of OOTD. Visitors don’t need it: everything else works without it.</p>
-            )}
-            {owner.status.owner ? (
-              <>
-                <div className="setting-row">
-                  <span>Unlocked on this device.</span>
-                  <button type="button" className="text-link" onClick={() => void owner.lock()}>
-                    Lock
-                  </button>
-                </div>
-                {owner.status.ai.configured ? (
-                  <p className="setting-note">
-                    AI tagging is on. ${(owner.status.ai.spentUsd ?? 0).toFixed(2)} of ${owner.status.ai.capUsd?.toFixed(2)} used this month.
-                  </p>
-                ) : (
-                  <p className="setting-note">AI tagging isn’t configured on this deployment yet.</p>
-                )}
-              </>
-            ) : (
-              <form
-                className="setting-row"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const err = await owner.unlock(passphrase);
-                  setPassphrase("");
-                  setMessage(err ?? "Unlocked. Cloud backup and AI tagging are on for this device.");
-                }}
-              >
-                <input
-                  id="passphrase"
-                  className="input"
-                  type="password"
-                  value={passphrase}
-                  onChange={(e) => setPassphrase(e.target.value)}
-                  placeholder="Owner passphrase"
-                  aria-label="Owner passphrase"
-                  autoComplete="current-password"
-                />
-                <button type="submit" className="btn alt" disabled={!passphrase}>
-                  Unlock
-                </button>
-              </form>
-            )}
-          </section>
-        )}
-
-        {owner.status.available && (
-          <section className="setting">
-            <h2 className="setting-title">Cloud backup</h2>
-            <CloudBackup onExport={() => void download()} />
-          </section>
-        )}
-
         <section className="setting">
           <h2 className="setting-title">Export</h2>
           <p className="setting-note">
             A ZIP you can open anywhere: a spreadsheet of every piece, your wear log, the photos as ordinary image files, and a JSON file OOTD can
-            restore from. Keep one in iCloud Drive as well as the cloud backup.
+            restore from. Your account keeps everything already; an export is yours to keep anywhere.
             {exported && ` Last exported ${when(exported.at)} with ${exported.pieces} piece${exported.pieces === 1 ? "" : "s"}.`}
           </p>
           <div className="actions">
@@ -259,7 +252,7 @@ export default function SettingsPage() {
             <a className="text-link" href="https://www.cjarhodes.com" target="_blank" rel="noopener noreferrer">
               Alex Rhodes
             </a>
-            . No accounts, no tracking: your wardrobe stays in your browser unless you run your own copy with cloud backup. The{" "}
+            . No tracking or ads: your wardrobe is private to your account, and you can export all of it at any time. The{" "}
             <a className="text-link" href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
               source is on GitHub
             </a>{" "}

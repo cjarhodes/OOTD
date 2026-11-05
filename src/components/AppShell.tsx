@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { SOURCE_URL } from "@/components/CloudBackup";
+import { SignIn } from "@/components/SignIn";
+import { useAuth } from "@/state/auth";
 import { useCloud } from "@/state/cloud";
 import { lastExport, useWardrobe } from "@/state/wardrobe";
 
@@ -16,8 +18,11 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const { mode, storageError, personalCount, ready } = useWardrobe();
+  const { mode, setMode, storageError, personalCount, ready } = useWardrobe();
   const cloud = useCloud();
+  const auth = useAuth();
+  // Your own wardrobe needs an account; the sample wardrobe never does.
+  const needsSignIn = auth.ready && !auth.user && path !== "/settings" && (mode === "personal" || path === "/add");
   const [unsaved, setUnsaved] = useState(false);
   const [dismissed, setDismissed] = useState(true);
   useEffect(() => {
@@ -27,11 +32,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       setDismissed(false);
     }
   }, []);
-  // Pieces that exist only on this device: no cloud backup, and more than the last export held.
+  // Pieces that exist only on this device: accounts aren't set up, and more than the last export held.
   useEffect(() => {
-    if (!ready || cloud.available) return setUnsaved(false);
+    if (!ready || auth.configured) return setUnsaved(false);
     setUnsaved(personalCount > (lastExport()?.pieces ?? 0));
-  }, [ready, cloud.available, personalCount, path]);
+  }, [ready, auth.configured, personalCount, path]);
   const attention = ["restore-available", "conflict", "shrink"].includes(cloud.status.phase);
   const current = (href: string) => (href === "/" ? path === "/" : path.startsWith(href)) ? "page" : undefined;
   return (
@@ -54,9 +59,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          <a className="label source-link" href={SOURCE_URL} target="_blank" rel="noopener noreferrer" aria-label="Source on GitHub (opens in a new tab)">
-            Source ↗
-          </a>
+          {auth.configured && auth.ready ? (
+            <Link className="label source-link" href="/settings#account">
+              {auth.user ? "Account" : "Sign in"}
+            </Link>
+          ) : (
+            <a className="label source-link" href={SOURCE_URL} target="_blank" rel="noopener noreferrer" aria-label="Source on GitHub (opens in a new tab)">
+              Source ↗
+            </a>
+          )}
         </div>
       </header>
       <main id="main" className="main" tabIndex={-1}>
@@ -69,8 +80,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="banner" role="alert" style={{ marginBottom: 16 }}>
             <span>
               {cloud.status.phase === "restore-available"
-                ? "Your cloud backup can be restored to this device."
-                : "Your cloud backup needs a decision before it can save again."}
+                ? "Your wardrobe is in your account and can be brought to this device."
+                : "Your account needs a decision before it can save again."}
             </span>
             <Link className="text-link" href="/settings">
               Open Settings
@@ -102,7 +113,21 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </p>
         )}
-        {children}
+        {needsSignIn ? (
+          <section className="signin-gate">
+            <span className="eyebrow">My wardrobe</span>
+            <SignIn />
+            <p className="setting-note">
+              Just looking?{" "}
+              <button type="button" className="text-link" onClick={() => setMode("sample")}>
+                Browse the sample wardrobe
+              </button>{" "}
+              instead.
+            </p>
+          </section>
+        ) : (
+          children
+        )}
       </main>
       <nav className="tabbar" aria-label="Main">
         {NAV.map((n) => (

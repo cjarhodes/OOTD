@@ -1,9 +1,12 @@
-import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import { deleteDB, openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { Comfort, FeedbackValue, Item, Plan, Trip, Wear } from "./types";
 
 /**
- * The personal wardrobe lives only on this device, in IndexedDB. Photos are
- * stored as Blobs keyed by item id; the wardrobe state is one record.
+ * This device's copy of a signed-in person's wardrobe, in IndexedDB: one
+ * database per account, so people sharing a device never see each other's
+ * pieces. The account copy in Supabase is the one that lasts (see
+ * src/state/cloud.tsx); this one makes the app fast and work offline.
+ * Photos are Blobs keyed by item id; the wardrobe state is one record.
  */
 export interface PersonalState {
   version: 1;
@@ -22,18 +25,73 @@ interface Schema extends DBSchema {
   images: { key: string; value: Blob };
 }
 
-const DB = "ootd";
+/** Before accounts, the one wardrobe on a device lived here. */
+export const LEGACY_DB = "ootd";
 const STATE_KEY = "personal";
 
-let dbPromise: Promise<IDBPDatabase<Schema>> | null = null;
-function db() {
-  dbPromise ??= openDB<Schema>(DB, 1, {
+export function accountDbName(userId: string): string {
+  return `ootd-u-${userId}`;
+}
+
+function open(name: string) {
+  return openDB<Schema>(name, 1, {
     upgrade(d) {
       d.createObjectStore("state");
       d.createObjectStore("images");
     },
   });
+}
+
+let dbName = LEGACY_DB;
+let dbPromise: Promise<IDBPDatabase<Schema>> | null = null;
+function db() {
+  dbPromise ??= open(dbName);
   return dbPromise;
+}
+
+/** Point every call below at one account's database. */
+export function selectDatabase(name: string): void {
+  if (name === dbName && dbPromise) return;
+  const previous = dbPromise;
+  dbName = name;
+  dbPromise = null;
+  void previous?.then((d) => d.close()).catch(() => undefined);
+}
+
+/** Remove an account's copy from this device (after it is safely in the account). */
+export async function deleteAccountCopy(userId: string): Promise<void> {
+  const name = accountDbName(userId);
+  if (name === dbName) {
+    const previous = dbPromise;
+    dbPromise = null;
+    dbName = LEGACY_DB;
+    await previous?.then((d) => d.close()).catch(() => undefined);
+  }
+  await deleteDB(name);
+}
+
+/** The wardrobe kept on this device before accounts, if any, with its photos. */
+export async function readLegacy(): Promise<{ state: PersonalState; images: Map<string, Blob> } | null> {
+  try {
+    if (typeof indexedDB === "undefined") return null;
+    const names = (await indexedDB.databases?.())?.map((d) => d.name) ?? null;
+    if (names && !names.includes(LEGACY_DB)) return null;
+    const d = await open(LEGACY_DB);
+    try {
+      const state = await d.get("state", STATE_KEY);
+      if (!state || state.version !== 1 || state.items.length === 0) return null;
+      const images = new Map<string, Blob>();
+      for (const item of state.items) {
+        const blob = await d.get("images", item.id);
+        if (blob) images.set(item.id, blob);
+      }
+      return { state, images };
+    } finally {
+      d.close();
+    }
+  } catch {
+    return null;
+  }
 }
 
 export function emptyPersonal(): PersonalState {

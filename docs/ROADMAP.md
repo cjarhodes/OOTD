@@ -138,7 +138,7 @@ Replace the single `layer` loop in `generate()` with: choose a recipe for the da
 
 - A Vercel serverless function sends one compressed cut-out (around 512px) to a Claude vision model. It gets back structured JSON: category, slot, colour(s), material, pattern, thickness, neckline, length, formality and a suggested name. Every field stays editable in the review stack.
 - **Two-layer cap.** (1) A hard spend limit on a dedicated workspace in the Anthropic Console. (2) The function counts spend per calendar month in Vercel's KV/Redis store and returns "Monthly AI budget reached" once it hits the cap. Suggested cap: $3 of the $5 monthly budget.
-- **Owner-only.** The public portfolio demo never calls the function. Personal mode needs a sign-in (a passphrase-protected session, or Vercel Authentication on a private deployment). The API key stays server-side.
+- **Signed-in only, with an allowance.** The public sample wardrobe never calls the function. Each account gets a monthly allowance of AI tags (`OOTD_AI_TAGS_PER_MONTH`), inside the overall monthly cap. The API key stays server-side.
 - Images are sent only during an explicit "Tag with AI" action and are not stored server-side.
 - Check current per-image pricing when building, then show an estimated cost in the UI before a batch runs.
 - Later, within the same cap: "Style this" on demand, where the model ranks the engine's top candidates and writes the "why it works" note. The rules engine still enforces the hard constraints.
@@ -223,9 +223,10 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | Personal wardrobe: IndexedDB photo storage, cut-out import, review step, edit, wash and archive states, backup and restore | Done |
 | Live 16-day forecast (Open-Meteo) with a city setting | Done |
 | Trips and capsules: destination weather (forecast, else last year's), capsule packing with re-wear limits, packing checklist, per-day looks, shown in Week and Today | Done |
-| Durability: automatic private cloud backup (Vercel Blob, photos content-addressed, conflict and shrink guards, hourly history), restore on a new device, portable ZIP export (CSV, JSON, photos) and import | Done (needs a Blob store connected) |
-| AI tagging: owner passphrase, Claude structured output, monthly cap in Redis, fails closed | Done (needs keys on Vercel) |
+| Durability: automatic private cloud backup (Vercel Blob, photos content-addressed, conflict and shrink guards, hourly history), restore on a new device, portable ZIP export (CSV, JSON, photos) and import | Superseded by accounts (the ZIP export stays) |
+| AI tagging: Claude structured output, monthly cap and per-person allowance in Redis, fails closed | Done (needs keys on Vercel) |
 | Vercel project `ootd-cjarhodes` at `ootd.cjarhodes.com` | Waiting on the import in Vercel and a DNS record in Cloudflare |
 | On-device check on iPhone: Safari, Add to Home Screen, Shortcut batch import | Next |
+| Accounts: Supabase magic-link sign-in, wardrobe and photos saved per account with row-level security, version-checked saves with shrink guard, 30-slot history, per-device copy for offline use, per-person AI allowance. Replaces the owner passphrase and Vercel Blob backup | Done |
 | Open source: MIT licence, public README with a one-click Vercel deploy (private Blob store included), visitor-facing copy for the no-accounts model | Done |
 | Portfolio Builds entry and case study | After two weeks of real use |
