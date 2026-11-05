@@ -5,7 +5,7 @@ FORM v1 already works: a local-first wardrobe, three outfit directions, weather-
 1. **The whole wardrobe**: capturing everything, accessories included, quickly and cleanly.
 2. **Layering**: outfits built as stacks (base → mid → outer), not a single "Layers" slot.
 3. **Aesthetic output**: every outfit shown as an editorial flat-lay, not a grid of tiles.
-4. **Portfolio fit**: FORM looks like it belongs on cjarhodes.com, with a public demo and a case study.
+4. **Its own brand**: a distinct identity for FORM, plus a public demo and a case study linked from cjarhodes.com.
 
 ---
 
@@ -139,45 +139,45 @@ Local-first stays the default. If tagging friction remains after the capture pip
 
 ---
 
-## 8. Branding: FORM as a sub-brand of cjarhodes.com
+## 8. Branding: FORM as its own brand
 
-The portfolio is minimal and text-first: Geist and Geist Mono on warm paper, near-black ink, a burgundy accent, light/dark themes, and first-person, informal copy. FORM should feel like **the same person's design system wearing its weekend clothes**.
+FORM gets its own identity and doesn't inherit the portfolio's look. The portfolio links out to it as a separate build, the way it does for `training.` and `chess.`. The three directions explored are **Gallery**, **Selvedge** and **Chalk & Cloth**. They're shown side by side, each with a palette, type, components and the same layered flat-lay, on the brand board artifact.
 
-### Shared with the portfolio
+### Recommended: Gallery
 
-| Token | Value | Use |
+*The wardrobe, on display.* The clothes are the exhibition: a white wall, a stone plinth, one cobalt accent, and every look captioned like a museum object.
+
+| Token | Light | Use |
 | --- | --- | --- |
-| `--bg` | `#faf9f6` (dark `#121110`) | Paper |
-| `--bg-alt` | `#f3f1ec` | Flat-lay canvas |
-| `--ink` | `#15130f` (dark `#f3f0ea`) | Text |
-| `--ink-3` | `#6f6a62` | Muted text |
-| `--rule` | `#e7e3db` | Hairlines |
-| Sans | **Geist** 400/500/600 | UI and body (replaces DM Sans + Manrope) |
-| Mono | **Geist Mono** 400/500 | Eyebrows, metadata, captions, e.g. `01 — THE PHILOSOPHY` |
-| Radii / easing | 6 / 10 / 16px, `cubic-bezier(0.22,1,0.36,1)` | Match the parent |
+| `--wall` | `#FBFBF9` | App background |
+| `--plinth` | `#EBE9E4` | Flat-lay canvas |
+| `--graphite` | `#1A1A19` | Text, primary buttons |
+| `--label` | `#6D6B66` | Metadata, captions |
+| `--cobalt` | `#2335C8` | The single accent: active states, favourites, the dot in the icon |
 
-### FORM's own
+The dark theme uses a graphite wall with a lifted cobalt. Both themes are required.
 
-| Token | Value | Use |
-| --- | --- | --- |
-| `--olive` | `#4c5b3f` (dark: lift to ~`#a3b18a`) | FORM's accent: buttons, active tab |
-| `--burgundy` | `#7a1f2b` (portfolio accent) | Used sparingly in FORM, e.g. ♥ favourites. It visually links back to the parent. |
-| Display serif | **Instrument Serif** (italic for emphasis) | Editorial headlines only: "Good clothes. *New possibilities.*" Replaces the Georgia fallback. |
-| Wordmark | `FORM` in Geist 600, tracked +8%, with a small mono `®`-style mark | App icon: "F" cut-out on olive |
+- **Type:** **Bodoni Moda** (italic for look names, used sparingly), **Hanken Grotesk** for UI and body text, **Azeret Mono** for museum-label metadata.
+- **Signature element: the museum label** under each look. It gives the look's name in italic, the pieces, then a mono line with materials, temperature range and wear count (e.g. `Cotton · Wool · Waxed cotton — 11°→17°C — Worn 3×`).
+- **Components:** pill buttons, an "F" app icon in Bodoni with a cobalt dot, and hairline dividers. Cards are used only for look labels.
 
-### Rules
+### Alternatives kept on file
 
-- Flat-lays use cut-outs on `--bg-alt`, one shadow style, and no gradients.
-- Photography: daylight, top-down, the same backdrop every time. For portfolio lifestyle shots, use the Ricoh GR IIIx/X-T5 work already planned for the photography page.
-- **Dark mode** is required, because the portfolio has a theme toggle.
-- **Voice**: in-app copy is short and editorial ("Your day, considered."). The case study uses the portfolio's casual first-person voice.
+- **Selvedge:** workwear vocabulary. Raw indigo `#1E2A44`, canvas `#E7E2D6`, brass `#A8834A` and a selvedge red `#B5392F` used only as a stripe. Type is Archivo (condensed width) and Martian Mono. Each look gets a numbered care tag. It has more character but leans rugged for dressy days.
+- **Chalk & Cloth:** a tailor's cutting table, dark first. Wool `#24252A`, chalk `#ECEBE6`, chalk blue `#8FB0DA`, thread gold `#C9A45C`. Type is DM Serif Display and Figtree. Temperature is drawn as a chalk measuring line. It's precise, but dark garments can sink into the background.
 
----
+### Rules for every direction
+
+- Layering is the signature: every look shows its stack in order, with collars and hems peeking through.
+- Cut-outs sit on one canvas colour with one shadow style. No gradients and no raw photo backgrounds.
+- Copy is short and specific. Look names come from the recipe, and notes say what to do and when ("Take the jacket off by noon").
+- Naming: keep **FORM**, or rename for layering (**Strata**, **Ply**, or **Stack**, which suits Selvedge).
 
 ## 9. Portfolio integration
 
 - **Subdomain**: `form.cjarhodes.com`, matching `training.` and `chess.`. The public build runs **sample wardrobe mode only**; the personal wardrobe stays on-device.
 - **Builds entry**: "form.cjarhodes.com — Wardrobe & outfit planner. Wear more of what you own, layered properly." Tag: `tool · personal`.
+- The portfolio keeps its own style. Only the case study post and the Builds entry live there, and they link out to FORM.
 - **Case study**, as a Writing post in the "Building" category using the existing post template: standfirst, then *The problem* (same five outfits), *What other apps get wrong* (layering), *How FORM layers*, *Making it look good* (flat-lay), *Keeping it cheap & private*, *What I learned*. Add three images: a hero flat-lay, a week view, and a layering diagram.
 - Only claim measured outcomes. Run the two-week validation in PRODUCT.md first.
 
@@ -187,7 +187,7 @@ The portfolio is minimal and text-first: Geist and Geist Mono on warm paper, nea
 
 | Phase | Scope | Done when |
 | --- | --- | --- |
-| **1. Brand alignment** | Geist/Instrument Serif, shared tokens, dark mode, new wordmark/icon | App and portfolio look like siblings side by side |
+| **1. Brand system** | Chosen direction's tokens, type, light + dark themes, wordmark/icon, museum-label component | Every screen uses the new tokens; no old DM Sans/Manrope styles remain |
 | **2. Layering engine** | Schema v2 + migration, slots, recipes, hard rules, strip test, tests | The engine produces 2–3-layer looks that pass all rules |
 | **3. Capture + flat-lay** | PNG cut-out import, auto colour, closet sprint, flat-lay composer, look card export | Real wardrobe photographed in one sitting; outfits look editorial |
 | **4. Hourly weather + planning** | Hourly windows, warmth budget, shed-by notes, week view, capsules/trips, client no-repeat | A full week planned in under 5 minutes |
@@ -200,3 +200,4 @@ The portfolio is minimal and text-first: Geist and Geist Mono on warm paper, nea
 2. **Background removal**: rely on iPhone Lift Subject only, or also ship an in-browser model (larger download, licence check)?
 3. **AI tagging**: stay strictly zero-cost, or allow a capped opt-in?
 4. **Hosting**: move from the current host to Vercel alongside the portfolio?
+5. **Brand direction**: Gallery (recommended), Selvedge or Chalk & Cloth, and keep the FORM name or rename it?
