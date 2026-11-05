@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { CloudBackup, when } from "@/components/CloudBackup";
 import { cityLabel, searchCities, type City } from "@/lib/forecast";
 import type { Comfort } from "@/lib/types";
 import { useOwner } from "@/state/owner";
-import { useWardrobe } from "@/state/wardrobe";
+import { lastExport, useWardrobe } from "@/state/wardrobe";
 
 const COMFORT: { value: Comfort; label: string }[] = [
   { value: "runs-cold", label: "I run cold" },
@@ -40,13 +41,16 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ootd-backup-${store.today}.json`;
+    a.download = `ootd-wardrobe-${store.today}.zip`;
     document.body.append(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    setMessage("Backup downloaded. Keep it somewhere safe, like iCloud Drive.");
+    setMessage("Export downloaded. On iPhone it’s in Files, under Downloads; move it to iCloud Drive to keep it.");
   }
+
+  const [exported, setExported] = useState<ReturnType<typeof lastExport>>(null);
+  useEffect(() => setExported(lastExport()), [message]);
 
   async function restore(file: File) {
     const result = await store.importBackup(file);
@@ -83,7 +87,8 @@ export default function SettingsPage() {
             </button>
           </div>
           <p className="setting-note">
-            Your wardrobe, photos and history are stored only in this browser on this device. The sample wardrobe is a demo with illustrated pieces.
+            Your wardrobe, photos and history are stored in this browser, and in your private cloud backup when it’s on. The sample wardrobe is a demo with
+            illustrated pieces.
           </p>
         </section>
 
@@ -150,7 +155,7 @@ export default function SettingsPage() {
 
         {owner.status.available && (
           <section className="setting">
-            <h2 className="setting-title">Owner and AI tagging</h2>
+            <h2 className="setting-title">Owner</h2>
             {owner.status.owner ? (
               <>
                 <div className="setting-row">
@@ -174,7 +179,7 @@ export default function SettingsPage() {
                   e.preventDefault();
                   const err = await owner.unlock(passphrase);
                   setPassphrase("");
-                  setMessage(err ?? "Unlocked. AI tagging is available when you add pieces.");
+                  setMessage(err ?? "Unlocked. Cloud backup and AI tagging are on for this device.");
                 }}
               >
                 <input
@@ -195,25 +200,34 @@ export default function SettingsPage() {
           </section>
         )}
 
+        {owner.status.available && (
+          <section className="setting">
+            <h2 className="setting-title">Cloud backup</h2>
+            <CloudBackup onExport={() => void download()} />
+          </section>
+        )}
+
         <section className="setting">
-          <h2 className="setting-title">Backup</h2>
+          <h2 className="setting-title">Export</h2>
           <p className="setting-note">
-            Safari can clear site data, and a Home Screen install keeps its own storage. Download a backup after adding pieces, and restore it on a new device.
+            A ZIP you can open anywhere: a spreadsheet of every piece, your wear log, the photos as ordinary image files, and a JSON file OOTD can
+            restore from. Keep one in iCloud Drive as well as the cloud backup.
+            {exported && ` Last exported ${when(exported.at)} with ${exported.pieces} piece${exported.pieces === 1 ? "" : "s"}.`}
           </p>
           <div className="actions">
             <button type="button" className="btn alt" disabled={store.personalCount === 0} onClick={() => void download()}>
-              Download backup
+              Download export
             </button>
             <button type="button" className="btn quiet" onClick={() => fileInput.current?.click()}>
-              Restore from backup
+              Restore from a file
             </button>
           </div>
           <input
             ref={fileInput}
             type="file"
-            accept="application/json,.json"
+            accept="application/zip,.zip,application/json,.json"
             hidden
-            aria-label="Choose a backup file"
+            aria-label="Choose an export or backup file"
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) setConfirmRestore(f);

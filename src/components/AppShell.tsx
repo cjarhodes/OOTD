@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
-import { useWardrobe } from "@/state/wardrobe";
+import { useEffect, useState, type ReactNode } from "react";
+import { useCloud } from "@/state/cloud";
+import { lastExport, useWardrobe } from "@/state/wardrobe";
 
 const NAV = [
   { href: "/", label: "Today" },
@@ -14,7 +15,23 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const { mode, storageError } = useWardrobe();
+  const { mode, storageError, personalCount, ready } = useWardrobe();
+  const cloud = useCloud();
+  const [unsaved, setUnsaved] = useState(false);
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
+    try {
+      setDismissed(sessionStorage.getItem("ootd.nudge") === "1");
+    } catch {
+      setDismissed(false);
+    }
+  }, []);
+  // Pieces that exist only on this device: no cloud backup, and more than the last export held.
+  useEffect(() => {
+    if (!ready || cloud.available) return setUnsaved(false);
+    setUnsaved(personalCount > (lastExport()?.pieces ?? 0));
+  }, [ready, cloud.available, personalCount, path]);
+  const attention = ["restore-available", "conflict", "shrink"].includes(cloud.status.phase);
   const current = (href: string) => (href === "/" ? path === "/" : path.startsWith(href)) ? "page" : undefined;
   return (
     <div className="shell">
@@ -45,6 +62,43 @@ export function AppShell({ children }: { children: ReactNode }) {
         {storageError && path !== "/settings" && (
           <p className="banner" role="alert" style={{ marginBottom: 16 }}>
             {storageError}
+          </p>
+        )}
+        {path !== "/settings" && attention && (
+          <p className="banner" role="alert" style={{ marginBottom: 16 }}>
+            <span>
+              {cloud.status.phase === "restore-available"
+                ? "Your cloud backup can be restored to this device."
+                : "Your cloud backup needs a decision before it can save again."}
+            </span>
+            <Link className="text-link" href="/settings">
+              Open Settings
+            </Link>
+          </p>
+        )}
+        {path !== "/settings" && !attention && unsaved && !dismissed && (
+          <p className="banner" style={{ marginBottom: 16 }}>
+            <span>
+              {personalCount} piece{personalCount === 1 ? " is" : "s are"} saved only in this browser. Download an export in{" "}
+              <Link className="text-link" href="/settings">
+                Settings
+              </Link>{" "}
+              so nothing is lost.
+            </span>
+            <button
+              type="button"
+              className="text-link"
+              onClick={() => {
+                setDismissed(true);
+                try {
+                  sessionStorage.setItem("ootd.nudge", "1");
+                } catch {
+                  // Dismissed for this visit only.
+                }
+              }}
+            >
+              Later
+            </button>
           </p>
         )}
         {children}

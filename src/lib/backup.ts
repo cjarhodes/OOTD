@@ -49,7 +49,8 @@ export function validItem(v: unknown): v is Item {
     typeof i.waterproof === "boolean" &&
     typeof i.delicate === "boolean" &&
     typeof i.status === "string" &&
-    (STATUSES as string[]).includes(i.status)
+    (STATUSES as string[]).includes(i.status) &&
+    (i.photoHash === undefined || (typeof i.photoHash === "string" && /^[a-f0-9]{64}$/.test(i.photoHash)))
   );
 }
 

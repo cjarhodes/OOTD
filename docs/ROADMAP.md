@@ -223,6 +223,7 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | Personal wardrobe: IndexedDB photo storage, cut-out import, review step, edit, wash and archive states, backup and restore | Done |
 | Live 16-day forecast (Open-Meteo) with a city setting | Done |
 | Trips and capsules: destination weather (forecast, else last year's), capsule packing with re-wear limits, packing checklist, per-day looks, shown in Week and Today | Done |
+| Durability: automatic private cloud backup (Vercel Blob, photos content-addressed, conflict and shrink guards, hourly history), restore on a new device, portable ZIP export (CSV, JSON, photos) and import | Done (needs a Blob store connected) |
 | AI tagging: owner passphrase, Claude structured output, monthly cap in Redis, fails closed | Done (needs keys on Vercel) |
 | Vercel project `ootd-cjarhodes` at `ootd.cjarhodes.com` | Waiting on the import in Vercel and a DNS record in Cloudflare |
 | On-device check on iPhone: Safari, Add to Home Screen, Shortcut batch import | Next |
