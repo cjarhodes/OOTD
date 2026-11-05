@@ -33,7 +33,7 @@ function Heart() {
 
 export function TodayView() {
   const store = useWardrobe();
-  const { ready, today, items, wears, plans, feedback, comfort, mode } = store;
+  const { ready, today, items, wears, plans, feedback, comfort, mode, tripDayFor } = store;
   const forecast = useForecast();
   const params = useSearchParams();
   const router = useRouter();
@@ -42,10 +42,14 @@ export function TodayView() {
   const date = isDateKey(requested) && requested >= today ? requested : today;
   const pin = params.get("pin") ?? undefined;
   const pinnedItem = pin ? items.find((i) => i.id === pin) : undefined;
-  const plan = plans[date];
+  const tripDay = tripDayFor(date);
+  // A saved plan wins; otherwise a trip day's look counts as the plan.
+  const plan = plans[date] ?? (tripDay ? { date, itemIds: tripDay.day.itemIds, occasion: tripDay.day.occasion, tier: "fresh" as const } : undefined);
+  const fromTrip = !plans[date] && Boolean(tripDay);
 
   const [occasionChoice, setOccasionChoice] = useState<Occasion | null>(null);
   const occasion = occasionChoice ?? plan?.occasion ?? defaultOccasion(date);
+  const tripWeather = tripDay?.day.weather;
   const [view, setView] = useState<View>("fresh");
   const [shuffle, setShuffle] = useState(0);
   const [override, setOverride] = useState<Look | null>(null);
@@ -55,7 +59,7 @@ export function TodayView() {
 
   // Open on the saved plan when there is one; reset when the day changes.
   useEffect(() => {
-    setView(plans[date] ? "saved" : "fresh");
+    setView(plans[date] || tripDayFor(date) ? "saved" : "fresh");
     setOccasionChoice(null);
     setOverride(null);
     setShuffle(0);
@@ -68,7 +72,7 @@ export function TodayView() {
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  const weather = useMemo(() => forecast.weatherFor(date), [forecast, date]);
+  const weather = useMemo(() => tripWeather ?? forecast.weatherFor(date), [tripWeather, forecast, date]);
   const input: GenerateInput = useMemo(
     () => ({ items, weather, occasion, date, wears, feedback, comfort, pin, shuffle }),
     [items, weather, occasion, date, wears, feedback, comfort, pin, shuffle],
@@ -154,7 +158,7 @@ export function TodayView() {
         <div className="segmented" role="group" aria-label="How adventurous" style={{ ["--count" as string]: tabs.length }}>
           {tabs.map((t) => (
             <button key={t} type="button" aria-pressed={view === t} onClick={() => choose(t)} disabled={t !== "saved" && !looks?.[t]}>
-              {t === "saved" ? "Saved" : TIER_LABEL[t]}
+              {t === "saved" ? (fromTrip ? "Trip" : "Saved") : TIER_LABEL[t]}
             </button>
           ))}
         </div>
@@ -264,7 +268,7 @@ export function TodayView() {
 
           <div>
             <p className="eyebrow" style={{ marginBottom: 6 }}>
-              {forecastLabel(weather, forecast)}
+              {tripDay ? `${tripDay.trip.city.name} · ${weather.source === "live" ? "forecast" : weather.source === "history" ? "last year’s weather, a guide" : "sample weather"}` : forecastLabel(weather, forecast)}
             </p>
             <div className="weather">
               {(["morning", "midday", "evening"] as const).map((w) => (
@@ -302,7 +306,7 @@ export function TodayView() {
             >
               Not for me
             </button>
-            {plan && view === "saved" && (
+            {plan && view === "saved" && !fromTrip && (
               <button
                 type="button"
                 className="btn quiet"

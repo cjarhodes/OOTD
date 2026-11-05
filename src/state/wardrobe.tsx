@@ -1,13 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { parseBackup, type Backup } from "@/lib/backup";
+import { cleanTrip, parseBackup, type Backup } from "@/lib/backup";
 import { isDateKey, todayKey } from "@/lib/dates";
 import { deleteImage, emptyPersonal, getImages, loadPersonal, putImage, replaceAll, requestPersistence, savePersonal, type PersonalState } from "@/lib/db";
 import type { City } from "@/lib/forecast";
 import { blobToDataUrl, dataUrlToBlob } from "@/lib/photo";
 import { SAMPLE_ITEMS, sampleWears } from "@/lib/sample";
-import type { Comfort, FeedbackValue, Item, Occasion, Plan, Tier, Wear } from "@/lib/types";
+import type { Comfort, FeedbackValue, Item, Occasion, Plan, Tier, Trip, TripDay, Wear } from "@/lib/types";
 
 /**
  * Two wardrobes. The sample wardrobe is fixed illustrations plus whatever you
@@ -22,6 +22,7 @@ interface SampleSaved {
   plans: Record<string, Plan>;
   feedback: Record<string, FeedbackValue>;
   comfort: Comfort;
+  trips: Trip[];
 }
 
 interface Prefs {
@@ -31,7 +32,7 @@ interface Prefs {
 
 const SAMPLE_KEY = "ootd.sample.v1";
 const PREFS_KEY = "ootd.prefs.v1";
-const EMPTY_SAMPLE: SampleSaved = { version: 1, wears: [], plans: {}, feedback: {}, comfort: "neutral" };
+const EMPTY_SAMPLE: SampleSaved = { version: 1, wears: [], plans: {}, feedback: {}, comfort: "neutral", trips: [] };
 
 function readJson<T>(key: string): T | null {
   try {
@@ -59,8 +60,13 @@ function loadSample(): SampleSaved {
     plans: parsed.plans && typeof parsed.plans === "object" ? parsed.plans : {},
     feedback: parsed.feedback && typeof parsed.feedback === "object" ? parsed.feedback : {},
     comfort: parsed.comfort === "runs-cold" || parsed.comfort === "runs-warm" ? parsed.comfort : "neutral",
+    trips: Array.isArray(parsed.trips)
+      ? parsed.trips.map((t) => cleanTrip(t, SAMPLE_IDS)).filter((t): t is Trip => t !== null)
+      : [],
   };
 }
+
+const SAMPLE_IDS = new Set(SAMPLE_ITEMS.map((i) => i.id));
 
 function loadPrefs(): Prefs {
   const p = readJson<Partial<Prefs>>(PREFS_KEY);
@@ -89,6 +95,11 @@ interface WardrobeContext {
   plans: Record<string, Plan>;
   feedback: Record<string, FeedbackValue>;
   comfort: Comfort;
+  trips: Trip[];
+  /** The trip day covering a date, if any. */
+  tripDayFor: (date: string) => { trip: Trip; day: TripDay } | null;
+  saveTrip: (trip: Trip) => void;
+  deleteTrip: (id: string) => void;
   personalCount: number;
   /** Set when the personal wardrobe couldn't be read or saved. */
   storageError: string | null;
@@ -176,12 +187,13 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
   const value = useMemo<WardrobeContext>(() => {
     const isPersonal = prefs.mode === "personal";
     // History-style actions apply to whichever wardrobe is showing.
-    const apply = (fn: (s: { wears: Wear[]; plans: Record<string, Plan>; feedback: Record<string, FeedbackValue>; comfort: Comfort }) => Partial<SampleSaved>) => {
-      if (isPersonal) updatePersonal((s) => ({ ...s, ...fn(s) }));
+    const apply = (fn: (s: { wears: Wear[]; plans: Record<string, Plan>; feedback: Record<string, FeedbackValue>; comfort: Comfort; trips: Trip[] }) => Partial<SampleSaved>) => {
+      if (isPersonal) updatePersonal((s) => ({ ...s, ...fn({ ...s, trips: s.trips ?? [] }) }));
       else updateSample((s) => ({ ...s, ...fn(s) }));
     };
     const personalItems = personal.items.map((i) => (imageUrls.has(i.id) ? { ...i, image: imageUrls.get(i.id) } : i));
     const active = isPersonal ? personal : sample;
+    const trips = (isPersonal ? personal.trips : sample.trips) ?? [];
 
     return {
       ready,
@@ -195,6 +207,17 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
       plans: active.plans,
       feedback: active.feedback,
       comfort: active.comfort,
+      trips,
+      tripDayFor: (date) => {
+        for (const trip of trips) {
+          if (date < trip.start || date > trip.end) continue;
+          const day = trip.days.find((d) => d.date === date && d.itemIds.length > 0);
+          if (day) return { trip, day };
+        }
+        return null;
+      },
+      saveTrip: (trip) => apply((s) => ({ trips: [...s.trips.filter((t) => t.id !== trip.id), trip] })),
+      deleteTrip: (id) => apply((s) => ({ trips: s.trips.filter((t) => t.id !== id) })),
       personalCount: personal.items.length,
       storageError,
       wear: (date, itemIds, occasion) => apply((s) => ({ wears: [...s.wears.filter((w) => w.date !== date), { date, itemIds, occasion }] })),
@@ -239,7 +262,15 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         updatePersonal((s) => {
           const plans: Record<string, Plan> = {};
           for (const [d, p] of Object.entries(s.plans)) if (!p.itemIds.includes(id)) plans[d] = p;
-          return { ...s, items: s.items.filter((i) => i.id !== id), plans };
+          const drop = (list: string[]) => list.filter((x) => x !== id);
+          const trips = (s.trips ?? []).map((t) => ({
+            ...t,
+            capsule: drop(t.capsule),
+            journey: drop(t.journey),
+            packed: drop(t.packed),
+            days: t.days.map((d) => (d.itemIds.includes(id) ? { ...d, itemIds: [] } : d)),
+          }));
+          return { ...s, items: s.items.filter((i) => i.id !== id), plans, trips };
         });
       },
 

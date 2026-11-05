@@ -48,6 +48,7 @@ export function useForecast(): ForecastState {
 
 export function forecastLabel(w: DayWeather, state: ForecastState): string {
   if (w.source === "live") return `Live forecast · ${state.cityName}`;
+  if (w.source === "history") return "Last year’s weather on this date · a guide";
   if (state.status === "loading") return "Loading the forecast…";
   if (state.status === "error") return "Forecast unavailable · showing a sample";
   if (state.status === "live") return "Beyond the 16-day forecast · sample";

@@ -3,6 +3,7 @@ import type { DayWeather } from "./types";
 /** Open-Meteo: free, no key, intended for non-commercial use. Only coordinates are sent. */
 const GEOCODE = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST = "https://api.open-meteo.com/v1/forecast";
+const ARCHIVE = "https://archive-api.open-meteo.com/v1/archive";
 
 export interface City {
   name: string;
@@ -103,6 +104,78 @@ export async function fetchForecast(city: City): Promise<Record<string, DayWeath
     // Storage full or unavailable: the forecast still works for this view.
   }
   return days;
+}
+
+export interface ArchiveResponse {
+  hourly?: {
+    time?: string[];
+    apparent_temperature?: (number | null)[];
+    precipitation?: (number | null)[];
+    wind_speed_10m?: (number | null)[];
+  };
+}
+
+/**
+ * Turn last year's observed hourly weather into windows, shifted forward one
+ * year. Rain probability isn't observed, so an hour with measurable rain counts
+ * as likely (70%), otherwise unlikely (10%).
+ */
+export function parseArchive(json: ArchiveResponse): Record<string, DayWeather> {
+  const h = json.hourly;
+  if (!h?.time) return {};
+  const shifted = parseForecast({
+    hourly: {
+      time: h.time,
+      apparent_temperature: h.apparent_temperature,
+      precipitation_probability: (h.precipitation ?? []).map((mm) => (mm !== null && mm !== undefined && mm >= 0.2 ? 70 : 10)),
+      wind_speed_10m: h.wind_speed_10m,
+    },
+  });
+  const out: Record<string, DayWeather> = {};
+  for (const [date, day] of Object.entries(shifted)) {
+    const next = `${Number(date.slice(0, 4)) + 1}${date.slice(4)}`;
+    out[next] = { ...day, date: next, source: "history" };
+  }
+  return out;
+}
+
+export type TripWeatherSource = "forecast" | "last-year" | "mixed" | "sample";
+
+/**
+ * Weather for each day of a trip: the live forecast where it reaches, then the
+ * same dates last year as a guide. Days neither source covers are left out.
+ */
+export async function fetchTripWeather(
+  city: City,
+  dates: string[],
+): Promise<{ days: Record<string, DayWeather>; source: TripWeatherSource }> {
+  const days: Record<string, DayWeather> = {};
+  let forecastDays: Record<string, DayWeather> = {};
+  try {
+    forecastDays = await fetchForecast(city);
+  } catch {
+    forecastDays = {};
+  }
+  for (const d of dates) if (forecastDays[d]) days[d] = forecastDays[d]!;
+  const missing = dates.filter((d) => !days[d]);
+  if (missing.length) {
+    const lastYear = (d: string) => `${Number(d.slice(0, 4)) - 1}${d.slice(4)}`;
+    const url =
+      `${ARCHIVE}?latitude=${city.latitude}&longitude=${city.longitude}` +
+      `&start_date=${lastYear(missing[0]!)}&end_date=${lastYear(missing[missing.length - 1]!)}` +
+      "&hourly=apparent_temperature,precipitation,wind_speed_10m&timezone=auto";
+    try {
+      const past = parseArchive((await getJson(url)) as ArchiveResponse);
+      for (const d of missing) if (past[d]) days[d] = past[d]!;
+    } catch {
+      // Leave those days to the caller's fallback.
+    }
+  }
+  const fromForecast = dates.filter((d) => days[d]?.source === "live").length;
+  const fromHistory = dates.filter((d) => days[d]?.source === "history").length;
+  const source: TripWeatherSource =
+    fromForecast === 0 && fromHistory === 0 ? "sample" : fromHistory === 0 ? "forecast" : fromForecast === 0 ? "last-year" : "mixed";
+  return { days, source };
 }
 
 export function cityLabel(c: City): string {

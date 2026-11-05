@@ -39,6 +39,8 @@ export interface GenerateInput {
   pin?: string;
   /** Bump to get a different set of looks for the same day. */
   shuffle?: number;
+  /** Items that must stay in the search pool (e.g. pieces already packed for a trip). */
+  prefer?: Set<string>;
 }
 
 export type Looks = Record<Tier, Look | null>;
@@ -46,7 +48,7 @@ export type Looks = Record<Tier, Look | null>;
 /** Per-slot pool size. Keeps the search fast for large wardrobes. */
 const POOL = 9;
 
-interface Candidate {
+export interface Candidate {
   pieces: Pieces;
   base: number;
   boldness: number;
@@ -75,8 +77,9 @@ function pools(input: GenerateInput, random: () => number): Record<Slot, Item[]>
       .map((i) => ({ i, r: -Math.abs(i.formality - target) + random() * 1.5 }))
       .sort((a, b) => b.r - a.r)
       .map((x) => x.i);
-    const pinned = ranked.filter((i) => i.id === input.pin);
-    bySlot[slot] = [...pinned, ...ranked.filter((i) => i.id !== input.pin).slice(0, POOL - pinned.length)];
+    const keep = (i: Item) => i.id === input.pin || Boolean(input.prefer?.has(i.id));
+    const kept = ranked.filter(keep);
+    bySlot[slot] = [...kept, ...ranked.filter((i) => !keep(i)).slice(0, Math.max(0, POOL - kept.length))];
   }
   return bySlot;
 }
@@ -118,6 +121,23 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
     }
   }
   return out;
+}
+
+/**
+ * Every valid look for a day, scored, with the same fallbacks as generateLooks:
+ * ignore the rain-shell rule if nothing else works, then ignore the weather and
+ * say why. Used by trip capsules, which apply their own preferences on top.
+ */
+export function rankedCandidates(input: GenerateInput): { candidates: Candidate[]; warning?: string } {
+  let pool = candidates(input, true);
+  if (pool.length === 0) pool = candidates(input, false);
+  if (pool.length > 0) return { candidates: pool };
+  pool = candidates(input, false, true);
+  return { candidates: pool, warning: pool.length ? weatherWarning(input) : undefined };
+}
+
+export function candidateToLook(c: Candidate, input: GenerateInput): Look {
+  return toLook(c, c.base, input, dayNeeds(input.weather, input.comfort).wet);
 }
 
 function overlap(a: Pieces, b: Pieces): number {

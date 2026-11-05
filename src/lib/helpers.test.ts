@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { budgetConfig, costOf, monthKey, reserve, settle } from "@/server/budget";
 import { createSession, passphraseMatches, verifySession } from "@/server/owner";
 import { parseBackup } from "./backup";
-import { parseForecast } from "./forecast";
+import { parseArchive, parseForecast } from "./forecast";
 import { makeItem } from "./kinds";
 import { nearestColor } from "./palette";
 import { alphaInfo, dominantColor, isCutout } from "./pixels";
@@ -183,5 +183,25 @@ describe("backup restore validation", () => {
     expect(parseBackup({ ...good, state: { ...good.state, items: [{ ...item, kind: "cape" }] } }).ok).toBe(false);
     expect(parseBackup({ ...good, state: { ...good.state, items: [item, item] } }).ok).toBe(false);
     expect(parseBackup({ ...good, images: { a: "javascript:alert(1)" } }).ok).toBe(false);
+  });
+});
+
+describe("trip weather from last year", () => {
+  it("shifts observed weather forward a year and infers rain from precipitation", () => {
+    const days = parseArchive({
+      hourly: {
+        time: ["2025-12-02T08:00", "2025-12-02T13:00", "2025-12-02T18:00"],
+        apparent_temperature: [1.2, 5.6, 3.1],
+        precipitation: [0, 1.4, 0.1],
+        wind_speed_10m: [10, 20, 12],
+      },
+    });
+    expect(days["2026-12-02"]).toEqual({
+      date: "2026-12-02",
+      source: "history",
+      morning: { feels: 1, rain: 10, wind: 10 },
+      midday: { feels: 6, rain: 70, wind: 20 },
+      evening: { feels: 3, rain: 10, wind: 12 },
+    });
   });
 });
