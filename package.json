@@ -2,6 +2,14 @@
   "name": "ootd",
   "version": "0.2.0",
   "private": true,
+  "description": "Outfit of the day from the wardrobe you already own, layered for the weather.",
+  "license": "MIT",
+  "author": "Alex Rhodes (https://www.cjarhodes.com)",
+  "homepage": "https://ootd.cjarhodes.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cjarhodes/Clothing.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "next dev",

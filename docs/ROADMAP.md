@@ -211,7 +211,7 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | Hosting | Vercel |
 | Brand | Gallery, independent of the portfolio |
 | Name | OOTD (working), planned at `ootd.cjarhodes.com` |
-| Codebase | Rebuild fresh: Next.js + TypeScript on Vercel, local-first storage, installable to the Home Screen. Useful v1 rules and tests get ported. |
+| Codebase | Rebuild fresh: Next.js + TypeScript on Vercel, local-first storage, installable to the Home Screen. Useful v1 rules and tests get ported. v1 was removed from the tree when the repository went public; it remains in git history. |
 
 ## Progress
 
@@ -227,4 +227,5 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | AI tagging: owner passphrase, Claude structured output, monthly cap in Redis, fails closed | Done (needs keys on Vercel) |
 | Vercel project `ootd-cjarhodes` at `ootd.cjarhodes.com` | Waiting on the import in Vercel and a DNS record in Cloudflare |
 | On-device check on iPhone: Safari, Add to Home Screen, Shortcut batch import | Next |
+| Open source: MIT licence, public README with a one-click Vercel deploy (private Blob store included), visitor-facing copy for the no-accounts model | Done |
 | Portfolio Builds entry and case study | After two weeks of real use |

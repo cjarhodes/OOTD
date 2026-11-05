@@ -1099,3 +1099,17 @@ select.input {
 .banner.stack .actions {
   justify-content: flex-start;
 }
+
+.source-link {
+  margin-left: auto;
+  padding: 8px 0;
+  color: var(--label);
+}
+.source-link:hover {
+  color: var(--ink);
+}
+@media (min-width: 820px) {
+  .source-link {
+    margin-left: 0;
+  }
+}

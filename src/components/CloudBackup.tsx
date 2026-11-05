@@ -5,6 +5,8 @@ import { useCloud, type Snapshot } from "@/state/cloud";
 import { useOwner } from "@/state/owner";
 import { useWardrobe } from "@/state/wardrobe";
 
+export const SOURCE_URL = "https://github.com/cjarhodes/Clothing";
+
 export function when(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -27,10 +29,23 @@ export function CloudBackup({ onExport }: { onExport: () => void }) {
   const [note, setNote] = useState<string | null>(null);
 
   if (!owner.status.cloud.configured) {
-    return <p className="setting-note">Cloud backup isn’t set up on this deployment yet. Until it is, download an export below after adding pieces.</p>;
+    return (
+      <p className="setting-note">
+        Cloud backup isn’t set up on this copy of OOTD. Your wardrobe is kept in this browser, so download an export below after adding pieces.
+      </p>
+    );
   }
   if (!owner.status.owner) {
-    return <p className="setting-note">Unlock with the owner passphrase above to turn on automatic cloud backup.</p>;
+    return (
+      <p className="setting-note">
+        Cloud backup is for whoever runs this copy of OOTD, after they unlock it above. Visiting? Your wardrobe is kept in this browser and never
+        leaves it. Download an export below to keep it safe, or{" "}
+        <a className="text-link" href={`${SOURCE_URL}#run-your-own-copy`} target="_blank" rel="noopener noreferrer">
+          run your own copy
+        </a>{" "}
+        with its own private backup.
+      </p>
+    );
   }
 
   const restore = async (at?: string) => {
