@@ -218,9 +218,11 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | Milestone | Status |
 | --- | --- |
 | Gallery brand system, light and dark | Done |
-| Layering engine: slots, hard rules, warmth budget, strip test, recipes, naming, notes | Done, with 28 unit tests |
+| Layering engine: slots, hard rules, warmth budget, strip test, recipes, naming, notes | Done |
 | Today, Wardrobe and Week screens on the sample wardrobe | Done |
-| Personal wardrobe: IndexedDB photo storage, Shortcut batch import, review stack | Next |
-| Live hourly weather (Open-Meteo) and city setting | Next |
-| AI tagging function on Vercel with a spending cap | After the personal wardrobe |
-| Vercel deploy at `ootd.cjarhodes.com`, portfolio Builds entry and case study | After the personal wardrobe |
+| Personal wardrobe: IndexedDB photo storage, cut-out import, review step, edit, wash and archive states, backup and restore | Done |
+| Live 16-day forecast (Open-Meteo) with a city setting | Done |
+| AI tagging: owner passphrase, Claude structured output, monthly cap in Redis, fails closed | Done (needs keys on Vercel) |
+| Vercel project `ootd-cjarhodes` at `ootd.cjarhodes.com` | Waiting on the import in Vercel and a DNS record in Cloudflare |
+| On-device check on iPhone: Safari, Add to Home Screen, Shortcut batch import | Next |
+| Portfolio Builds entry and case study | After two weeks of real use |

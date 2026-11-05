@@ -295,10 +295,10 @@ export const SLOT_CROP: Record<Slot, string> = {
   shoes: "222 186 74 48",
 };
 
-export function GarmentArt({ item, part = "body" }: { item: Item; part?: ArtPart }) {
+export function GarmentArt({ item, part = "body", box }: { item: Item; part?: ArtPart; box?: [number, number, number, number] }) {
   if (item.image) {
     if (part === "top") return null;
-    const [x, y, w, h] = SLOT_BOX[item.slot];
+    const [x, y, w, h] = box ?? SLOT_BOX[item.slot];
     return <image href={item.image} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid meet" />;
   }
   return <GarmentShape item={item} part={part} />;
@@ -306,6 +306,10 @@ export function GarmentArt({ item, part = "body" }: { item: Item; part?: ArtPart
 
 /** A single garment framed on its own, for wardrobe tiles. */
 export function GarmentTile({ item, label }: { item: Item; label?: string }) {
+  if (item.image) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={item.image} alt={label ?? item.name} className="garment-svg garment-img" />;
+  }
   return (
     <svg viewBox={SLOT_CROP[item.slot]} role="img" aria-label={label ?? item.name} className="garment-svg">
       <g className="cutout">

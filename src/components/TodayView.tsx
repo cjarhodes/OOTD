@@ -8,9 +8,9 @@ import { MuseumLabel } from "./MuseumLabel";
 import { isDateKey, longWeekday, shortDate } from "@/lib/dates";
 import { OCCASION_LABEL } from "@/lib/engine/describe";
 import { generateLooks, idsOf, lookFromIds, swapPiece, TIERS, type GenerateInput } from "@/lib/engine/generate";
-import { sampleWeather } from "@/lib/engine/weather";
 import { SLOT_LABEL } from "@/lib/kinds";
 import type { Look, Occasion, Slot, Tier } from "@/lib/types";
+import { forecastLabel, useForecast } from "@/state/forecast";
 import { defaultOccasion, TIER_LABEL, useWardrobe } from "@/state/wardrobe";
 
 const OCCASIONS = Object.keys(OCCASION_LABEL) as Occasion[];
@@ -33,7 +33,8 @@ function Heart() {
 
 export function TodayView() {
   const store = useWardrobe();
-  const { ready, today, items, wears, plans, feedback, comfort } = store;
+  const { ready, today, items, wears, plans, feedback, comfort, mode } = store;
+  const forecast = useForecast();
   const params = useSearchParams();
   const router = useRouter();
 
@@ -67,7 +68,7 @@ export function TodayView() {
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  const weather = useMemo(() => sampleWeather(date), [date]);
+  const weather = useMemo(() => forecast.weatherFor(date), [forecast, date]);
   const input: GenerateInput = useMemo(
     () => ({ items, weather, occasion, date, wears, feedback, comfort, pin, shuffle }),
     [items, weather, occasion, date, wears, feedback, comfort, pin, shuffle],
@@ -158,6 +159,11 @@ export function TodayView() {
           ))}
         </div>
 
+        {look?.warning && (
+          <p className="banner" role="status">
+            {look.warning}
+          </p>
+        )}
         {look ? (
           <div className="plinth stage">
             {override && <span className="label stage-tag">Swapped</span>}
@@ -165,8 +171,27 @@ export function TodayView() {
           </div>
         ) : (
           <div className="plinth empty">
-            <p>This wardrobe can’t make a complete look for these conditions yet.</p>
-            <p>It needs at least a top, bottoms and shoes, plus a warm layer for cold days.</p>
+            {mode === "personal" && items.length === 0 ? (
+              <>
+                <p className="display" style={{ fontSize: 28, color: "var(--ink)" }}>
+                  Your wardrobe is empty
+                </p>
+                <p>Add a few pieces to start: a top, bottoms and shoes are enough for a first look.</p>
+                <Link href="/add" className="btn">
+                  Add pieces
+                </Link>
+              </>
+            ) : (
+              <>
+                <p>This wardrobe can’t make a complete look for these conditions yet.</p>
+                <p>It needs at least a top, bottoms and shoes, plus a warm layer for cold days.</p>
+                {mode === "personal" && (
+                  <Link href="/add" className="btn alt">
+                    Add pieces
+                  </Link>
+                )}
+              </>
+            )}
           </div>
         )}
       </section>
@@ -239,7 +264,7 @@ export function TodayView() {
 
           <div>
             <p className="eyebrow" style={{ marginBottom: 6 }}>
-              Sample forecast · not live weather
+              {forecastLabel(weather, forecast)}
             </p>
             <div className="weather">
               {(["morning", "midday", "evening"] as const).map((w) => (

@@ -6,20 +6,21 @@ import { FlatLay } from "@/components/FlatLay";
 import { addDays, dayOfMonth, weekday } from "@/lib/dates";
 import { OCCASION_LABEL } from "@/lib/engine/describe";
 import { planWeek, type WeekDay } from "@/lib/engine/generate";
-import { sampleWeather } from "@/lib/engine/weather";
+import { useForecast } from "@/state/forecast";
 import { defaultOccasion, useWardrobe } from "@/state/wardrobe";
 
 export default function WeekPage() {
   const { ready, today, items, wears, plans, feedback, comfort } = useWardrobe();
+  const forecast = useForecast();
 
   const days: WeekDay[] = useMemo(
     () =>
       Array.from({ length: 7 }, (_, n) => {
         const date = addDays(today, n);
         const plan = plans[date];
-        return { date, occasion: plan?.occasion ?? defaultOccasion(date), weather: sampleWeather(date), planned: plan?.itemIds };
+        return { date, occasion: plan?.occasion ?? defaultOccasion(date), weather: forecast.weatherFor(date), planned: plan?.itemIds };
       }),
-    [today, plans],
+    [today, plans, forecast],
   );
   const looks = useMemo(
     () => (ready ? planWeek(days, { items, wears, feedback, comfort }) : []),
@@ -29,7 +30,7 @@ export default function WeekPage() {
   return (
     <>
       <div className="page-head">
-        <span className="eyebrow">Next 7 days · sample forecast</span>
+        <span className="eyebrow">Next 7 days · {forecast.status === "live" ? `live forecast, ${forecast.cityName}` : "sample forecast"}</span>
         <h1 className="display page-title">The week</h1>
       </div>
       <div className="week">

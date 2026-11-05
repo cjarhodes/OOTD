@@ -198,6 +198,13 @@ describe("generateLooks", () => {
     expect(shuffled.some((s) => s !== a.fresh!.signature)).toBe(true);
   });
 
+  it("shows the closest look with a warning when nothing is warm enough", () => {
+    const looks = generateLooks({ ...base, items: [tee, crew, jeans, sneakers], weather: day(2, 6, 3) });
+    expect(looks.easy).toBeNull();
+    expect(looks.fresh!.pieces.mid?.id).toBe("crew");
+    expect(looks.fresh!.warning).toMatch(/Add a jacket or coat/);
+  });
+
   it("returns nulls rather than inventing pieces for an incomplete wardrobe", () => {
     const looks = generateLooks({ ...base, items: [tee, jeans] });
     expect(looks.easy).toBeNull();

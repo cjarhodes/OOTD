@@ -1,17 +1,113 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
+import { ItemFields, type Draft } from "@/components/ItemFields";
 import { SLOT_LABEL } from "@/lib/kinds";
-import type { Slot } from "@/lib/types";
+import { applyTags } from "@/lib/tagging";
+import type { Item, Slot, Status } from "@/lib/types";
 import { useWardrobe } from "@/state/wardrobe";
 
 const SLOTS: Slot[] = ["base", "mid", "outer", "bottom", "shoes"];
+const STATUS_LABEL: Record<Status, string> = { available: "Available", laundry: "In the wash", archived: "Archived" };
+
+function draftOf(item: Item): Draft {
+  return {
+    name: item.name,
+    nameEdited: true,
+    kind: item.kind,
+    color: item.color,
+    material: item.material,
+    pattern: item.pattern,
+    formality: item.formality,
+    boldness: item.boldness,
+  };
+}
+
+function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose: () => void }) {
+  const { updateItem, removeItem } = useWardrobe();
+  const router = useRouter();
+  const ref = useRef<HTMLDialogElement>(null);
+  const [draft, setDraft] = useState<Draft>(draftOf(item));
+  const [status, setStatus] = useState<Status>(item.status);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (d && !d.open) d.showModal();
+  }, []);
+
+  const save = () => {
+    if (!draft.kind) return;
+    updateItem({ ...applyTags(item, { ...draft, kind: draft.kind, name: draft.name || item.name }), status });
+    onClose();
+  };
+
+  return (
+    <dialog ref={ref} className="sheet" aria-labelledby="sheet-title" onClose={onClose} onCancel={onClose}>
+      <div className="sheet-head">
+        <h2 id="sheet-title" className="display" style={{ fontSize: 26 }}>
+          {item.name}
+        </h2>
+        <button type="button" className="text-link" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <div className="sheet-photo plinth">
+        <GarmentTile item={item} />
+      </div>
+      <p className="label">{worn ? `Worn ${worn}×` : "Not worn yet"}</p>
+      <div className="segmented" role="group" aria-label="Status" style={{ ["--count" as string]: 3 }}>
+        {(Object.keys(STATUS_LABEL) as Status[]).map((s) => (
+          <button key={s} type="button" aria-pressed={status === s} onClick={() => setStatus(s)}>
+            {STATUS_LABEL[s]}
+          </button>
+        ))}
+      </div>
+      <ItemFields value={draft} onChange={setDraft} idPrefix={`edit-${item.id}`} />
+      <div className="actions">
+        <button type="button" className="btn" onClick={save}>
+          Save changes
+        </button>
+        <button type="button" className="btn alt" onClick={() => router.push(`/?pin=${encodeURIComponent(item.id)}`)} disabled={item.status !== "available"}>
+          Style with this
+        </button>
+      </div>
+      {confirmDelete ? (
+        <div className="banner" role="alert">
+          <span>Delete this piece and its photo? Archive it instead to keep its history.</span>
+          <span className="actions">
+            <button
+              type="button"
+              className="btn"
+              onClick={async () => {
+                await removeItem(item.id);
+                onClose();
+              }}
+            >
+              Delete
+            </button>
+            <button type="button" className="btn quiet" onClick={() => setConfirmDelete(false)}>
+              Keep
+            </button>
+          </span>
+        </div>
+      ) : (
+        <button type="button" className="text-link" onClick={() => setConfirmDelete(true)}>
+          Delete piece
+        </button>
+      )}
+    </dialog>
+  );
+}
 
 export default function WardrobePage() {
-  const { ready, items, wears } = useWardrobe();
-  const [filter, setFilter] = useState<Slot | "all">("all");
+  const { ready, items, wears, mode } = useWardrobe();
+  const [filter, setFilter] = useState<Slot | "all" | "archived">("all");
+  const [editing, setEditing] = useState<string | null>(null);
+  const personal = mode === "personal";
 
   const counts = useMemo(() => {
     const m = new Map<string, number>();
@@ -20,45 +116,86 @@ export default function WardrobePage() {
   }, [wears]);
 
   const visible = items
-    .filter((i) => i.status !== "archived" && (filter === "all" || i.slot === filter))
-    .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
-  const unworn = items.filter((i) => !counts.get(i.id)).length;
+    .filter((i) => (filter === "archived" ? i.status === "archived" : i.status !== "archived" && (filter === "all" || i.slot === filter)))
+    .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || a.name.localeCompare(b.name));
+  const active = items.filter((i) => i.status !== "archived");
+  const unworn = active.filter((i) => !counts.get(i.id)).length;
+  const editingItem = editing ? items.find((i) => i.id === editing) : undefined;
 
   return (
     <>
       <div className="page-head">
         <span className="eyebrow">
-          {items.length} pieces{ready && unworn > 0 ? ` · ${unworn} not worn yet` : ""}
+          {personal ? "Your wardrobe" : "Sample wardrobe"} · {active.length} pieces{ready && unworn > 0 ? ` · ${unworn} not worn yet` : ""}
         </span>
         <h1 className="display page-title">Wardrobe</h1>
       </div>
 
-      <div className="chips" role="group" aria-label="Filter by layer">
-        <button type="button" className="chip" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
-          All
-        </button>
-        {SLOTS.map((s) => (
-          <button key={s} type="button" className="chip" aria-pressed={filter === s} onClick={() => setFilter(s)}>
-            {SLOT_LABEL[s]}
-          </button>
-        ))}
-      </div>
+      {personal && ready && items.length === 0 ? (
+        <div className="plinth empty">
+          <p className="display" style={{ fontSize: 28, color: "var(--ink)" }}>
+            Nothing here yet
+          </p>
+          <p>Add photos of your clothes. Cut-outs from the Photos app look best.</p>
+          <Link href="/add" className="btn">
+            Add pieces
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div className="chips" role="group" aria-label="Filter by layer">
+            <button type="button" className="chip" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
+              All
+            </button>
+            {SLOTS.map((s) => (
+              <button key={s} type="button" className="chip" aria-pressed={filter === s} onClick={() => setFilter(s)}>
+                {SLOT_LABEL[s]}
+              </button>
+            ))}
+            {personal && items.some((i) => i.status === "archived") && (
+              <button type="button" className="chip" aria-pressed={filter === "archived"} onClick={() => setFilter("archived")}>
+                Archived
+              </button>
+            )}
+            {personal && (
+              <Link href="/add" className="chip chip-add">
+                + Add pieces
+              </Link>
+            )}
+          </div>
 
-      <div className="wardrobe-grid">
-        {visible.map((item) => {
-          const worn = counts.get(item.id) ?? 0;
-          return (
-            <Link key={item.id} href={`/?pin=${encodeURIComponent(item.id)}`} className="tile" aria-label={`${item.name}. Style a look around it.`}>
-              <GarmentTile item={item} />
-              <span className="tile-name">{item.name}</span>
-              <span className={`tile-meta${ready && worn === 0 ? " new" : ""}`}>
-                {SLOT_LABEL[item.slot]} · {!ready ? "" : worn ? `Worn ${worn}×` : "Not worn yet"}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-      <p className="footer-note">Tap a piece to build today’s look around it. The sample pieces are illustrations, not real clothes.</p>
+          <div className="wardrobe-grid">
+            {visible.map((item) => {
+              const worn = counts.get(item.id) ?? 0;
+              const meta = (
+                <span className={`tile-meta${ready && worn === 0 ? " new" : ""}`}>
+                  {item.status === "laundry" ? "In the wash" : SLOT_LABEL[item.slot]} · {!ready ? "" : worn ? `Worn ${worn}×` : "Not worn yet"}
+                </span>
+              );
+              return personal ? (
+                <button key={item.id} type="button" className="tile" onClick={() => setEditing(item.id)} aria-label={`${item.name}. Edit.`}>
+                  <GarmentTile item={item} />
+                  <span className="tile-name">{item.name}</span>
+                  {meta}
+                </button>
+              ) : (
+                <Link key={item.id} href={`/?pin=${encodeURIComponent(item.id)}`} className="tile" aria-label={`${item.name}. Style a look around it.`}>
+                  <GarmentTile item={item} />
+                  <span className="tile-name">{item.name}</span>
+                  {meta}
+                </Link>
+              );
+            })}
+          </div>
+          <p className="footer-note">
+            {personal
+              ? "Tap a piece to edit it, mark it as in the wash, or style a look around it."
+              : "Tap a piece to build today’s look around it. The sample pieces are illustrations, not real clothes."}
+          </p>
+        </>
+      )}
+
+      {editingItem && <ItemSheet key={editingItem.id} item={editingItem} worn={counts.get(editingItem.id) ?? 0} onClose={() => setEditing(null)} />}
     </>
   );
 }
