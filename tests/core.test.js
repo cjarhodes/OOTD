@@ -204,3 +204,50 @@ test("missing forecast temperatures are unknown, never displayed as zero degrees
     null,
   );
 });
+
+test("cool mornings and wind call for removable layers even with a mild daytime high", () => {
+  for (const weather of [
+    { high: 20, low: 6, wind: 10 },
+    { high: 21, low: 13, wind: 38 },
+  ]) {
+    const outfits = make({ weather });
+    assert.ok(outfits.length);
+    for (const outfit of outfits)
+      assert.ok(
+        outfitItems(outfit, sampleItems()).some((i) => i.category === "Layers"),
+      );
+  }
+});
+test("the only suitable warm or rain layer remains eligible in a large wardrobe", () => {
+  const ordinary = Array.from({ length: 30 }, (_, n) => ({
+    ...sampleItems().find((i) => i.id === "l1"),
+    id: `a${n}`,
+  }));
+  const base = sampleItems().filter((i) => i.category !== "Layers");
+  const shell = {
+    ...sampleItems().find((i) => i.id === "l4"),
+    id: "zz-only-shell",
+  };
+  const outfits = make({
+    items: [...base, ...ordinary, shell],
+    weather: { high: 3, rain: 90 },
+  });
+  assert.ok(outfits.length);
+  assert.ok(outfits.every((o) => o.ids.includes(shell.id)));
+});
+test("pinning an unsuitable layer cannot bypass the weather rules", () => {
+  assert.deepEqual(make({ weather: { high: 12, rain: 90 }, pin: "l1" }), []);
+});
+test("weather warnings identify mismatches without mutating a saved outfit", async () => {
+  const { outfitWeatherWarnings } = await import("../dist/core.js");
+  const plan = { ids: ["t1", "b1", "s2"], occasion: "Office day" };
+  const before = structuredClone(plan);
+  const warnings = outfitWeatherWarnings(plan, sampleItems(), {
+    high: 11,
+    low: 3,
+    rain: 90,
+  });
+  assert.ok(warnings.some((w) => w.includes("rain-sensitive")));
+  assert.ok(warnings.some((w) => w.includes("layer")));
+  assert.deepEqual(plan, before);
+});

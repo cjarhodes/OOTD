@@ -103,6 +103,61 @@ export function isWearable(outfit, items) {
     used.every((i) => i.status === "available")
   );
 }
+// Daily lows describe the coolest part of the day, not an hourly commute forecast.
+// Use them to suggest a removable layer when the daytime high is still mild.
+export function weatherRequirements(weather, comfort = "neutral") {
+  const high = Number.isFinite(weather?.high) ? weather.high : null;
+  const low = Number.isFinite(weather?.low) ? weather.low : null;
+  const code = weather?.code;
+  const wetCode = (code >= 51 && code <= 86) || code >= 95;
+  const wet = (weather?.rain ?? 0) >= 45 || wetCode;
+  const cold =
+    high !== null &&
+    high < (comfort === "cold" ? 21 : comfort === "warm" ? 13 : 17);
+  const coolMorning = high !== null && low !== null && low < 10 && high <= 22;
+  const windy = high !== null && high < 24 && (weather?.wind ?? 0) >= 30;
+  return {
+    wet,
+    needsLayer: cold || coolMorning || windy,
+    needsWarmLayer: high !== null && high < 7,
+    hot: high !== null && high > 26,
+    coolMorning,
+    windy,
+  };
+}
+export function outfitWeatherWarnings(
+  outfit,
+  items,
+  weather,
+  comfort = "neutral",
+) {
+  if (!weather) return [];
+  const pieces = outfitItems(outfit, items);
+  const layer = pieces.find((i) => i.category === "Layers");
+  const shoe = pieces.find((i) => i.category === "Shoes");
+  const required = weatherRequirements(weather, comfort);
+  const messages = [];
+  if (required.needsLayer && !layer)
+    messages.push(
+      "Add a removable layer for the cooler or windier part of the day.",
+    );
+  if (required.needsWarmLayer && layer && layer.warmth < 3)
+    messages.push("Choose a warmer layer for this forecast.");
+  if (required.needsWarmLayer && shoe?.kind === "loafers")
+    messages.push("Try warmer footwear for this forecast.");
+  if (required.wet && pieces.some((i) => i.delicate))
+    messages.push("Swap rain-sensitive pieces for weather-ready alternatives.");
+  const rainLayerAvailable = items.some(
+    (i) =>
+      i.category === "Layers" &&
+      i.status === "available" &&
+      i.waterproof &&
+      !i.delicate,
+  );
+  if (required.wet && rainLayerAvailable && !layer?.waterproof)
+    messages.push("Use your rain-ready layer for this forecast.");
+  return messages;
+}
 export function generateOutfits({
   items,
   occasion = "Office day",
@@ -115,7 +170,31 @@ export function generateOutfits({
   comfort = "neutral",
   adventure = 1,
 }) {
-  const available = items.filter((i) => i.status === "available");
+  const required = weatherRequirements(weather, comfort);
+  const { wet, needsLayer: cold, hot } = required;
+  const rainLayerAvailable = items.some(
+    (i) =>
+      i.category === "Layers" &&
+      i.status === "available" &&
+      i.waterproof &&
+      !i.delicate,
+  );
+  // Filter before bounding the candidate pools, so a large collection cannot hide
+  // its only appropriate rain shell or warm layer outside the search window.
+  const available = items.filter((i) => {
+    if (i.status !== "available" || (wet && i.delicate)) return false;
+    if (i.category === "Layers" && required.needsWarmLayer && i.warmth < 3)
+      return false;
+    if (i.category === "Layers" && wet && rainLayerAvailable && !i.waterproof)
+      return false;
+    if (
+      i.category === "Shoes" &&
+      required.needsWarmLayer &&
+      i.kind === "loafers"
+    )
+      return false;
+    return true;
+  });
   const wearCounts = new Map();
   for (const wear of wears)
     for (const id of wear.ids)
@@ -145,12 +224,6 @@ export function generateOutfits({
     }),
   );
   if (["Tops", "Bottoms", "Shoes"].some((c) => !sets[c].length)) return [];
-  const temp = weather?.high ?? null;
-  const cold =
-    temp !== null &&
-    temp < (comfort === "cold" ? 21 : comfort === "warm" ? 13 : 17);
-  const hot = temp !== null && temp > 26;
-  const wet = (weather?.rain ?? 0) >= 45;
   if (cold && !sets.Layers.length) return [];
   let layers = cold ? sets.Layers : [null, ...sets.Layers];
   if (hot)
@@ -170,19 +243,7 @@ export function generateOutfits({
         for (const layer of layers) {
           const pieces = [top, bottom, shoe, ...(layer ? [layer] : [])];
           if (pin && !pieces.some((i) => i.id === pin)) continue;
-          if (wet && pieces.some((i) => i.delicate)) continue;
-          if (
-            temp !== null &&
-            temp < 7 &&
-            (!layer || layer.warmth < 3 || shoe.kind === "loafers")
-          )
-            continue;
-          if (
-            wet &&
-            sets.Layers.some((i) => i.waterproof) &&
-            !layer?.waterproof
-          )
-            continue;
+          if (wet && rainLayerAvailable && !layer?.waterproof) continue;
           const ids = pieces.map((i) => i.id);
           const signature = [...ids].sort().join("|");
           const bold =
@@ -255,7 +316,18 @@ export function explain(outfit, items, weather) {
           : top.kind === "polo"
             ? "Tuck the polo loosely to give the trousers a clean line."
             : "Try a small front tuck to define the waist without looking too formal.";
-  return `${contrast} ${styling} ${weather?.rain >= 45 ? "Keep the weather-ready layer close." : shoe.kind === "sneakers" ? "The sneakers keep it grounded and easy." : "The shoes give the outfit a more deliberate finish."}`;
+  const requirements = weatherRequirements(weather);
+  const weatherNote =
+    requirements.wet && layer?.waterproof
+      ? "Keep the rain-ready layer close."
+      : requirements.coolMorning && layer
+        ? "The removable layer covers the cooler part of the day."
+        : requirements.windy && layer
+          ? "Keep the layer handy when the wind picks up."
+          : shoe.kind === "sneakers"
+            ? "The sneakers keep it grounded and easy."
+            : "The shoes give the outfit a more deliberate finish.";
+  return `${contrast} ${styling} ${weatherNote}`;
 }
 export function stats(state) {
   const ids = new Set(state.wears.flatMap((w) => w.ids));

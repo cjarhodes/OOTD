@@ -8,6 +8,7 @@ import {
   emptyState,
   outfitItems,
   isWearable,
+  outfitWeatherWarnings,
   generateOutfits,
   explain,
   stats,
@@ -104,14 +105,15 @@ function closeModal() {
 function modalHead(title, kicker = "MAKE IT YOURS") {
   return `<div class="modal-top"><div><p class="eyebrow">${kicker}</p><h2 id="modal-title">${title}</h2></div><button class="icon-button" data-action="close" aria-label="Close dialog">${icon("close")}</button></div>`;
 }
-async function persist(next) {
-  if (!storageReady) {
+async function persist(next, { recovery = false } = {}) {
+  if (!storageReady && !recovery) {
     toast("Device storage is unavailable. Changes cannot be saved.");
     return false;
   }
   try {
     await save(mode, next);
     state = next;
+    storageReady = true;
     return true;
   } catch {
     toast(
@@ -188,7 +190,7 @@ function shell() {
       )
       .join(
         "",
-      )}</nav><div class="sidebar-note"><span class="tiny-flower">✳</span><p>Good style starts<br>with what you own.</p><span>Make a little more of it.</span></div><div class="sidebar-bottom"><button class="nav-item" data-action="settings">${icon("settings")}<span>Preferences</span></button><a class="portfolio-link" href="https://cjarhodes.com" target="_blank" rel="noopener">A project by C.J. Rhodes ${icon("arrow")}</a></div></aside><div class="app-body"><header class="topbar"><span class="mobile-wordmark">FORM<sup>®</sup></span><div class="mode-badge"><i></i>${mode === "demo" ? "THE SAMPLE WARDROBE" : "YOUR PERSONAL WARDROBE"}</div><div class="top-actions"><button class="mode-switch" data-action="switch">${mode === "demo" ? "Use my wardrobe" : "Explore the demo"} ${icon("arrow")}</button><button class="avatar" data-action="settings" aria-label="Open preferences">CJ</button></div></header>${!storageReady ? '<div class="storage-warning" role="alert">Device storage is unavailable. You can explore, but changes will not be saved.</div>' : ""}<main id="main" tabindex="-1">${view === "today" ? todayPage() : view === "wardrobe" ? wardrobePage() : view === "planner" ? plannerPage() : insightsPage()}</main><footer class="footer"><span>LESS GUESSWORK. MORE YOU.</span><span>Made to be worn. <span class="footer-dot">✳</span> FORM ${new Date().getFullYear()}</span></footer></div><nav class="mobile-nav" aria-label="Mobile navigation">${[
+      )}</nav><div class="sidebar-note"><span class="tiny-flower">✳</span><p>Good style starts<br>with what you own.</p><span>Make a little more of it.</span></div><div class="sidebar-bottom"><button class="nav-item" data-action="settings">${icon("settings")}<span>Preferences</span></button><a class="portfolio-link" href="https://cjarhodes.com" target="_blank" rel="noopener">A project by C.J. Rhodes ${icon("arrow")}</a></div></aside><div class="app-body"><header class="topbar"><span class="mobile-wordmark">FORM<sup>®</sup></span><div class="mode-badge"><i></i>${mode === "demo" ? "THE SAMPLE WARDROBE" : "YOUR PERSONAL WARDROBE"}</div><div class="top-actions"><button class="mode-switch" data-action="switch">${mode === "demo" ? "Use my wardrobe" : "Explore the demo"} ${icon("arrow")}</button><button class="avatar" data-action="settings" aria-label="Open preferences">CJ</button></div></header>${!storageReady ? '<div class="storage-warning" role="alert">Your saved wardrobe could not be opened. Changes are paused. Reload or restore a valid backup in Preferences.</div>' : ""}<main id="main" tabindex="-1">${view === "today" ? todayPage() : view === "wardrobe" ? wardrobePage() : view === "planner" ? plannerPage() : insightsPage()}</main><footer class="footer"><span>LESS GUESSWORK. MORE YOU.</span><span>Made to be worn. <span class="footer-dot">✳</span> FORM ${new Date().getFullYear()}</span></footer></div><nav class="mobile-nav" aria-label="Mobile navigation">${[
       ["today", "sun", "Today"],
       ["wardrobe", "grid", "Wardrobe"],
       ["planner", "calendar", "Planner"],
@@ -253,7 +255,13 @@ function planCard(d) {
     pieces = outfitItems(plan, state.items),
     valid = plan && isWearable(plan, state.items),
     w = state.preferences.city ? dayWeather(weatherData, d) : null;
-  return `<article class="plan-card ${plan ? "has-plan" : ""}"><div class="plan-date"><span>${d === dateKey() ? "TODAY" : fmtDate(d, { weekday: "long" }).toUpperCase()}</span><strong>${fmtDate(d, { month: "short", day: "numeric" })}</strong></div>${plan ? `<button class="mini-outfit" data-action="open-plan" data-date="${d}" aria-label="View outfit for ${smallDate(d)}">${pieces.map((i) => image(i)).join("")}</button><p class="plan-occasion">${esc(plan.occasion)}</p>${!valid ? '<small class="plan-warning">A piece is unavailable. Update this look.</small>' : ""}<div class="plan-card-actions"><button class="text-button" data-action="open-plan" data-date="${d}">Review ${icon("arrow")}</button><button class="icon-button" data-action="remove-plan" data-date="${d}" aria-label="Remove plan for ${smallDate(d)}">${icon("close")}</button></div>` : `<button class="plan-add" data-action="date-plan" data-date="${d}">${icon("plus")}<span>Make a little plan</span></button>`}<small class="plan-weather">${icon(w?.rain >= 45 ? "cloud" : "sun")}${w ? `${Math.round(w.high)}°C · ${weatherLabel(w)}` : "Weather pending"}</small></article>`;
+  const weatherWarnings = plan
+    ? outfitWeatherWarnings(plan, state.items, w, state.preferences.comfort)
+    : [];
+  const planNotice = !valid
+    ? "A piece is unavailable. Update this look."
+    : weatherWarnings[0];
+  return `<article class="plan-card ${plan ? "has-plan" : ""}"><div class="plan-date"><span>${d === dateKey() ? "TODAY" : fmtDate(d, { weekday: "long" }).toUpperCase()}</span><strong>${fmtDate(d, { month: "short", day: "numeric" })}</strong></div>${plan ? `<button class="mini-outfit" data-action="open-plan" data-date="${d}" aria-label="View outfit for ${smallDate(d)}">${pieces.map((i) => image(i)).join("")}</button><p class="plan-occasion">${esc(plan.occasion)}</p>${planNotice ? `<small class="plan-warning">${esc(planNotice)}</small>` : ""}<div class="plan-card-actions"><button class="text-button" data-action="open-plan" data-date="${d}">Review ${icon("arrow")}</button><button class="icon-button" data-action="remove-plan" data-date="${d}" aria-label="Remove plan for ${smallDate(d)}">${icon("close")}</button></div>` : `<button class="plan-add" data-action="date-plan" data-date="${d}">${icon("plus")}<span>Make a little plan</span></button>`}<small class="plan-weather">${icon(w?.rain >= 45 ? "cloud" : "sun")}${w ? `${Math.round(w.high)}°C · ${weatherLabel(w)}` : "Weather pending"}</small></article>`;
 }
 function insightsPage() {
   const s = stats(state),
@@ -379,7 +387,7 @@ function editor(item, isPending = false) {
       .map((c) => `<option ${item.color === c ? "selected" : ""}>${c}</option>`)
       .join(
         "",
-      )}</select></label></div><label>Type<select name="kind" id="edit-kind">${kinds[item.category].map((k) => `<option ${item.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></label><div class="form-pair"><label>Dress level<select name="formality">${[
+      )}</select></label></div><label>Type<select name="kind" id="edit-kind">${kinds[item.category].map((k) => `<option ${item.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></label><details class="item-advanced" ${isPending ? "" : "open"}><summary>Fit, warmth & styling details</summary><div class="form-pair"><label>Dress level<select name="formality">${[
       [1, "Casual"],
       [2, "Smart casual"],
       [3, "Smart"],
@@ -419,7 +427,7 @@ function editor(item, isPending = false) {
       )
       .join(
         "",
-      )}</select></label><div class="checkboxes"><label><input name="waterproof" type="checkbox" ${item.waterproof ? "checked" : ""}> Rain-ready</label><label><input name="delicate" type="checkbox" ${item.delicate ? "checked" : ""}> Avoid rain</label></div></div></div><div class="modal-footer">${isPending ? '<button class="text-button" type="button" data-action="skip-upload">Skip this photo</button>' : `<button class="text-button danger" type="button" data-action="delete-item" data-id="${esc(item.id)}">Remove piece</button><button class="text-button" type="button" data-action="style-piece" data-id="${esc(item.id)}">${icon("pin")} Style this</button>`}<button type="submit" class="button button-dark">${icon("check")} ${isPending ? "Add to wardrobe" : "Save changes"}</button></div></form>`,
+      )}</select></label><div class="checkboxes"><label><input name="waterproof" type="checkbox" ${item.waterproof ? "checked" : ""}> Rain-ready</label><label><input name="delicate" type="checkbox" ${item.delicate ? "checked" : ""}> Avoid rain</label></div></details></div></div><div class="modal-footer">${isPending ? '<button class="text-button" type="button" data-action="skip-upload">Skip this photo</button>' : `<button class="text-button danger" type="button" data-action="delete-item" data-id="${esc(item.id)}">Remove piece</button><button class="text-button" type="button" data-action="style-piece" data-id="${esc(item.id)}">${icon("pin")} Style this</button>`}<button type="submit" class="button button-dark">${icon("check")} ${isPending ? "Add to wardrobe" : "Save changes"}</button></div></form>`,
   );
 }
 function uploadDialog() {
@@ -590,33 +598,19 @@ async function perform(action, b) {
         replacement = state.items.find((i) => i.id === b.dataset.id);
       if (!o || !replacement) break;
       const w = currentWeather();
-      if (w?.rain >= 45 && replacement.delicate) {
-        toast("This piece avoids rain. Choose a weather-ready alternative.");
-        break;
-      }
-      if (
-        w?.high < 7 &&
-        replacement.category === "Layers" &&
-        replacement.warmth < 3
-      ) {
-        toast("A warmer layer is needed for this forecast.");
-        break;
-      }
-      if (
-        w?.rain >= 45 &&
-        replacement.category === "Layers" &&
-        !replacement.waterproof &&
-        state.items.some(
-          (i) =>
-            i.category === "Layers" && i.waterproof && i.status === "available",
-        )
-      ) {
-        toast("Keep a rain-ready layer for this forecast.");
-        break;
-      }
       const ids = o.ids.map((id) =>
         id === b.dataset.replace ? replacement.id : id,
       );
+      const warnings = outfitWeatherWarnings(
+        { ids },
+        state.items,
+        w,
+        state.preferences.comfort,
+      );
+      if (warnings.length) {
+        toast(warnings[0]);
+        break;
+      }
       outfits[active] = { ...o, ids, signature: [...ids].sort().join("|") };
       closeModal();
       shell();
@@ -800,7 +794,7 @@ async function perform(action, b) {
     }
     case "confirm-restore": {
       if (!restoreData) break;
-      if (await persist(restoreData)) {
+      if (await persist(restoreData, { recovery: true })) {
         restoreData = null;
         pin = null;
         closeModal();

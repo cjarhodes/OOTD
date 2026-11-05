@@ -19,12 +19,17 @@ export async function load(mode) {
       .transaction("wardrobes")
       .objectStore("wardrobes")
       .get(mode);
-    request.onsuccess = () =>
-      resolve(
-        request.result
-          ? validateBackup(request.result)
-          : emptyState(mode === "demo"),
-      );
+    request.onsuccess = () => {
+      try {
+        resolve(
+          request.result
+            ? validateBackup(request.result)
+            : emptyState(mode === "demo"),
+        );
+      } catch (error) {
+        reject(error);
+      }
+    };
     request.onerror = () => reject(request.error);
   });
 }

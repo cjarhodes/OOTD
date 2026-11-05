@@ -1,4 +1,4 @@
-const CACHE = "form-shell-v1";
+const CACHE = "form-shell-v2";
 const SHELL = [
   "./",
   "./index.html",

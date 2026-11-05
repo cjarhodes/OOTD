@@ -9,6 +9,14 @@
 5. Checked live Open-Meteo geocoding and a 16-day forecast response successfully.
 6. Ran syntax checks and all automated tests before source publication.
 
+## Second review pass
+
+- Simplified batch-upload review: essential fields first, optional styling details in a disclosure.
+- Unified weather checks for generation, swaps and saved-plan warnings, including cool daily lows and wind.
+- Preserved the only suitable layer in large wardrobe searches; pinned pieces cannot bypass weather eligibility.
+- Fixed invalid local data causing startup to hang. Original records are preserved, and explicit backup restoration can recover the application.
+- Added regression coverage for those cases: 34 tests pass locally. Browser and device verification remains outstanding.
+
 ## On-device review checklist
 
 - Open the private preview on an iPhone 17 Pro Max in Safari.

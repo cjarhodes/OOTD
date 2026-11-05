@@ -14,7 +14,7 @@ The app intentionally does not require an AI key. Paid visual recognition can be
 
 ## Persistence
 
-IndexedDB database `form-wardrobe-v1`, object store `wardrobes`, separate `demo` and `personal` keys. Each state has schema version 1, items, date-keyed plans, confirmed wear events, outfit feedback and preferences. A single transaction saves a wardrobe; UI state updates only after the transaction succeeds. Photo files are decoded locally, resized to at most 1100 pixels on the longest side, and stored as JPEG data URLs.
+IndexedDB database `form-wardrobe-v1`, object store `wardrobes`, separate `demo` and `personal` keys. Each state has schema version 1, items, date-keyed plans, confirmed wear events, outfit feedback and preferences. A single transaction saves a wardrobe; UI state updates only after the transaction succeeds. Invalid stored data rejects cleanly without overwriting the original record; the UI pauses changes and supports explicit restoration from a validated backup. Photo files are decoded locally, resized to at most 1100 pixels on the longest side, and stored as JPEG data URLs.
 
 Backups are validated before restoration, including image URLs and garment references. The UI requires explicit replacement confirmation. A removed garment is removed from plans; old wear events retain the remaining item references. Archive a piece to retain its full history.
 
@@ -22,7 +22,7 @@ Local data is not a cloud backup or authentication system. No personal data is c
 
 ## Outfit engine
 
-Hard constraints: one top, bottom and shoes; available items only; pinned piece included; warm layer for cold weather; exclude rain-sensitive pieces in wet weather; use a rain-ready layer when available. For cold days below 7°C, require a warm layer. No layers above 26°C.
+Hard constraints: one top, bottom and shoes; available items only; pinned piece included; warm layer for cold weather; exclude rain-sensitive pieces in wet weather; use a rain-ready layer when available. For cold days below 7°C, require a warm layer. No layers above 26°C except a rain-ready layer when needed. Daily lows below 10°C with a mild high, and wind above 30 km/h with a cool high, call for a removable layer. Shared weather checks apply to swaps and saved-plan warnings. Candidate eligibility is filtered before bounding the search so that the only suitable layer remains available.
 
 Rank candidates by color compatibility, occasion/formality, user style appetite, underuse, recent outfit repetition, explicit feedback, and stable daily variation. Choose distinct combinations with progressively bolder targets and a diversity penalty. Per-category pools are bounded for large wardrobes and rotate on refresh; pinned items remain eligible. This is an explainable heuristic, not professional stylist or fit validation.
 

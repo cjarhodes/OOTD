@@ -226,5 +226,115 @@ test("interactive wardrobe loop persists changes and keeps sample and personal d
       assert.equal($('.garment-card img[src="x"]'), null);
     },
   );
+  await t.test(
+    "planner flags forecast mismatches without replacing saved pieces",
+    async () => {
+      const demo = await load("demo");
+      const plannedDate = addDays(dateKey(), 2);
+      demo.plans[plannedDate] = {
+        ids: ["t3", "b1", "s2"],
+        occasion: "Office day",
+        level: 1,
+      };
+      await save("demo", demo);
+      const originalFetch = global.fetch;
+      global.fetch = async (url) => ({
+        ok: true,
+        json: async () =>
+          url.hostname.startsWith("geocoding")
+            ? {
+                results: [
+                  {
+                    name: "Testville",
+                    country: "Example",
+                    latitude: 50,
+                    longitude: 0,
+                  },
+                ],
+              }
+            : {
+                daily: {
+                  time: [dateKey(), plannedDate],
+                  temperature_2m_max: [12, 12],
+                  temperature_2m_min: [5, 5],
+                  precipitation_probability_max: [90, 90],
+                  wind_speed_10m_max: [35, 35],
+                  weather_code: [61, 61],
+                },
+              },
+      });
+      try {
+        await click('[data-action="switch"]');
+        await click('[data-action="settings"]');
+        $("#city-query").value = "Testville";
+        $("#city-search").dispatchEvent(
+          new dom.window.Event("submit", { bubbles: true, cancelable: true }),
+        );
+        await until(() => $('[data-action="choose-city"]'));
+        await click('[data-action="choose-city"]');
+        await click('[data-view="planner"]');
+        assert.match($(".has-plan .plan-warning").textContent, /layer|rain/);
+        assert.deepEqual((await load("demo")).plans[plannedDate].ids, [
+          "t3",
+          "b1",
+          "s2",
+        ]);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    },
+  );
   dom.window.close();
+  await t.test(
+    "a damaged local wardrobe can be explicitly restored from a valid backup",
+    async () => {
+      await save("personal", { version: 99 });
+      const recoveryDOM = new JSDOM(
+        await readFile(new URL("../dist/index.html", import.meta.url), "utf8"),
+        { url: "https://form.test/" },
+      );
+      Object.assign(globalThis, {
+        window: recoveryDOM.window,
+        document: recoveryDOM.window.document,
+        localStorage: recoveryDOM.window.localStorage,
+        sessionStorage: recoveryDOM.window.sessionStorage,
+        FormData: recoveryDOM.window.FormData,
+      });
+      recoveryDOM.window.localStorage.setItem("form-mode", "personal");
+      Object.defineProperty(globalThis, "navigator", {
+        value: recoveryDOM.window.navigator,
+        configurable: true,
+      });
+      recoveryDOM.window.scrollTo = () => {};
+      recoveryDOM.window.HTMLDialogElement.prototype.showModal = function () {
+        this.open = true;
+      };
+      recoveryDOM.window.HTMLDialogElement.prototype.close = function () {
+        this.open = false;
+      };
+      const originalError = console.error;
+      console.error = () => {};
+      try {
+        await import("../dist/app.js?recovery-test");
+      } finally {
+        console.error = originalError;
+      }
+      assert.ok($(".storage-warning"));
+      await click('[data-action="settings"]');
+      const input = $("#import-backup");
+      Object.defineProperty(input, "files", {
+        value: [
+          { size: 500, text: async () => JSON.stringify(emptyState(true)) },
+        ],
+      });
+      input.dispatchEvent(
+        new recoveryDOM.window.Event("change", { bubbles: true }),
+      );
+      await until(() => $('[data-action="confirm-restore"]'));
+      await click('[data-action="confirm-restore"]');
+      assert.equal($(".storage-warning"), null);
+      assert.equal((await load("personal")).items.length, 18);
+      recoveryDOM.window.close();
+    },
+  );
 });

@@ -2370,3 +2370,26 @@ dialog::backdrop {
     scroll-behavior: auto !important;
   }
 }
+
+.item-advanced {
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+  padding-top: 6px;
+}
+.item-advanced summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: list-item;
+  align-content: center;
+  color: var(--olive);
+  font-size: 12px;
+  line-height: 1.8;
+  padding: 8px 0;
+}
+.item-advanced[open] summary {
+  margin-bottom: 10px;
+}
+.item-advanced summary:focus-visible {
+  outline: 2px solid var(--olive);
+  outline-offset: 3px;
+}

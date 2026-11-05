@@ -7,7 +7,7 @@ FORM helps you wear more of what you own, find more adventurous combinations, an
 ## What works today
 
 - Separate sample and personal wardrobes, stored locally in IndexedDB.
-- Batch photo imports (30 at a time), automatic filename suggestions, and editable category, color, fit, warmth, formality, style character, and rain suitability.
+- Batch photo imports (30 at a time), quick review of the essentials, automatic filename suggestions, and optional fit, warmth, formality, style character, and rain-suitability details.
 - Three outfit directions: comfort zone, fresh combination, adventurous.
 - Occasion-aware combinations using only available wardrobe pieces; pin an item or swap a piece.
 - City search and a 16-day weather forecast from Open-Meteo. Sample weather is explicitly labeled; missing forecasts remain provisional.
@@ -47,7 +47,7 @@ There are no metered AI calls or paid runtime services in this version. Static h
 - Tagging uses filenames, not visual AI. Photos need manual corrections; automatic background removal is not implemented.
 - Outfit ranking is a transparent rules-based starting point. Fit is recorded for your reference; precise proportion assessment and learning from reference looks are future work.
 - Weather uses daily highs/lows, precipitation probability, and wind. It does not model hourly commuting conditions or extreme-weather safety.
-- Forecast changes do not silently alter saved outfits. Open a saved plan and use Fresh ideas to reconsider it.
+- Saved plans flag weather mismatches without silently changing your chosen pieces. Open a saved plan and use Fresh ideas to reconsider it.
 - This version ships as an owner-private preview. Making a public portfolio demo and adding the case study to cjarhodes.com are separate delivery steps; the portfolio site has not been changed.
 - Device camera/HEIC decoding, Safari storage behavior, layout, and offline installation require on-device verification. This environment did not provide the supported browser-QA runtime.
 
