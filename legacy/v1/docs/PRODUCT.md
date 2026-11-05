@@ -2,15 +2,15 @@
 
 ## Purpose
 
-Help C.J. Rhodes confidently wear more of his existing wardrobe, try more adventurous combinations, and feel stylish at work and outside it.
+Help Alex Rhodes confidently wear more of their existing wardrobe, try more adventurous combinations, and feel stylish at work and outside it.
 
-C.J. is an account executive at Salesforce. His baseline is casual to smart casual: jeans, trousers, T-shirts, shirts, sweaters, sneakers, and layers. Looking cool is a product requirement. The primary device is an iPhone 17 Pro Max. The target operating budget is $5/month.
+Alex is an account executive at Salesforce. Their baseline is casual to smart casual: jeans, trousers, T-shirts, shirts, sweaters, sneakers, and layers. Looking cool is a product requirement. The primary device is an iPhone 17 Pro Max. The target operating budget is $5/month.
 
 ## Core loop
 
 Upload a batch → review garment details → choose a day and occasion → explore three outfits → swap or pin a piece → save a plan → confirm what was actually worn → improve through feedback.
 
-The sample collection is a separate, clearly labeled exploration environment. It contains 18 original garment illustrations, not C.J.'s real clothing. Personal uploads and history must not leak into demo state.
+The sample collection is a separate, clearly labeled exploration environment. It contains 18 original garment illustrations, not Alex's real clothing. Personal uploads and history must not leak into demo state.
 
 ## First-release decisions
 
@@ -35,7 +35,7 @@ No fabricated engagement counts or claimed personal outcomes in the demo or port
 
 ## Next user validation
 
-C.J. adds 20–30 real pieces including shoes and at least five overlooked items. Use FORM for two weeks. Note recommendation misses, time spent choosing, and which combinations felt good. Real feedback should drive the next recommendation improvements.
+Alex adds 20–30 real pieces including shoes and at least five overlooked items. Use FORM for two weeks. Note recommendation misses, time spent choosing, and which combinations felt good. Real feedback should drive the next recommendation improvements.
 
 ## Deferred
 

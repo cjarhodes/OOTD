@@ -1,0 +1,172 @@
+import { MATERIAL_LABEL } from "../kinds";
+import { PALETTE, type ColorFamily } from "../palette";
+import type { Item, Occasion, Pieces, RecipeId } from "../types";
+import { upperLayers } from "./rules";
+
+export const OCCASION_LABEL: Record<Occasion, string> = {
+  office: "Office",
+  client: "Customer meeting",
+  weekend: "Weekend",
+  dinner: "Dinner out",
+  travel: "Travel",
+};
+
+const OCCASION_PHRASE: Record<Occasion, string> = {
+  office: "office day",
+  client: "client day",
+  weekend: "weekend",
+  dinner: "dinner out",
+  travel: "travel day",
+};
+
+const RECIPE_LABEL: Record<RecipeId, string> = {
+  single: "Clean and simple",
+  layered: "Easy layers",
+  "collar-out": "Collar out",
+  "open-overshirt": "Open overshirt",
+  gilet: "Gilet layer",
+  "smart-soft": "Smart soft",
+  "two-layer": "Jacket on",
+  "three-layer": "Three layers",
+  "high-low": "High-low",
+};
+
+/** Extra boldness a recipe brings on top of the pieces themselves. */
+export const RECIPE_BOLDNESS: Record<RecipeId, number> = {
+  single: 0,
+  layered: 0,
+  "collar-out": 0,
+  "open-overshirt": 0,
+  gilet: 1,
+  "smart-soft": 0,
+  "two-layer": 0,
+  "three-layer": 1,
+  "high-low": 2,
+};
+
+export function recipeOf(p: Pieces): RecipeId {
+  const { base, mid, outer } = p;
+  if (!mid && !outer) return "single";
+  if (mid?.kind === "hoodie" && outer) return "high-low";
+  if (outer?.kind === "blazer" && !mid) return "smart-soft";
+  if (base.neckline === "collar" && mid && (mid.neckline === "crew" || mid.neckline === "v") && mid.front === "closed") {
+    return "collar-out";
+  }
+  if (mid?.kind === "overshirt" && !outer) return "open-overshirt";
+  if (mid?.kind === "gilet") return "gilet";
+  if (mid && outer) return "three-layer";
+  if (outer) return "two-layer";
+  return "layered";
+}
+
+const FAMILY_WORD: Record<ColorFamily, string> = {
+  white: "ecru",
+  brown: "brown",
+  green: "olive",
+  blue: "blue",
+  grey: "grey",
+  black: "black",
+  red: "red",
+  yellow: "ochre",
+  pink: "pink",
+};
+
+/** Every upper layer in one colour family, at different depths. */
+export function tonalFamily(p: Pieces): ColorFamily | null {
+  const layers = upperLayers(p);
+  if (layers.length < 2) return null;
+  const families = new Set(layers.map((i) => PALETTE[i.color].family));
+  if (families.size !== 1) return null;
+  const family = PALETTE[layers[0]!.color].family;
+  if (family === "black" || family === "white") return null;
+  // Tonal means one family at different depths: every neighbouring pair must differ.
+  for (let i = 1; i < layers.length; i++) {
+    if (Math.abs(PALETTE[layers[i - 1]!.color].lightness - PALETTE[layers[i]!.color].lightness) < 0.08) return null;
+  }
+  return family;
+}
+
+export function lookName(p: Pieces, occasion: Occasion): string {
+  const tonal = tonalFamily(p);
+  const label = tonal ? `Tonal ${FAMILY_WORD[tonal]}` : RECIPE_LABEL[recipeOf(p)];
+  return `${label}, ${OCCASION_PHRASE[occasion]}`;
+}
+
+export function lower(item: Item): string {
+  return item.name.charAt(0).toLowerCase() + item.name.slice(1);
+}
+
+const TEXTURED = new Set(["knit", "wool", "suede", "waxed", "corduroy", "denim", "fleece", "canvas"]);
+
+export function textureContrast(p: Pieces): [Item, Item] | null {
+  const pieces = [...upperLayers(p).reverse(), p.bottom];
+  for (let i = 0; i < pieces.length; i++) {
+    for (let j = i + 1; j < pieces.length; j++) {
+      const a = pieces[i]!;
+      const b = pieces[j]!;
+      if (a.material !== b.material && TEXTURED.has(a.material) && TEXTURED.has(b.material)) return [a, b];
+    }
+  }
+  return null;
+}
+
+/** Plain-language reasons the look works, most specific first. */
+export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, wet = false): string[] {
+  const notes: string[] = [];
+  const { base, mid, outer } = p;
+  switch (recipeOf(p)) {
+    case "collar-out":
+      notes.push(`Wear the ${lower(base)} collar out over the ${lower(mid!)}.`);
+      break;
+    case "open-overshirt":
+      notes.push(`Leave the ${lower(mid!)} open so the ${lower(base)} shows.`);
+      break;
+    case "three-layer":
+      notes.push(`Three layers, thickest on the outside: ${lower(base)}, ${lower(mid!)}, ${lower(outer!)}.`);
+      break;
+    case "high-low":
+      notes.push(`A ${lower(mid!)} under a ${lower(outer!)} keeps the tailoring relaxed.`);
+      break;
+    case "smart-soft":
+      notes.push(`A ${lower(base)} under a ${lower(outer!)} looks sharp without a tie.`);
+      break;
+    case "gilet":
+      notes.push(`The ${lower(mid!)} adds warmth without hiding the ${lower(base)}.`);
+      break;
+    case "two-layer":
+      notes.push(`Keep the ${lower(outer!)} open over the ${lower(base)}.`);
+      break;
+    case "layered":
+      notes.push(
+        base.length > (mid?.length ?? 0)
+          ? `Let the ${lower(base)} hem show just below the ${lower(mid!)}.`
+          : `A simple two-layer stack: ${lower(base)} under ${lower(mid!)}.`,
+      );
+      break;
+    case "single":
+      notes.push(`One good ${lower(base)} carries it. Keep everything else quiet.`);
+      break;
+  }
+
+  const tonal = tonalFamily(p);
+  const accents = [...upperLayers(p), p.bottom, p.shoes].filter((i) => !PALETTE[i.color].neutral);
+  if (tonal) notes.push(`All ${FAMILY_WORD[tonal]} tones, a different depth on each layer.`);
+  else if (accents.length === 1) notes.push(`One colour does the talking: the ${lower(accents[0]!)}.`);
+  else if (accents.length === 0) notes.push("Neutrals throughout, so the texture carries it.");
+
+  const contrast = textureContrast(p);
+  if (contrast && notes.length < 3) {
+    notes.push(`${MATERIAL_LABEL[contrast[0].material]} against ${MATERIAL_LABEL[contrast[1].material].toLowerCase()} adds texture.`);
+  }
+
+  if (shed) {
+    notes.unshift(
+      shed.backOn
+        ? `Take the ${lower(shed.layer)} off around midday and put it back on after 5.`
+        : `Take the ${lower(shed.layer)} off around midday.`,
+    );
+  } else if (wet && outer?.waterproof) {
+    notes.unshift(`Rain is likely. The ${lower(outer)} has it covered.`);
+  }
+  return notes.slice(0, 3);
+}

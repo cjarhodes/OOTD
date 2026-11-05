@@ -1,0 +1,103 @@
+import type { Item, Kind, Material, Neckline, Slot } from "./types";
+
+interface KindInfo {
+  slot: Slot;
+  label: string;
+  neckline: Neckline;
+  front: "closed" | "open";
+  length: number;
+  thickness: number;
+  warmth: number;
+  formality: number;
+  material: Material;
+  waterproof?: boolean;
+  delicate?: boolean;
+}
+
+/**
+ * Sensible defaults per garment type. New pieces start from these, and the
+ * review step (or AI tagging) only needs to correct what is different.
+ */
+export const KINDS: Record<Kind, KindInfo> = {
+  tee: { slot: "base", label: "tee", neckline: "crew", front: "closed", length: 3, thickness: 1, warmth: 1, formality: 1, material: "jersey" },
+  polo: { slot: "base", label: "polo", neckline: "collar", front: "closed", length: 3, thickness: 1, warmth: 1.5, formality: 2, material: "jersey" },
+  oxford: { slot: "base", label: "oxford shirt", neckline: "collar", front: "closed", length: 4, thickness: 1, warmth: 2, formality: 3, material: "cotton" },
+  "camp-shirt": { slot: "base", label: "camp-collar shirt", neckline: "collar", front: "closed", length: 3, thickness: 1, warmth: 1, formality: 2, material: "cotton" },
+  henley: { slot: "base", label: "henley", neckline: "crew", front: "closed", length: 3, thickness: 1, warmth: 1.5, formality: 1, material: "jersey" },
+  turtleneck: { slot: "base", label: "turtleneck", neckline: "turtle", front: "closed", length: 3, thickness: 2, warmth: 3, formality: 3, material: "knit" },
+  "mock-neck": { slot: "base", label: "mock neck", neckline: "mock", front: "closed", length: 3, thickness: 1, warmth: 2, formality: 3, material: "knit" },
+
+  crewneck: { slot: "mid", label: "crewneck", neckline: "crew", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 2, material: "knit" },
+  "v-neck": { slot: "mid", label: "v-neck", neckline: "v", front: "closed", length: 3, thickness: 2, warmth: 2.5, formality: 3, material: "knit" },
+  cardigan: { slot: "mid", label: "cardigan", neckline: "v", front: "open", length: 3, thickness: 3, warmth: 3, formality: 2, material: "knit" },
+  "quarter-zip": { slot: "mid", label: "quarter-zip", neckline: "zip", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 2, material: "knit" },
+  hoodie: { slot: "mid", label: "hoodie", neckline: "hood", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 1, material: "fleece" },
+  sweatshirt: { slot: "mid", label: "sweatshirt", neckline: "crew", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 1, material: "fleece" },
+  overshirt: { slot: "mid", label: "overshirt", neckline: "collar", front: "open", length: 4, thickness: 2, warmth: 2.5, formality: 2, material: "canvas" },
+  gilet: { slot: "mid", label: "gilet", neckline: "zip", front: "open", length: 3, thickness: 2, warmth: 2, formality: 2, material: "technical" },
+
+  "chore-coat": { slot: "outer", label: "chore coat", neckline: "lapel", front: "open", length: 4, thickness: 3, warmth: 3, formality: 2, material: "canvas" },
+  "waxed-jacket": { slot: "outer", label: "waxed jacket", neckline: "collar", front: "open", length: 4, thickness: 4, warmth: 4, formality: 2, material: "waxed", waterproof: true },
+  blazer: { slot: "outer", label: "blazer", neckline: "lapel", front: "open", length: 4, thickness: 3, warmth: 2.5, formality: 4, material: "wool" },
+  bomber: { slot: "outer", label: "bomber", neckline: "zip", front: "open", length: 2, thickness: 3, warmth: 4, formality: 1, material: "technical" },
+  "rain-shell": { slot: "outer", label: "rain shell", neckline: "zip", front: "open", length: 4, thickness: 2, warmth: 2, formality: 1, material: "technical", waterproof: true },
+  overcoat: { slot: "outer", label: "overcoat", neckline: "lapel", front: "open", length: 5, thickness: 5, warmth: 6, formality: 4, material: "wool" },
+  puffer: { slot: "outer", label: "puffer", neckline: "zip", front: "open", length: 3, thickness: 5, warmth: 7, formality: 1, material: "technical", waterproof: true },
+
+  jeans: { slot: "bottom", label: "jeans", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 1, material: "denim" },
+  chinos: { slot: "bottom", label: "chinos", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 2, material: "cotton" },
+  trousers: { slot: "bottom", label: "trousers", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 4, material: "wool" },
+  shorts: { slot: "bottom", label: "shorts", neckline: "crew", front: "closed", length: 2, thickness: 1, warmth: 0, formality: 1, material: "cotton" },
+
+  sneakers: { slot: "shoes", label: "sneakers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 2, material: "leather" },
+  runners: { slot: "shoes", label: "runners", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 1, material: "technical" },
+  loafers: { slot: "shoes", label: "loafers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 4, material: "suede", delicate: true },
+  boots: { slot: "shoes", label: "boots", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 3, material: "leather", waterproof: true },
+};
+
+export const SLOT_LABEL: Record<Slot, string> = {
+  base: "Base",
+  mid: "Mid",
+  outer: "Outer",
+  bottom: "Bottoms",
+  shoes: "Shoes",
+};
+
+export const MATERIAL_LABEL: Record<Material, string> = {
+  cotton: "Cotton",
+  linen: "Linen",
+  denim: "Denim",
+  jersey: "Jersey",
+  knit: "Knit",
+  wool: "Wool",
+  fleece: "Fleece",
+  corduroy: "Corduroy",
+  suede: "Suede",
+  leather: "Leather",
+  waxed: "Waxed cotton",
+  technical: "Technical",
+  canvas: "Canvas",
+};
+
+/** Build a complete item from a kind plus the fields that differ from its defaults. */
+export function makeItem(
+  fields: Pick<Item, "id" | "name" | "kind" | "color"> & Partial<Omit<Item, "id" | "name" | "kind" | "color">>,
+): Item {
+  const info = KINDS[fields.kind];
+  return {
+    slot: info.slot,
+    material: info.material,
+    pattern: "solid",
+    neckline: info.neckline,
+    front: info.front,
+    length: info.length,
+    thickness: info.thickness,
+    warmth: info.warmth,
+    formality: info.formality,
+    boldness: 0,
+    waterproof: info.waterproof ?? false,
+    delicate: info.delicate ?? false,
+    status: "available",
+    ...fields,
+  };
+}
