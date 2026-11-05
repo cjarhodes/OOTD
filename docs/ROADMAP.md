@@ -1,4 +1,6 @@
-# FORM v2 — plan
+# Wardrobe app v2 — plan
+
+> Working name **FORM**, to be renamed. The owner is **Alex Rhodes**. v1 was generated with Codex, and none of it has to stay.
 
 FORM v1 already works: a local-first wardrobe, three outfit directions, weather-aware rules, a planner and a wear journal. v2 is about four things:
 
@@ -34,10 +36,14 @@ Most 2026 "best wardrobe app" roundups are written by the apps they rank. The ta
 
 ## 2. The whole wardrobe
 
-### Capture pipeline (free, on-device first)
+### Capture pipeline (decided: Apple's on-device cut-outs only)
 
-1. **iPhone "Lift subject"**: long-press a garment in Photos, choose Share, then save it as a transparent PNG. This is the zero-cost, best-quality option on iPhone. Document it in onboarding and accept PNGs with alpha.
-2. **In-browser fallback**: an optional on-device segmentation model, lazy-loaded only when the user taps "Remove background". Check licences before choosing: `@imgly/background-removal` is AGPL, RMBG-1.4 is non-commercial, BiRefNet is MIT.
+Apple's subject lifting is the best free option: high quality, on-device, and no model to ship. Two ways to use it:
+
+1. **Batch, the main path**: a shared iOS Shortcut, "Cut out for wardrobe". You select many photos, it runs the Shortcuts **Remove Background** action on each, and saves transparent PNGs to a "Wardrobe" album. The app then imports that album in one go. Verify the action's name and behaviour on the current iOS version during the on-device check.
+2. **One-off**: long-press the garment in Photos, choose Lift Subject, then Share and save as a PNG.
+
+The app accepts PNGs with alpha and nudges you if a photo arrives without a transparent background. There is no in-browser segmentation model.
 3. **Auto colour**: k-means over non-transparent pixels, mapped to the named palette, plus a secondary colour and pattern flag (solid, stripe, check, print).
 4. **Closet sprint mode**: shoot 30 in a row on the same backdrop, then review in a swipe stack (category → colour → done).
 
@@ -128,20 +134,21 @@ Replace the single `layer` loop in `generate()` with: choose a recipe for the da
 
 ---
 
-## 7. Optional AI (budgeted, opt-in)
+## 7. AI tagging (decided: on, with a monthly spending cap)
 
-Local-first stays the default. If tagging friction remains after the capture pipeline:
-
-- A single serverless function (Vercel, already used for the portfolio) sends one compressed cut-out to a Claude vision model and gets back category, slot, colour, material, pattern and thickness as JSON.
-- Uploads happen only on an explicit tap. The function enforces a monthly spend cap, and the API key stays server-side.
-- Check current per-image pricing before enabling. A full-wardrobe tag pass should be a one-off cost, well inside the $5/month target.
+- A Vercel serverless function sends one compressed cut-out (around 512px) to a Claude vision model. It gets back structured JSON: category, slot, colour(s), material, pattern, thickness, neckline, length, formality and a suggested name. Every field stays editable in the review stack.
+- **Two-layer cap.** (1) A hard spend limit on a dedicated workspace in the Anthropic Console. (2) The function counts spend per calendar month in Vercel's KV/Redis store and returns "Monthly AI budget reached" once it hits the cap. Suggested cap: $3 of the $5 monthly budget.
+- **Owner-only.** The public portfolio demo never calls the function. Personal mode needs a sign-in (a passphrase-protected session, or Vercel Authentication on a private deployment). The API key stays server-side.
+- Images are sent only during an explicit "Tag with AI" action and are not stored server-side.
+- Check current per-image pricing when building, then show an estimated cost in the UI before a batch runs.
+- Later, within the same cap: "Style this" on demand, where the model ranks the engine's top candidates and writes the "why it works" note. The rules engine still enforces the hard constraints.
 - Not planned: avatar try-on, generated "AI fashion" images, shopping feeds.
 
 ---
 
-## 8. Branding: FORM as its own brand
+## 8. Branding: its own brand
 
-FORM gets its own identity and doesn't inherit the portfolio's look. The portfolio links out to it as a separate build, the way it does for `training.` and `chess.`. The three directions explored are **Gallery**, **Selvedge** and **Chalk & Cloth**. They're shown side by side, each with a palette, type, components and the same layered flat-lay, on the brand board artifact.
+The app gets its own identity and doesn't inherit the portfolio's look. The portfolio links out to it as a separate build, the way it does for `training.` and `chess.`. The three directions explored are **Gallery**, **Selvedge** and **Chalk & Cloth**. They're shown side by side, each with a palette, type, components and the same layered flat-lay, on the brand board artifact.
 
 ### Recommended: Gallery
 
@@ -175,7 +182,7 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 
 ## 9. Portfolio integration
 
-- **Subdomain**: `form.cjarhodes.com`, matching `training.` and `chess.`. The public build runs **sample wardrobe mode only**; the personal wardrobe stays on-device.
+- **Hosting (decided: Vercel)**: deploy on Vercel at a subdomain named after the app (e.g. `<name>.cjarhodes.com`), matching `training.` and `chess.`. The public build runs **sample wardrobe mode only**; the personal wardrobe stays on-device.
 - **Builds entry**: "form.cjarhodes.com — Wardrobe & outfit planner. Wear more of what you own, layered properly." Tag: `tool · personal`.
 - The portfolio keeps its own style. Only the case study post and the Builds entry live there, and they link out to FORM.
 - **Case study**, as a Writing post in the "Building" category using the existing post template: standfirst, then *The problem* (same five outfits), *What other apps get wrong* (layering), *How FORM layers*, *Making it look good* (flat-lay), *Keeping it cheap & private*, *What I learned*. Add three images: a hero flat-lay, a week view, and a layering diagram.
@@ -194,10 +201,19 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | **5. Portfolio launch** | `form.` subdomain (demo only), Builds entry, case study post | Live and linked |
 | **6. Optional AI tagging** | Vercel function + spend cap | Only if capture friction remains after phase 3 |
 
-## Open decisions
+## Decisions
 
-1. **Name**: the repo says "C.J. Rhodes" and the portfolio says "Alex Rhodes". Which goes in the case study?
-2. **Background removal**: rely on iPhone Lift Subject only, or also ship an in-browser model (larger download, licence check)?
-3. **AI tagging**: stay strictly zero-cost, or allow a capped opt-in?
-4. **Hosting**: move from the current host to Vercel alongside the portfolio?
-5. **Brand direction**: Gallery (recommended), Selvedge or Chalk & Cloth, and keep the FORM name or rename it?
+| Topic | Decision |
+| --- | --- |
+| Owner and case-study name | Alex Rhodes |
+| Background removal | Apple's on-device subject lifting only (Shortcut batch + Lift Subject) |
+| AI | Yes, behind a monthly spending cap and owner-only access |
+| Hosting | Vercel |
+| Brand | Independent of the portfolio |
+| Existing v1 code | Nothing has to stay |
+
+## Still open
+
+1. **Name**: replace FORM.
+2. **Brand direction**: Gallery (recommended), Selvedge or Chalk & Cloth.
+3. **Rebuild or evolve**: start fresh on a typed stack, or keep extending the v1 vanilla JS.

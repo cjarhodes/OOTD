@@ -1,6 +1,6 @@
 # FORM
 
-**A considered wardrobe.** An iPhone-first personal wardrobe and outfit planner, built for C.J. Rhodes and designed to be featured on [cjarhodes.com](https://cjarhodes.com).
+**A considered wardrobe.** An iPhone-first personal wardrobe and outfit planner, built for Alex Rhodes and designed to be featured on [cjarhodes.com](https://cjarhodes.com).
 
 FORM helps you wear more of what you own, find more adventurous combinations, and get dressed with less guesswork. The visual direction is editorial: ivory, charcoal, muted olive, original garment illustrations, and generous space.
 
