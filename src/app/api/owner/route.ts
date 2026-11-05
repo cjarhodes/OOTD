@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { budgetConfig, countInWindow, spentThisMonth } from "@/server/budget";
+import { cloudConfigured } from "@/server/cloud";
 import { createSession, OWNER_COOKIE, ownerConfigured, passphraseMatches, SESSION_DAYS, verifySession } from "@/server/owner";
 
 export const runtime = "nodejs";
@@ -11,6 +12,7 @@ export interface OwnerStatus {
   available: boolean;
   owner: boolean;
   ai: { configured: boolean; capUsd: number | null; spentUsd: number | null };
+  cloud: { configured: boolean };
 }
 
 async function status(): Promise<OwnerStatus> {
@@ -26,7 +28,12 @@ async function status(): Promise<OwnerStatus> {
       spentUsd = null;
     }
   }
-  return { available: ownerConfigured(), owner, ai: { configured, capUsd: cfg?.capUsd ?? null, spentUsd } };
+  return {
+    available: ownerConfigured(),
+    owner,
+    ai: { configured, capUsd: cfg?.capUsd ?? null, spentUsd },
+    cloud: { configured: cloudConfigured() },
+  };
 }
 
 export async function GET() {

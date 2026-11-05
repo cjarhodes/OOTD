@@ -1,18 +1,20 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { cleanTrip, parseBackup, type Backup } from "@/lib/backup";
+import { buildArchive, readArchive, type Photo } from "@/lib/archive";
+import { cleanTrip } from "@/lib/backup";
 import { isDateKey, todayKey } from "@/lib/dates";
 import { deleteImage, emptyPersonal, getImages, loadPersonal, putImage, replaceAll, requestPersistence, savePersonal, type PersonalState } from "@/lib/db";
 import type { City } from "@/lib/forecast";
-import { blobToDataUrl, dataUrlToBlob } from "@/lib/photo";
+import { hashBlob } from "@/lib/photo";
 import { SAMPLE_ITEMS, sampleWears } from "@/lib/sample";
 import type { Comfort, FeedbackValue, Item, Occasion, Plan, Tier, Trip, TripDay, Wear } from "@/lib/types";
 
 /**
  * Two wardrobes. The sample wardrobe is fixed illustrations plus whatever you
  * do with it (kept in localStorage). Your wardrobe is photos and history kept
- * in IndexedDB on this device only.
+ * in IndexedDB on this device, copied to the owner's private cloud backup
+ * (src/state/cloud.tsx) and exportable as a plain ZIP.
  */
 export type Mode = "sample" | "personal";
 
@@ -31,6 +33,7 @@ interface Prefs {
 }
 
 const SAMPLE_KEY = "ootd.sample.v1";
+const EXPORT_KEY = "ootd.exported.v1";
 const PREFS_KEY = "ootd.prefs.v1";
 const EMPTY_SAMPLE: SampleSaved = { version: 1, wears: [], plans: {}, feedback: {}, comfort: "neutral", trips: [] };
 
@@ -111,8 +114,16 @@ interface WardrobeContext {
   addPieces: (pieces: NewPiece[]) => Promise<void>;
   updateItem: (item: Item) => void;
   removeItem: (id: string) => Promise<void>;
+  /** A ZIP of everything: CSV, JSON and the photos as ordinary files. */
   exportBackup: () => Promise<Blob>;
+  /** Restore from an export ZIP or an older JSON backup. */
   importBackup: (file: File) => Promise<{ ok: true; count: number } | { ok: false; error: string }>;
+  /** The personal wardrobe as stored (for cloud backup). Null until it has loaded. */
+  personalState: PersonalState | null;
+  /** Photo blobs for the given piece ids. */
+  photoBlobs: (ids: string[]) => Promise<Map<string, Blob>>;
+  /** Replace the personal wardrobe wholesale (cloud restore). */
+  replacePersonal: (state: PersonalState, photos: Map<string, Blob>) => Promise<void>;
 }
 
 const Ctx = createContext<WardrobeContext | null>(null);
@@ -125,6 +136,7 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
   const [personal, setPersonal] = useState<PersonalState>(emptyPersonal());
   const [imageUrls, setImageUrls] = useState<Map<string, string>>(new Map());
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [personalReady, setPersonalReady] = useState(false);
   const personalLoaded = useRef(false);
 
   useEffect(() => {
@@ -140,6 +152,19 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         setPersonal(state);
         setImageUrls(new Map([...blobs].map(([id, b]) => [id, URL.createObjectURL(b)])));
         personalLoaded.current = true;
+        setPersonalReady(true);
+        // Pieces added before photos were hashed get their hash now.
+        const missing = state.items.filter((i) => !i.photoHash && blobs.has(i.id));
+        if (missing.length) {
+          const hashes = new Map<string, string>();
+          for (const i of missing) hashes.set(i.id, await hashBlob(blobs.get(i.id)!));
+          if (cancelled) return;
+          setPersonal((prev) => {
+            const next = { ...prev, items: prev.items.map((i) => (hashes.has(i.id) && !i.photoHash ? { ...i, photoHash: hashes.get(i.id) } : i)) };
+            void savePersonal(next).catch(() => undefined);
+            return next;
+          });
+        }
       } catch {
         if (!cancelled) setStorageError("Your wardrobe couldn’t be opened on this device. Changes to it are paused.");
       } finally {
@@ -182,6 +207,15 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
       savePersonal(next).catch(() => setStorageError("The last change couldn’t be saved on this device. Export a backup."));
       return next;
     });
+  }, []);
+
+  const replacePersonal = useCallback(async (state: PersonalState, photos: Map<string, Blob>) => {
+    await replaceAll(state, photos);
+    personalLoaded.current = true;
+    setPersonalReady(true);
+    setPersonal(state);
+    setImageUrls(new Map([...photos].map(([id, b]) => [id, URL.createObjectURL(b)])));
+    setStorageError(null);
   }, []);
 
   const value = useMemo<WardrobeContext>(() => {
@@ -239,18 +273,26 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
 
       addPieces: async (pieces) => {
         if (!personalLoaded.current) throw new Error("Your wardrobe isn’t available on this device.");
-        for (const p of pieces) await putImage(p.item.id, p.blob);
+        const hashes = new Map<string, string>();
+        for (const p of pieces) {
+          await putImage(p.item.id, p.blob);
+          hashes.set(p.item.id, await hashBlob(p.blob));
+        }
         setImageUrls((prev) => {
           const next = new Map(prev);
           for (const p of pieces) next.set(p.item.id, URL.createObjectURL(p.blob));
           return next;
         });
-        updatePersonal((s) => ({ ...s, items: [...s.items, ...pieces.map(({ item: { image: _i, ...rest } }) => rest as Item)] }));
+        updatePersonal((s) => ({
+          ...s,
+          items: [...s.items, ...pieces.map(({ item: { image: _i, ...rest } }) => ({ ...rest, photoHash: hashes.get(rest.id) }) as Item)],
+        }));
         void requestPersistence();
       },
       updateItem: (item) => {
         const { image: _i, ...rest } = item;
-        updatePersonal((s) => ({ ...s, items: s.items.map((i) => (i.id === item.id ? (rest as Item) : i)) }));
+        // Editing details never changes the photo, so keep its hash.
+        updatePersonal((s) => ({ ...s, items: s.items.map((i) => (i.id === item.id ? ({ ...rest, photoHash: i.photoHash } as Item) : i)) }));
       },
       removeItem: async (id) => {
         await deleteImage(id);
@@ -275,32 +317,36 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
       },
 
       exportBackup: async () => {
-        const images: Record<string, string> = {};
         const blobs = await getImages(personal.items.map((i) => i.id));
-        for (const [id, blob] of blobs) images[id] = await blobToDataUrl(blob);
-        const backup: Backup = { app: "ootd", version: 1, exportedAt: new Date().toISOString(), state: personal, images };
-        return new Blob([JSON.stringify(backup)], { type: "application/json" });
+        const photos = new Map<string, Photo>();
+        for (const [id, blob] of blobs) photos.set(id, { bytes: new Uint8Array(await blob.arrayBuffer()), type: blob.type });
+        const zip = buildArchive(personal, photos);
+        writeJson(EXPORT_KEY, { at: new Date().toISOString(), pieces: personal.items.length });
+        return new Blob([zip as Uint8Array<ArrayBuffer>], { type: "application/zip" });
       },
       importBackup: async (file) => {
-        let json: unknown;
-        try {
-          json = JSON.parse(await file.text());
-        } catch {
-          return { ok: false, error: "That file isn’t readable JSON." };
-        }
-        const parsed = parseBackup(json);
-        if (!parsed.ok) return parsed;
+        const read = readArchive(new Uint8Array(await file.arrayBuffer()));
+        if (!read.ok) return read;
         const blobs = new Map<string, Blob>();
-        for (const [id, url] of Object.entries(parsed.backup.images)) blobs.set(id, await dataUrlToBlob(url));
-        await replaceAll(parsed.backup.state, blobs);
-        personalLoaded.current = true;
-        setPersonal(parsed.backup.state);
-        setImageUrls(new Map([...blobs].map(([id, b]) => [id, URL.createObjectURL(b)])));
-        setStorageError(null);
-        return { ok: true, count: parsed.backup.state.items.length };
+        const items: Item[] = [];
+        for (const item of read.state.items) {
+          const photo = read.photos.get(item.id);
+          if (!photo) {
+            items.push(item);
+            continue;
+          }
+          const blob = new Blob([photo.bytes as Uint8Array<ArrayBuffer>], { type: photo.type });
+          blobs.set(item.id, blob);
+          items.push({ ...item, photoHash: await hashBlob(blob) });
+        }
+        await replacePersonal({ ...read.state, items }, blobs);
+        return { ok: true, count: items.length };
       },
+      personalState: personalReady ? personal : null,
+      photoBlobs: getImages,
+      replacePersonal,
     };
-  }, [ready, today, prefs, sample, personal, imageUrls, storageError, updatePrefs, updateSample, updatePersonal]);
+  }, [ready, today, prefs, sample, personal, personalReady, imageUrls, storageError, updatePrefs, updateSample, updatePersonal, replacePersonal]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -309,6 +355,12 @@ export function useWardrobe(): WardrobeContext {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error("useWardrobe must be used inside WardrobeProvider");
   return ctx;
+}
+
+/** When this device last downloaded an export, and how many pieces it held. */
+export function lastExport(): { at: string; pieces: number } | null {
+  const v = readJson<{ at?: unknown; pieces?: unknown }>(EXPORT_KEY);
+  return v && typeof v.at === "string" && typeof v.pieces === "number" ? { at: v.at, pieces: v.pieces } : null;
 }
 
 export function defaultOccasion(date: string): Occasion {

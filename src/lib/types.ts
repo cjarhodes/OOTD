@@ -95,6 +95,8 @@ export interface Item {
   status: Status;
   /** A cut-out PNG (data URL or path). Sample pieces use illustrations instead. */
   image?: string;
+  /** SHA-256 of the stored photo; names it in the cloud backup and exports. */
+  photoHash?: string;
 }
 
 export interface Wear {

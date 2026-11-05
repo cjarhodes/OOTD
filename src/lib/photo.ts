@@ -107,3 +107,9 @@ export function blobToDataUrl(blob: Blob): Promise<string> {
 export async function dataUrlToBlob(url: string): Promise<Blob> {
   return (await fetch(url)).blob();
 }
+
+/** SHA-256 of a photo's bytes, as lowercase hex. Names the photo in backups. */
+export async function hashBlob(blob: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}

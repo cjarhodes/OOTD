@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Azeret_Mono, Bodoni_Moda, Hanken_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/AppShell";
+import { CloudProvider } from "@/state/cloud";
+import { OwnerProvider } from "@/state/owner";
 import { WardrobeProvider } from "@/state/wardrobe";
 import "./globals.css";
 
@@ -50,9 +52,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en-GB" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
-        <WardrobeProvider>
-          <AppShell>{children}</AppShell>
-        </WardrobeProvider>
+        <OwnerProvider>
+          <WardrobeProvider>
+            <CloudProvider>
+              <AppShell>{children}</AppShell>
+            </CloudProvider>
+          </WardrobeProvider>
+        </OwnerProvider>
       </body>
     </html>
   );

@@ -1,25 +1,46 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Tags } from "@/lib/tagging";
 
 export interface OwnerStatus {
   available: boolean;
   owner: boolean;
   ai: { configured: boolean; capUsd: number | null; spentUsd: number | null };
+  cloud: { configured: boolean };
 }
 
-const OFFLINE: OwnerStatus = { available: false, owner: false, ai: { configured: false, capUsd: null, spentUsd: null } };
+const OFFLINE: OwnerStatus = {
+  available: false,
+  owner: false,
+  ai: { configured: false, capUsd: null, spentUsd: null },
+  cloud: { configured: false },
+};
 
-/** Owner session and AI budget status from the server. Absent server routes read as "not available". */
-export function useOwner() {
+type OwnerContext = ReturnType<typeof useOwnerState>;
+const Ctx = createContext<OwnerContext | null>(null);
+
+/** One owner session for the whole app, so unlocking in Settings starts cloud backup everywhere. */
+export function OwnerProvider({ children }: { children: ReactNode }) {
+  const value = useOwnerState();
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export function useOwner(): OwnerContext {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error("useOwner must be used inside OwnerProvider");
+  return ctx;
+}
+
+/** Owner session, AI budget and cloud status from the server. Absent server routes read as "not available". */
+function useOwnerState() {
   const [status, setStatus] = useState<OwnerStatus>(OFFLINE);
   const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/owner", { cache: "no-store" });
-      setStatus(res.ok ? ((await res.json()) as OwnerStatus) : OFFLINE);
+      setStatus(res.ok ? { ...OFFLINE, ...((await res.json()) as Partial<OwnerStatus>) } : OFFLINE);
     } catch {
       setStatus(OFFLINE);
     } finally {
@@ -40,7 +61,7 @@ export function useOwner() {
       });
       const json = (await res.json()) as OwnerStatus & { error?: string };
       if (!res.ok) return json.error ?? "Couldn’t unlock.";
-      setStatus(json);
+      setStatus({ ...OFFLINE, ...json });
       return null;
     } catch {
       return "Couldn’t reach the server.";
@@ -52,7 +73,10 @@ export function useOwner() {
     await refresh();
   }, [refresh]);
 
-  return { status, loaded, refresh, unlock, lock, canTag: status.owner && status.ai.configured };
+  return useMemo(
+    () => ({ status, loaded, refresh, unlock, lock, canTag: status.owner && status.ai.configured }),
+    [status, loaded, refresh, unlock, lock],
+  );
 }
 
 export async function requestTags(image: string): Promise<{ tags: Tags; costUsd: number } | { error: string }> {
