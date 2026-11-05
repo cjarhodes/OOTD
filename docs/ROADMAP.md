@@ -1,6 +1,6 @@
 # Wardrobe app v2 — plan
 
-> Working name **FORM**, to be renamed. The owner is **Alex Rhodes**. v1 was generated with Codex, and none of it has to stay.
+> Working name **OOTD** (outfit of the day), replacing FORM. The owner is **Alex Rhodes**. v1 was generated with Codex, and none of it has to stay.
 
 FORM v1 already works: a local-first wardrobe, three outfit directions, weather-aware rules, a planner and a wear journal. v2 is about four things:
 
@@ -210,10 +210,9 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | AI | Yes, behind a monthly spending cap and owner-only access |
 | Hosting | Vercel |
 | Brand | Independent of the portfolio |
-| Existing v1 code | Nothing has to stay |
+| Name | OOTD (working), planned at `ootd.cjarhodes.com` |
+| Codebase | Rebuild fresh: Next.js + TypeScript on Vercel, local-first storage, installable to the Home Screen. Useful v1 rules and tests get ported. |
 
 ## Still open
 
-1. **Name**: replace FORM.
-2. **Brand direction**: Gallery (recommended), Selvedge or Chalk & Cloth.
-3. **Rebuild or evolve**: start fresh on a typed stack, or keep extending the v1 vanilla JS.
+1. **Brand direction**: Gallery (recommended), Selvedge or Chalk & Cloth. Each one is mocked up as Today, Wardrobe and Week screens on the brand board artifact.
