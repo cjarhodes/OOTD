@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useCloud, type Snapshot } from "@/state/cloud";
-import { useOwner } from "@/state/owner";
 import { useWardrobe } from "@/state/wardrobe";
 
 export const SOURCE_URL = "https://github.com/cjarhodes/Clothing";
@@ -18,9 +17,8 @@ export function when(iso: string | null): string {
 
 const pieces = (n: number | null) => `${n ?? 0} piece${n === 1 ? "" : "s"}`;
 
-/** The cloud backup status and the choices it can need. */
+/** Saving to the account: status, history, and the choices it can need. */
 export function CloudBackup({ onExport }: { onExport: () => void }) {
-  const owner = useOwner();
   const cloud = useCloud();
   const { personalCount, setMode } = useWardrobe();
   const { status } = cloud;
@@ -28,46 +26,28 @@ export function CloudBackup({ onExport }: { onExport: () => void }) {
   const [confirm, setConfirm] = useState<{ at?: string; label: string } | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
-  if (!owner.status.cloud.configured) {
-    return (
-      <p className="setting-note">
-        Cloud backup isn’t set up on this copy of OOTD. Your wardrobe is kept in this browser, so download an export below after adding pieces.
-      </p>
-    );
-  }
-  if (!owner.status.owner) {
-    return (
-      <p className="setting-note">
-        Cloud backup is for whoever runs this copy of OOTD, after they unlock it above. Visiting? Your wardrobe is kept in this browser and never
-        leaves it. Download an export below to keep it safe, or{" "}
-        <a className="text-link" href={`${SOURCE_URL}#run-your-own-copy`} target="_blank" rel="noopener noreferrer">
-          run your own copy
-        </a>{" "}
-        with its own private backup.
-      </p>
-    );
-  }
+  if (!cloud.available) return null;
 
   const restore = async (at?: string) => {
     setConfirm(null);
     setNote(null);
     const err = await cloud.restore(at);
     if (!err) setMode("personal");
-    setNote(err ?? (at ? "That version is restored, here and in the cloud." : "Restored from the cloud backup."));
+    setNote(err ?? (at ? "That version is restored, here and in your account." : "Restored from your account."));
   };
 
   const line = (() => {
     switch (status.phase) {
       case "checking":
-        return "Checking the cloud backup…";
+        return "Checking your account…";
       case "pending":
-        return "Changes will be backed up in a moment.";
+        return "Changes will be saved in a moment.";
       case "saving":
-        return status.photosLeft > 0 ? `Backing up · ${status.photosLeft} photo${status.photosLeft === 1 ? "" : "s"} to go` : "Backing up…";
+        return status.photosLeft > 0 ? `Saving · ${status.photosLeft} photo${status.photosLeft === 1 ? "" : "s"} to go` : "Saving…";
       case "restoring":
         return status.photosLeft > 0 ? `Restoring · ${status.photosLeft} photo${status.photosLeft === 1 ? "" : "s"} to go` : "Restoring…";
       case "synced":
-        return status.savedAt ? `Backed up · ${pieces(status.remotePieces)} · ${when(status.savedAt)}` : "On. Nothing to back up yet.";
+        return status.savedAt ? `Saved to your account · ${pieces(status.remotePieces)} · ${when(status.savedAt)}` : "Signed in. Nothing to save yet.";
       default:
         return null;
     }
@@ -85,11 +65,11 @@ export function CloudBackup({ onExport }: { onExport: () => void }) {
       {status.phase === "restore-available" && (
         <div className="banner stack" role="alert">
           <span>
-            Your cloud backup has {pieces(status.remotePieces)}, saved {when(status.savedAt)}. This device has none yet.
+            Your account has {pieces(status.remotePieces)}, saved {when(status.savedAt)}. This device has none yet.
           </span>
           <span className="actions">
             <button type="button" className="btn" onClick={() => void restore()}>
-              Restore to this device
+              Bring them to this device
             </button>
           </span>
         </div>
@@ -99,13 +79,13 @@ export function CloudBackup({ onExport }: { onExport: () => void }) {
         <div className="banner stack" role="alert">
           <span>
             {status.phase === "shrink"
-              ? `The cloud backup has ${pieces(status.remotePieces)} and this device has ${pieces(personalCount)}, so nothing was overwritten.`
-              : `The cloud backup (${pieces(status.remotePieces)}) and this device (${pieces(personalCount)}) both changed.`}{" "}
+              ? `Your account has ${pieces(status.remotePieces)} and this device has ${pieces(personalCount)}, so nothing was overwritten.`
+              : `Your account (${pieces(status.remotePieces)}) and this device (${pieces(personalCount)}) both changed.`}{" "}
             Choose which to keep. The other stays in Earlier versions.
           </span>
           <span className="actions">
-            <button type="button" className="btn" onClick={() => setConfirm({ label: "the cloud backup" })}>
-              Use the cloud backup
+            <button type="button" className="btn" onClick={() => setConfirm({ label: "the copy in your account" })}>
+              Use my account’s copy
             </button>
             <button type="button" className="btn alt" onClick={cloud.keepThisDevice}>
               Keep this device’s
@@ -119,7 +99,7 @@ export function CloudBackup({ onExport }: { onExport: () => void }) {
 
       {status.phase === "error" && (
         <div className="banner stack" role="alert">
-          <span>{status.message ?? "The cloud backup couldn’t be saved. It will retry."}</span>
+          <span>{status.message ?? "Your wardrobe couldn’t be saved just now. It will retry."}</span>
           <span className="actions">
             <button type="button" className="btn alt" onClick={cloud.syncNow}>
               Try now
@@ -131,7 +111,7 @@ export function CloudBackup({ onExport }: { onExport: () => void }) {
       {confirm && (
         <div className="banner stack" role="alert">
           <span>
-            Replace your wardrobe on this device with {confirm.label}? What’s on this device now stays in the cloud history only if it was backed up.
+            Replace your wardrobe on this device with {confirm.label}? What’s on this device now stays in Earlier versions only if it was saved.
           </span>
           <span className="actions">
             <button type="button" className="btn" onClick={() => void restore(confirm.at)}>
@@ -147,13 +127,13 @@ export function CloudBackup({ onExport }: { onExport: () => void }) {
       {note && <p className="setting-note">{note}</p>}
 
       <p className="setting-note">
-        Every change, photos included, is copied to a private store only you can open. Photos are kept by their content, so none are ever replaced
-        or deleted. A copy from before each hour’s first change is kept for rolling back.
+        Every change, photos included, is saved to your account a few seconds after you make it; only you can open it. Photos are kept by their
+        content, so none are ever replaced. A copy from before each hour’s first change is kept for rolling back.
       </p>
 
       <div className="actions">
         <button type="button" className="btn quiet" onClick={cloud.syncNow} disabled={status.phase === "saving" || status.phase === "restoring"}>
-          Back up now
+          Save now
         </button>
         <button
           type="button"
@@ -167,10 +147,12 @@ export function CloudBackup({ onExport }: { onExport: () => void }) {
 
       {snapshots && (
         <ul className="snapshots">
-          {snapshots.length === 0 && <li className="setting-note">No earlier versions yet. One is kept from the second hour you make changes.</li>}
+          {snapshots.length === 0 && <li className="setting-note">No earlier versions yet. One is kept the first time you make changes in a new hour.</li>}
           {snapshots.map((s) => (
             <li key={s.at} className="setting-row">
-              <span>As saved {when(s.savedAt)}</span>
+              <span>
+                {pieces(s.pieces)}, as saved {when(s.savedAt)}
+              </span>
               <button type="button" className="text-link" onClick={() => setConfirm({ at: s.at, label: `the version saved ${when(s.savedAt)}` })}>
                 Restore
               </button>

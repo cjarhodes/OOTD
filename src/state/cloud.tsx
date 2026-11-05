@@ -1,21 +1,24 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { isAlreadyStored, PHOTO_BUCKET, photoPath, saveFailure } from "@/lib/account";
 import { parseBackup } from "@/lib/backup";
 import type { PersonalState } from "@/lib/db";
 import { hashBlob } from "@/lib/photo";
 import { decide, fingerprint, retryDelay, type Remote, type SyncedMark } from "@/lib/sync";
-import { useOwner } from "./owner";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "./auth";
 import { useWardrobe } from "./wardrobe";
 
 /**
- * Keeps the personal wardrobe copied to the owner's private cloud backup.
- * Changes are sent a few seconds after they happen, photos first, so the
- * cloud never lists a piece whose photo it doesn't hold. Nothing on the
- * device or in the cloud is replaced without a choice when both have changed.
+ * Keeps the signed-in person's wardrobe saved to their account (Supabase:
+ * the ootd_wardrobes row and the private ootd-photos bucket). Changes are
+ * sent a few seconds after they happen, photos first, so the account never
+ * lists a piece whose photo it doesn't hold. Nothing on the device or in the
+ * account is replaced without a choice when both have changed.
  */
 export type CloudPhase =
-  /** Not set up on this deployment, or not unlocked on this device. */
+  /** Signed out, or accounts aren't set up on this deployment. */
   | "off"
   | "checking"
   | "synced"
@@ -44,6 +47,7 @@ export interface CloudStatus {
 export interface Snapshot {
   at: string;
   savedAt: string;
+  pieces: number;
 }
 
 interface CloudContext {
@@ -57,13 +61,16 @@ interface CloudContext {
   listSnapshots: () => Promise<Snapshot[]>;
 }
 
-const MARK_KEY = "ootd.cloud.v1";
-const PHOTOS_KEY = "ootd.cloud.photos.v1";
 const DEBOUNCE_MS = 6000;
+
+// Per account, so two people on one device never confuse each other's copies.
+let uid = "";
+const markKey = () => `ootd.cloud.v2.${uid}`;
+const photosKey = () => `ootd.cloud.photos.v2.${uid}`;
 
 function readMark(): SyncedMark | null {
   try {
-    const m = JSON.parse(localStorage.getItem(MARK_KEY) ?? "null") as SyncedMark | null;
+    const m = JSON.parse(localStorage.getItem(markKey()) ?? "null") as SyncedMark | null;
     return m && typeof m.etag === "string" && typeof m.fingerprint === "string" ? m : null;
   } catch {
     return null;
@@ -72,7 +79,7 @@ function readMark(): SyncedMark | null {
 
 function writeMark(mark: SyncedMark) {
   try {
-    localStorage.setItem(MARK_KEY, JSON.stringify(mark));
+    localStorage.setItem(markKey(), JSON.stringify(mark));
   } catch {
     // Without storage the next visit re-checks with the server, which is safe.
   }
@@ -80,7 +87,7 @@ function writeMark(mark: SyncedMark) {
 
 function readUploaded(): Set<string> {
   try {
-    const list = JSON.parse(localStorage.getItem(PHOTOS_KEY) ?? "[]") as unknown;
+    const list = JSON.parse(localStorage.getItem(photosKey()) ?? "[]") as unknown;
     return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : []);
   } catch {
     return new Set();
@@ -89,7 +96,7 @@ function readUploaded(): Set<string> {
 
 function writeUploaded(set: Set<string>) {
   try {
-    localStorage.setItem(PHOTOS_KEY, JSON.stringify([...set]));
+    localStorage.setItem(photosKey(), JSON.stringify([...set]));
   } catch {
     // The server skips photos it already has, so re-uploading is harmless.
   }
@@ -106,27 +113,31 @@ type Fetched =
   | { kind: "off" }
   | { kind: "error"; message: string };
 
+/** The account's wardrobe, or one of its history slots when `at` is given. */
 async function fetchRemote(at?: string): Promise<Fetched> {
-  try {
-    const res = await fetch(at ? `/api/cloud/history?at=${encodeURIComponent(at)}` : "/api/cloud/state", { cache: "no-store" });
-    if (res.status === 404 && !at) return { kind: "none" };
-    if (res.status === 401 || res.status === 503) return { kind: "off" };
-    const json = (await res.json()) as { state?: unknown; etag?: string; savedAt?: string; pieces?: number; error?: string };
-    if (!res.ok) return { kind: "error", message: json.error ?? "The cloud backup couldn’t be read." };
-    const pieces = Array.isArray((json.state as { items?: unknown[] })?.items) ? (json.state as { items: unknown[] }).items.length : 0;
-    return { kind: "ok", remote: { etag: json.etag ?? "", savedAt: json.savedAt ?? "", pieces: json.pieces ?? pieces }, state: json.state };
-  } catch {
-    return { kind: "error", message: "Couldn’t reach the cloud backup. It will retry." };
+  const client = supabase();
+  if (!client || !uid) return { kind: "off" };
+  const query = at
+    ? client.from("ootd_wardrobe_history").select("state, pieces, saved_at").eq("slot", Number(at)).maybeSingle()
+    : client.from("ootd_wardrobes").select("state, version, pieces, saved_at").maybeSingle();
+  const { data, error } = await query;
+  if (error) {
+    if (saveFailure(error).kind === "signed-out") return { kind: "off" };
+    return { kind: "error", message: "Couldn’t reach your account. It will retry." };
   }
+  if (!data) return at ? { kind: "error", message: "That earlier version isn’t there any more." } : { kind: "none" };
+  const row = data as { state: unknown; version?: number; pieces: number; saved_at: string };
+  return { kind: "ok", remote: { etag: String(row.version ?? ""), savedAt: row.saved_at, pieces: row.pieces }, state: row.state };
 }
 
 const IDLE: CloudStatus = { phase: "off", savedAt: null, remotePieces: null, photosLeft: 0, message: null };
 const Ctx = createContext<CloudContext | null>(null);
 
 export function CloudProvider({ children }: { children: ReactNode }) {
-  const owner = useOwner();
+  const { user } = useAuth();
   const { personalState, photoBlobs, replacePersonal } = useWardrobe();
-  const available = owner.status.owner && owner.status.cloud.configured;
+  const available = Boolean(user && supabase());
+  uid = user?.id ?? "";
   const [status, setStatus] = useState<CloudStatus>(IDLE);
   const set = useCallback((patch: Partial<CloudStatus>) => setStatus((s) => ({ ...s, ...patch })), []);
 
@@ -158,12 +169,17 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         if (blob && item.photoHash) {
           // Only send bytes that still match the hash the state records.
           if ((await hashBlob(blob)) !== item.photoHash) return "A photo changed while it was saving. It will retry.";
-          const res = await fetch(`/api/cloud/photo/${item.photoHash}`, {
-            method: "PUT",
-            headers: { "Content-Type": blob.type || "image/png" },
-            body: blob,
-          }).catch(() => null);
-          if (!res || !res.ok) return "A photo couldn’t be uploaded. It will retry.";
+          const client = supabase();
+          if (!client || !uid) return "Sign in to save your wardrobe.";
+          const { error } = await client.storage
+            .from(PHOTO_BUCKET)
+            .upload(photoPath(uid, item.photoHash), await blob.arrayBuffer(), { contentType: blob.type || "image/png", upsert: false })
+            .catch(() => ({ error: { message: "network" } }));
+          if (error && !isAlreadyStored(error as { message?: string; statusCode?: string })) {
+            return /row-level security|policy/i.test(error.message)
+              ? "Your account has reached its photo limit (600). Archive or remove pieces to add more."
+              : "A photo couldn’t be uploaded. It will retry.";
+          }
           uploaded.add(item.photoHash);
           writeUploaded(uploaded);
         }
@@ -186,32 +202,36 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         const photoError = await uploadPhotos(copy);
         if (photoError) throw new Error(photoError);
         const ifMatch = opts.ifMatch ?? readMark()?.etag ?? remoteRef.current?.etag;
-        const res = await fetch("/api/cloud/state", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ state: copy, ifMatch, force: opts.force === true }),
-        });
-        const json = (await res.json().catch(() => ({}))) as { etag?: string; savedAt?: string; error?: string; reason?: string; remotePieces?: number };
-        if (res.ok && json.etag && json.savedAt) {
-          writeMark({ etag: json.etag, savedAt: json.savedAt, fingerprint: fingerprint(copy) });
-          remoteRef.current = { etag: json.etag, savedAt: json.savedAt, pieces: copy.items.length };
-          attempts.current = 0;
-          set({ phase: "synced", savedAt: json.savedAt, remotePieces: copy.items.length, message: null });
-          return;
-        }
-        if (res.status === 412) {
-          set({ phase: "conflict", remotePieces: json.remotePieces ?? null, message: json.error ?? null });
-          return;
-        }
-        if (res.status === 409) {
-          set({ phase: "shrink", remotePieces: json.remotePieces ?? null, message: json.error ?? null });
-          return;
-        }
-        if (res.status === 401 || res.status === 503) {
+        const client = supabase();
+        if (!client) {
           set({ phase: "off", message: null });
           return;
         }
-        throw new Error(json.error ?? "The cloud backup couldn’t be saved. It will retry.");
+        const expected = ifMatch && /^\d+$/.test(ifMatch) ? Number(ifMatch) : null;
+        const { data, error } = await client.rpc("ootd_save_wardrobe", { p_state: copy, p_expected_version: expected, p_force: opts.force === true });
+        if (!error && data) {
+          const saved = data as { version: number; saved_at: string; pieces: number };
+          const etag = String(saved.version);
+          writeMark({ etag, savedAt: saved.saved_at, fingerprint: fingerprint(copy) });
+          remoteRef.current = { etag, savedAt: saved.saved_at, pieces: saved.pieces };
+          attempts.current = 0;
+          set({ phase: "synced", savedAt: saved.saved_at, remotePieces: saved.pieces, message: null });
+          return;
+        }
+        const failure = saveFailure(error);
+        if (failure.kind === "conflict" || failure.kind === "shrink") {
+          set({ phase: failure.kind, remotePieces: failure.remotePieces, message: error?.message ?? null });
+          return;
+        }
+        if (failure.kind === "signed-out") {
+          set({ phase: "off", message: null });
+          return;
+        }
+        if (failure.kind === "rejected") {
+          set({ phase: "error", message: failure.message });
+          return;
+        }
+        throw new Error(failure.message);
       } catch (e) {
         attempts.current += 1;
         set({ phase: "error", message: e instanceof Error ? e.message : "The cloud backup couldn’t be saved. It will retry." });
@@ -231,7 +251,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
       try {
         const fetched = await fetchRemote(at);
         if (fetched.kind !== "ok") {
-          const message = fetched.kind === "error" ? fetched.message : "There’s no cloud backup to restore.";
+          const message = fetched.kind === "error" ? fetched.message : "There’s no saved wardrobe in your account yet.";
           set({ phase: "error", message });
           return message;
         }
@@ -251,8 +271,10 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         await Promise.all(
           Array.from({ length: 4 }, async () => {
             for (let item = queue.shift(); item; item = queue.shift()) {
-              const res = await fetch(`/api/cloud/photo/${item.photoHash}`).catch(() => null);
-              const blob = res && res.ok ? await res.blob() : null;
+              const client = supabase();
+              const { data: blob } = client && uid
+                ? await client.storage.from(PHOTO_BUCKET).download(photoPath(uid, item.photoHash!)).catch(() => ({ data: null }))
+                : { data: null };
               if (blob && (await hashBlob(blob)) === item.photoHash) photos.set(item.id, blob);
               else failed += 1;
               left -= 1;
@@ -313,7 +335,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     set({ phase: "synced" });
   }, [push, restore, schedule, set]);
 
-  // Start (or stop) when the owner unlocks and the wardrobe has loaded.
+  // Start (or stop) when someone signs in and their wardrobe has loaded.
   const loaded = personalState !== null;
   useEffect(() => {
     if (!available || !loaded) {
@@ -360,14 +382,10 @@ export function CloudProvider({ children }: { children: ReactNode }) {
       restore,
       keepThisDevice: () => void push({ force: true }),
       listSnapshots: async () => {
-        try {
-          const res = await fetch("/api/cloud/history", { cache: "no-store" });
-          if (!res.ok) return [];
-          const json = (await res.json()) as { snapshots?: Snapshot[] };
-          return json.snapshots ?? [];
-        } catch {
-          return [];
-        }
+        const client = supabase();
+        if (!client || !uid) return [];
+        const { data } = await client.from("ootd_wardrobe_history").select("slot, saved_at, pieces").order("saved_at", { ascending: false });
+        return ((data ?? []) as { slot: number; saved_at: string; pieces: number }[]).map((r) => ({ at: String(r.slot), savedAt: r.saved_at, pieces: r.pieces }));
       },
     }),
     [status, available, push, check, restore],

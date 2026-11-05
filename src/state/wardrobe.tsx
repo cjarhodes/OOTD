@@ -4,17 +4,31 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { buildArchive, readArchive, type Photo } from "@/lib/archive";
 import { cleanTrip } from "@/lib/backup";
 import { isDateKey, todayKey } from "@/lib/dates";
-import { deleteImage, emptyPersonal, getImages, loadPersonal, putImage, replaceAll, requestPersistence, savePersonal, type PersonalState } from "@/lib/db";
+import {
+  accountDbName,
+  deleteImage,
+  emptyPersonal,
+  getImages,
+  loadPersonal,
+  putImage,
+  readLegacy,
+  replaceAll,
+  requestPersistence,
+  savePersonal,
+  selectDatabase,
+  type PersonalState,
+} from "@/lib/db";
 import type { City } from "@/lib/forecast";
 import { hashBlob } from "@/lib/photo";
 import { SAMPLE_ITEMS, sampleWears } from "@/lib/sample";
+import { useAuth } from "./auth";
 import type { Comfort, FeedbackValue, Item, Occasion, Plan, Tier, Trip, TripDay, Wear } from "@/lib/types";
 
 /**
  * Two wardrobes. The sample wardrobe is fixed illustrations plus whatever you
- * do with it (kept in localStorage). Your wardrobe is photos and history kept
- * in IndexedDB on this device, copied to the owner's private cloud backup
- * (src/state/cloud.tsx) and exportable as a plain ZIP.
+ * do with it (kept in localStorage). Your wardrobe belongs to your account:
+ * src/state/cloud.tsx keeps it saved there, IndexedDB holds this device's
+ * copy (one database per account), and it exports as a plain ZIP.
  */
 export type Mode = "sample" | "personal";
 
@@ -34,6 +48,15 @@ interface Prefs {
 
 const SAMPLE_KEY = "ootd.sample.v1";
 const EXPORT_KEY = "ootd.exported.v1";
+const LEGACY_KEY = "ootd.legacy-moved.v1";
+
+function legacyMoved(): boolean {
+  return readJson<string>(LEGACY_KEY) !== null;
+}
+
+function markLegacyMoved(userId: string) {
+  writeJson(LEGACY_KEY, userId);
+}
 const PREFS_KEY = "ootd.prefs.v1";
 const EMPTY_SAMPLE: SampleSaved = { version: 1, wears: [], plans: {}, feedback: {}, comfort: "neutral", trips: [] };
 
@@ -143,11 +166,40 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
     setToday(todayKey());
     setSample(loadSample());
     setPrefs(loadPrefs());
+  }, []);
+
+  // Load the signed-in account's wardrobe from this device, and reload when
+  // someone else signs in. Signed out, there is no personal wardrobe.
+  const { ready: authReady, user } = useAuth();
+  const userId = user?.id ?? null;
+  useEffect(() => {
+    if (!authReady) return;
+    personalLoaded.current = false;
+    setPersonalReady(false);
+    setPersonal(emptyPersonal());
+    setImageUrls(new Map());
+    setStorageError(null);
+    if (!userId) {
+      setReady(true);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
-        const state = await loadPersonal();
-        const blobs = await getImages(state.items.map((i) => i.id));
+        selectDatabase(accountDbName(userId));
+        let state = await loadPersonal();
+        let blobs = await getImages(state.items.map((i) => i.id));
+        // The first account to sign in on a device takes the wardrobe that was
+        // kept here before accounts existed (it is then backed up to the account).
+        if (state.items.length === 0 && !legacyMoved()) {
+          const legacy = await readLegacy();
+          if (legacy && !cancelled) {
+            await replaceAll(legacy.state, legacy.images);
+            markLegacyMoved(userId);
+            state = legacy.state;
+            blobs = legacy.images;
+          }
+        }
         if (cancelled) return;
         setPersonal(state);
         setImageUrls(new Map([...blobs].map(([id, b]) => [id, URL.createObjectURL(b)])));
@@ -174,7 +226,7 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authReady, userId]);
 
   // Revoke object URLs that are no longer used.
   const urlsRef = useRef(imageUrls);
@@ -325,6 +377,7 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         return new Blob([zip as Uint8Array<ArrayBuffer>], { type: "application/zip" });
       },
       importBackup: async (file) => {
+        if (!personalLoaded.current) return { ok: false, error: "Sign in first, so the restored wardrobe is saved to your account." };
         const read = readArchive(new Uint8Array(await file.arrayBuffer()));
         if (!read.ok) return read;
         const blobs = new Map<string, Blob>();

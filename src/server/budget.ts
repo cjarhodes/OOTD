@@ -102,3 +102,14 @@ export async function countInWindow(cfg: BudgetConfig, key: string, windowSecond
   if (n === 1) await redis(cfg, ["EXPIRE", key, windowSeconds], fetcher);
   return n;
 }
+
+/** Read a counter without changing it (0 when unset). */
+export async function readCount(cfg: BudgetConfig, key: string, fetcher?: Fetch): Promise<number> {
+  const n = Number((await redis(cfg, ["GET", key], fetcher)) ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Take one back after a call that failed before it cost anything. */
+export async function uncount(cfg: BudgetConfig, key: string, fetcher?: Fetch): Promise<void> {
+  await redis(cfg, ["DECR", key], fetcher);
+}

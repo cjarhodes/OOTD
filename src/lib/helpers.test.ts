@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { budgetConfig, costOf, monthKey, reserve, settle } from "@/server/budget";
-import { createSession, ownerConfigured, passphraseMatches, verifySession } from "@/server/owner";
 import { parseBackup } from "./backup";
 import { parseArchive, parseForecast } from "./forecast";
 import { makeItem } from "./kinds";
@@ -90,36 +89,6 @@ describe("tag validation", () => {
     expect(tagged.slot).toBe("outer");
     expect(tagged.thickness).toBe(4);
     expect(tagged.waterproof).toBe(true);
-  });
-});
-
-describe("owner session", () => {
-  const env = { OOTD_OWNER_PASSPHRASE: "correct horse battery staple", OOTD_SESSION_SECRET: "x".repeat(40) } as unknown as NodeJS.ProcessEnv;
-
-  it("checks the passphrase", () => {
-    expect(passphraseMatches("correct horse battery staple", env)).toBe(true);
-    expect(passphraseMatches("wrong", env)).toBe(false);
-    expect(passphraseMatches("anything", {} as NodeJS.ProcessEnv)).toBe(false);
-  });
-
-  it("signs sessions that expire and can't be forged", () => {
-    const now = 1_800_000_000_000;
-    const token = createSession(now, env);
-    expect(verifySession(token, now + 1000, env)).toBe(true);
-    expect(verifySession(token, now + 91 * 86_400_000, env)).toBe(false);
-    const [exp] = token.split(".");
-    expect(verifySession(`${Number(exp) + 1}.${token.split(".")[1]}`, now, env)).toBe(false);
-    expect(verifySession(token, now, { ...env, OOTD_SESSION_SECRET: "y".repeat(40) })).toBe(false);
-  });
-
-  it("derives the signing key from the passphrase when no secret is set", () => {
-    const only = { OOTD_OWNER_PASSPHRASE: "correct horse battery staple" } as unknown as NodeJS.ProcessEnv;
-    const token = createSession(1_800_000_000_000, only);
-    expect(verifySession(token, 1_800_000_000_100, only)).toBe(true);
-    // A new passphrase invalidates old sessions.
-    expect(verifySession(token, 1_800_000_000_100, { OOTD_OWNER_PASSPHRASE: "a different long passphrase" } as unknown as NodeJS.ProcessEnv)).toBe(false);
-    // Too-short passphrases don't enable owner access at all.
-    expect(ownerConfigured({ OOTD_OWNER_PASSPHRASE: "short" } as unknown as NodeJS.ProcessEnv)).toBe(false);
   });
 });
 

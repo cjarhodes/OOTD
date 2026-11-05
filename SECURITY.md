@@ -2,6 +2,4 @@
 
 Please report vulnerabilities privately through GitHub's **Report a vulnerability** button on this repository's Security tab, not in a public issue.
 
-Particularly welcome: anything that lets someone other than a deployment's owner read or write its cloud backup (`/api/cloud/*`), unlock owner access, or spend its AI budget (`/api/tag`).
-
-The public demo stores nothing on the server, so a visitor's wardrobe never leaves their browser.
+Particularly welcome: anything that lets one account read or change another's wardrobe or photos (the `ootd_` tables, the `ootd_save_wardrobe` function and the `ootd-photos` bucket in `supabase/migrations`), or use AI tagging beyond its allowance (`/api/tag`).

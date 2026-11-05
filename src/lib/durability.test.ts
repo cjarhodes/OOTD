@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildArchive, csvField, readArchive, sniffImageType, type Photo } from "./archive";
 import { emptyPersonal, type PersonalState } from "./db";
 import { makeItem } from "./kinds";
+import { allowanceFor, isAlreadyStored, photoPath, saveFailure, signInError, userTagKey, validEmail } from "./account";
 import { canonicalJson, decide, fingerprint, retryDelay } from "./sync";
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
@@ -153,63 +154,123 @@ describe("cloud sync rules", () => {
   });
 });
 
-// The state route with storage and the owner cookie stubbed at the boundary.
-const store = vi.hoisted(() => ({ current: null as { value: { savedAt: string; state: unknown }; etag: string } | null, writes: 0 }));
-vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => ({ value: "session" }) }) }));
-vi.mock("@/server/owner", () => ({ OWNER_COOKIE: "ootd_owner", ownerConfigured: () => true, verifySession: () => true }));
-vi.mock("@/server/cloud", async () => {
-  const actual = await vi.importActual<typeof import("@/server/cloud")>("@/server/cloud");
+// The tagging route with sign-in and the spend store stubbed at the boundary.
+const ai = vi.hoisted(() => ({ caller: null as { id: string; email: string | null } | null, count: 0, uncounted: 0, reserved: 0 }));
+vi.mock("@/server/auth", () => ({ callerFrom: async () => ai.caller }));
+vi.mock("@/server/budget", async () => {
+  const actual = await vi.importActual<typeof import("@/server/budget")>("@/server/budget");
   return {
     ...actual,
-    cloudConfigured: () => true,
-    readState: async () => store.current,
-    writeState: async (state: unknown, ifMatch: string | undefined) => {
-      if (store.current && ifMatch !== store.current.etag) throw new actual.EtagMismatch();
-      store.writes += 1;
-      const savedAt = new Date().toISOString();
-      store.current = { value: { savedAt, state }, etag: `e${store.writes}` };
-      return { etag: store.current.etag, savedAt };
+    budgetConfig: () => ({ url: "https://kv.test", token: "t", capUsd: 3, inputUsdPerMTok: 5, outputUsdPerMTok: 25 }),
+    countInWindow: async () => ++ai.count,
+    uncount: async () => {
+      ai.uncounted += 1;
+      ai.count -= 1;
     },
+    readCount: async () => ai.count,
+    spentThisMonth: async () => 0,
+    // Refusing the reservation stops the route before it would call Claude.
+    reserve: async () => {
+      ai.reserved += 1;
+      return null;
+    },
+    settle: async () => undefined,
   };
 });
 
-describe("cloud state route", () => {
-  const pieces = (n: number) => ({ ...emptyPersonal(), items: Array.from({ length: n }, (_, i) => makeItem({ id: `i-${i}`, name: `Tee ${i}`, kind: "tee", color: "White" })) });
-  const put = async (body: unknown) => {
-    const { PUT } = await import("@/app/api/cloud/state/route");
-    const res = await PUT(new Request("http://x/api/cloud/state", { method: "PUT", body: JSON.stringify(body) }));
+describe("AI tagging allowance", () => {
+  const PIXEL = "data:image/png;base64,iVBORw0KGgo=";
+  const post = async () => {
+    const { POST } = await import("@/app/api/tag/route");
+    const res = await POST(new Request("http://x/api/tag", { method: "POST", body: JSON.stringify({ image: PIXEL }) }));
     return { status: res.status, json: (await res.json()) as Record<string, unknown> };
   };
 
   beforeEach(() => {
-    store.current = null;
-    store.writes = 0;
+    ai.caller = { id: "11111111-1111-1111-1111-111111111111", email: "someone@example.com" };
+    ai.count = 0;
+    ai.uncounted = 0;
+    ai.reserved = 0;
+    process.env.ANTHROPIC_API_KEY = "test";
+    process.env.OOTD_AI_TAGS_PER_MONTH = "2";
+    process.env.OOTD_OWNER_EMAILS = "owner@example.com";
   });
-  afterEach(() => vi.clearAllMocks());
-
-  it("saves the first backup and then only changes that name the version they replace", async () => {
-    const first = await put({ state: pieces(10) });
-    expect(first.status).toBe(200);
-    expect((await put({ state: pieces(11) })).status).toBe(412);
-    expect((await put({ state: pieces(11), ifMatch: "wrong" })).status).toBe(412);
-    const next = await put({ state: pieces(11), ifMatch: first.json.etag });
-    expect(next.status).toBe(200);
-    expect(store.writes).toBe(2);
-  });
-
-  it("refuses to replace a backup with an empty or much smaller one unless forced", async () => {
-    const first = await put({ state: pieces(10) });
-    const empty = await put({ state: pieces(0), ifMatch: first.json.etag });
-    expect(empty.status).toBe(409);
-    expect(empty.json.remotePieces).toBe(10);
-    expect((await put({ state: pieces(4), ifMatch: first.json.etag })).status).toBe(409);
-    // Losing a few pieces is ordinary editing.
-    expect((await put({ state: pieces(6), ifMatch: first.json.etag })).status).toBe(200);
-    expect((await put({ state: pieces(0), force: true })).status).toBe(200);
+  afterEach(() => {
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OOTD_AI_TAGS_PER_MONTH;
+    delete process.env.OOTD_OWNER_EMAILS;
   });
 
-  it("rejects state that isn't a valid wardrobe", async () => {
-    expect((await put({ state: { items: [{ id: 1 }] } })).status).toBe(400);
-    expect(store.writes).toBe(0);
+  it("needs a signed-in caller", async () => {
+    ai.caller = null;
+    expect((await post()).status).toBe(401);
+  });
+
+  it("stops at the monthly allowance and doesn't charge refused or failed calls", async () => {
+    // Under the allowance, the call goes on to the overall cap (refused here), and is given back.
+    expect((await post()).status).toBe(402);
+    expect(ai.reserved).toBe(1);
+    expect(ai.count).toBe(0);
+    ai.count = 2;
+    const over = await post();
+    expect(over.status).toBe(402);
+    expect(String(over.json.error)).toMatch(/2 AI tags/);
+    expect(ai.reserved).toBe(1);
+    expect(ai.count).toBe(2);
+  });
+
+  it("gives owners no per-person limit", async () => {
+    ai.caller = { id: "22222222-2222-2222-2222-222222222222", email: "Owner@Example.com" };
+    ai.count = 50;
+    await post();
+    expect(ai.reserved).toBe(1);
+    expect(ai.count).toBe(50);
+  });
+
+  it("reports what's left to the signed-in caller", async () => {
+    const { GET } = await import("@/app/api/tag/route");
+    ai.count = 1;
+    const res = await GET(new Request("http://x/api/tag"));
+    expect(await res.json()).toEqual({ configured: true, limit: 2, used: 1 });
+  });
+});
+
+describe("account helpers", () => {
+  it("names photos by account and content, and rejects anything else", () => {
+    const uid = "11111111-1111-1111-1111-111111111111";
+    expect(photoPath(uid, HASH)).toBe(`${uid}/${HASH}`);
+    expect(() => photoPath("../x", HASH)).toThrow();
+    expect(() => photoPath(uid, "abc")).toThrow();
+    expect(isAlreadyStored({ statusCode: "409", message: "Duplicate" })).toBe(true);
+    expect(isAlreadyStored({ message: "The resource already exists" })).toBe(true);
+    expect(isAlreadyStored({ statusCode: "403", message: "new row violates row-level security policy" })).toBe(false);
+    expect(isAlreadyStored(null)).toBe(false);
+  });
+
+  it("reads save errors from the database function", () => {
+    expect(saveFailure({ code: "OD409", details: "12" })).toEqual({ kind: "conflict", remotePieces: 12 });
+    expect(saveFailure({ code: "OD410", details: "40" })).toEqual({ kind: "shrink", remotePieces: 40 });
+    expect(saveFailure({ code: "28000" }).kind).toBe("signed-out");
+    expect(saveFailure({ code: "PGRST303" }).kind).toBe("signed-out");
+    expect(saveFailure({ code: "OD413", message: "too big" })).toEqual({ kind: "rejected", message: "too big" });
+    expect(saveFailure({ code: "XX000" }).kind).toBe("retry");
+    expect(saveFailure(null).kind).toBe("retry");
+  });
+
+  it("sets the AI allowance from the environment", () => {
+    expect(allowanceFor("a@b.co", {})).toBe(20);
+    expect(allowanceFor("a@b.co", { OOTD_AI_TAGS_PER_MONTH: "5" })).toBe(5);
+    expect(allowanceFor("a@b.co", { OOTD_AI_TAGS_PER_MONTH: "-1" })).toBe(20);
+    expect(allowanceFor("Me@X.com", { OOTD_OWNER_EMAILS: "other@x.com, me@x.com" })).toBeNull();
+    expect(allowanceFor(null, { OOTD_OWNER_EMAILS: "me@x.com" })).toBe(20);
+    expect(userTagKey("u1", new Date("2026-11-05T10:00:00Z"))).toBe("ootd:ai:tags:u1:2026-11");
+  });
+
+  it("explains sign-in problems plainly", () => {
+    expect(validEmail("alex@example.com")).toBe(true);
+    expect(validEmail("alex@example")).toBe(false);
+    expect(signInError("email rate limit exceeded")).toMatch(/Too many/);
+    expect(signInError("Signups not allowed for otp")).toMatch(/aren’t open/);
+    expect(signInError(undefined)).toMatch(/couldn’t be sent/);
   });
 });

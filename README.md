@@ -2,14 +2,19 @@
 
 **Outfit of the day, from the wardrobe you already own.** OOTD plans a layered outfit for the weather from photos of your own clothes. It is built for iPhone first, open source, and made by [Alex Rhodes](https://www.cjarhodes.com).
 
-**Try it:** [ootd.cjarhodes.com](https://ootd.cjarhodes.com). There's no account to make. Start with the sample wardrobe, or switch to **My wardrobe** in Settings and add your own photos. Whatever you add stays in your browser.
+**Try it:** [ootd.cjarhodes.com](https://ootd.cjarhodes.com). The sample wardrobe needs no account. To keep your own, sign in with your email (we send a link, no password) and add photos of your clothes.
 
-[![Deploy your own with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FClothing&project-name=ootd&repository-name=ootd&env=OOTD_OWNER_PASSPHRASE&envDescription=A%20long%20passphrase%20%2812%2B%20characters%29%20that%20unlocks%20cloud%20backup%20on%20your%20devices&envLink=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FClothing%23run-your-own-copy&stores=%5B%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22private%22%7D%5D)
+[![Deploy your own with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FClothing&project-name=ootd&repository-name=ootd&env=NEXT_PUBLIC_SUPABASE_URL%2CNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY&envDescription=Your%20Supabase%20project%20URL%20and%20publishable%20key%2C%20after%20applying%20supabase%2Fmigrations&envLink=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FClothing%23run-your-own-copy)
 
 ## How it handles your data
 
-- **No accounts.** There are no sign-ups, no tracking, and no analytics.
-- **Your wardrobe lives on your device.** Photos, pieces, plans and wear history are kept in your browser (IndexedDB). On ootd.cjarhodes.com, nothing you add ever reaches the server.
+- **Your wardrobe belongs to your account.** Pieces, photos, plans, trips and wear history are saved to your account a few seconds after each change, and are on every device you sign in on. Row-level security means only you can read or change them.
+- **It works offline.** Each device keeps a copy (IndexedDB, one per account), so the app is fast and keeps working without a connection; changes are saved when it's back.
+- **Nothing is lost by accident.**
+  - Photos are stored under their own SHA-256 and are never overwritten.
+  - If two devices both change your wardrobe, OOTD asks which copy to keep.
+  - A nearly empty device can't overwrite a full wardrobe without your say-so.
+  - A copy from before each hour's first change is kept (the last 30), under **Earlier versions**.
 - **Export any time.** Settings → Export downloads a ZIP that is useful without OOTD:
   - `wardrobe.csv`: one row per piece; opens in Numbers, Excel or Sheets
   - `wears.csv`: your wear log
@@ -18,7 +23,8 @@
   - a README that describes every field
 
   OOTD restores from that ZIP on any device.
-- **Cloud backup and AI tagging belong to whoever runs a copy.** On your own deployment, you unlock them with a passphrase only you know. There is one owner per deployment, which is why the hosted demo doesn't offer them to visitors. [Run your own copy](#run-your-own-copy) to get both.
+- **No tracking or ads.** There's no analytics. Your email is used only to sign you in.
+- **AI tagging is optional.** It sends one small copy of a photo to Claude only when you tap **Tag with AI**, with a monthly allowance per person.
 - **Weather** comes from [Open-Meteo](https://open-meteo.com), which is sent only the coordinates of the city you choose. Your location is never requested.
 
 ## What it does
@@ -44,23 +50,21 @@
 
 ## Run your own copy
 
-The deploy button above clones this repository into your GitHub account and creates a Vercel project. It also creates a private Blob store for the cloud backup and asks for one value:
+You need a [Supabase](https://supabase.com) project (the free plan is enough) and a Vercel account.
 
-- `OOTD_OWNER_PASSPHRASE`: at least 12 characters. Use something long and random, such as four or more unrelated words; the unlock is only rate limited when Redis is configured (see AI tagging below). You type it once in Settings on each device. Changing it signs every device out, and the backup is untouched.
+1. In Supabase, run [`supabase/migrations/20261105222014_ootd_accounts.sql`](supabase/migrations/20261105222014_ootd_accounts.sql) in the SQL editor, or link the project and run `supabase db push`. It creates the wardrobe and history tables, the save function and a private `ootd-photos` bucket. Everything is prefixed `ootd_`, so it can share a project with other apps.
+2. Under **Authentication → URL Configuration**, set the Site URL to your domain and add `https://<your domain>/**` to the Redirect URLs.
+3. Under **Authentication → Emails → SMTP**, add your own email sender (Resend, Postmark and others work). Supabase's built-in sender is only for testing: it sends a handful of emails an hour.
+4. Click the deploy button above and paste in the project URL and publishable key (**Project Settings → API**).
 
-Once it's deployed, open Settings, unlock, and the **Cloud backup** section should read "Backed up".
-
-- **What you get:** every change, photos included, is copied to your private store a few seconds after you make it, and a new phone offers to restore.
-- **Two devices:** if both changed, OOTD asks which copy to keep.
-- **Refused overwrites:** a nearly empty device can't overwrite a full backup.
-- **Photos:** each is stored under its own SHA-256, so photos are never replaced or deleted.
-- **Rollback:** a copy from before each hour's first change is kept (the last 30), under **Earlier versions**.
+Once it's deployed, open Settings and sign in. The **Account** section should read "Saved to your account" after your first change.
 
 **AI tagging (optional).** This fills in a piece's details from its photo with Claude, against a monthly spending cap. Add these to the Production environment:
 
 - `ANTHROPIC_API_KEY`: from a dedicated Anthropic Console workspace with its own spend limit, as a hard backstop.
-- Upstash Redis from Vercel → Storage (Marketplace). It sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`, which the spend tracker and the unlock rate limit use.
-- `OOTD_AI_MONTHLY_CAP_USD`: the monthly cap, $3 by default.
+- Upstash Redis from Vercel → Storage (Marketplace). It sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`, which the spend tracker and the per-person allowance use.
+- `OOTD_AI_MONTHLY_CAP_USD`: the overall monthly cap across everyone, $3 by default.
+- `OOTD_AI_TAGS_PER_MONTH`: tags each person may use per month, 20 by default. Emails in `OOTD_OWNER_EMAILS` have no per-person limit.
 
 The model defaults to `claude-opus-5-5`; `OOTD_AI_MODEL=claude-haiku-5-5` is the cheapest. Tagging fails closed: without the key or the tracker, the button simply isn't offered. Every variable is described in [`.env.example`](.env.example).
 
@@ -74,19 +78,22 @@ npm run dev        # http://localhost:3000
 npm run check      # typecheck, then tests and a production build
 ```
 
-`.npmrc` sets `legacy-peer-deps` to work around an npm resolver bug with Vitest's optional browser peer dependencies. Without a Blob store or passphrase, the app runs as the public demo does.
+`.npmrc` sets `legacy-peer-deps` to work around an npm resolver bug with Vitest's optional browser peer dependencies. Without the Supabase values in `.env.local`, the app runs with the sample wardrobe only.
 
 ```
-src/app/              routes: / (Today), /wardrobe, /week, /trips, /add, /settings, /api/owner, /api/tag, /api/cloud/*
-src/components/       app shell, flat-lay composer, museum label, garment illustrations, cloud backup panel
+src/app/              routes: / (Today), /wardrobe, /week, /trips, /add, /settings, /api/tag
+src/components/       app shell, flat-lay composer, museum label, garment illustrations, sign-in and account panels
 src/lib/engine/       layering rules, weather budget, scoring, naming, generation, capsule packing (+ tests)
-src/lib/              types, palette, garment defaults, sample wardrobe, dates, export ZIP (archive.ts), sync rules (sync.ts)
-src/state/            wardrobe state (sample: localStorage, personal: IndexedDB), cloud sync, forecast, owner session
-src/server/           owner session signing, the AI spending cap and the private Blob backup (server only)
+src/lib/              types, palette, garment defaults, sample wardrobe, dates, export ZIP (archive.ts), sync rules (sync.ts), account helpers
+src/state/            sign-in, wardrobe state (sample: localStorage, yours: IndexedDB per account), saving to the account, forecast, AI
+src/server/           checking the caller's sign-in, and the AI spending cap (server only)
+supabase/migrations/  the database schema: tables, the save function, the photo bucket and its policies
 docs/ROADMAP.md       research, decisions and progress
 ```
 
 Issues and pull requests are welcome. Please run `npm run check` first. For security reports, see [SECURITY.md](SECURITY.md).
+
+Accounts on ootd.cjarhodes.com live in a Supabase project shared with the [chess app](https://chess.cjarhodes.com); OOTD's tables and bucket are prefixed `ootd_` and its migration is mirrored in that project's repository so both stay in step.
 
 ## Licence
 
