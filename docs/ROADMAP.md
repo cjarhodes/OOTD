@@ -209,10 +209,18 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | Background removal | Apple's on-device subject lifting only (Shortcut batch + Lift Subject) |
 | AI | Yes, behind a monthly spending cap and owner-only access |
 | Hosting | Vercel |
-| Brand | Independent of the portfolio |
+| Brand | Gallery, independent of the portfolio |
 | Name | OOTD (working), planned at `ootd.cjarhodes.com` |
 | Codebase | Rebuild fresh: Next.js + TypeScript on Vercel, local-first storage, installable to the Home Screen. Useful v1 rules and tests get ported. |
 
-## Still open
+## Progress
 
-1. **Brand direction**: Gallery (recommended), Selvedge or Chalk & Cloth. Each one is mocked up as Today, Wardrobe and Week screens on the brand board artifact.
+| Milestone | Status |
+| --- | --- |
+| Gallery brand system, light and dark | Done |
+| Layering engine: slots, hard rules, warmth budget, strip test, recipes, naming, notes | Done, with 28 unit tests |
+| Today, Wardrobe and Week screens on the sample wardrobe | Done |
+| Personal wardrobe: IndexedDB photo storage, Shortcut batch import, review stack | Next |
+| Live hourly weather (Open-Meteo) and city setting | Next |
+| AI tagging function on Vercel with a spending cap | After the personal wardrobe |
+| Vercel deploy at `ootd.cjarhodes.com`, portfolio Builds entry and case study | After the personal wardrobe |

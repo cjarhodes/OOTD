@@ -1,19 +1,30 @@
 {
-  "name": "form-wardrobe",
-  "version": "0.1.0",
+  "name": "ootd",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.js",
-    "check": "node --check dist/app.js && node --check dist/core.js && node --check dist/weather.js && node --check dist/storage.js && node --check dist/sw.js",
-    "build": "npm run check && npm test"
+    "dev": "next dev",
+    "build": "vitest run && next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run build"
   },
   "engines": {
     "node": ">=22"
   },
+  "dependencies": {
+    "next": "16.4.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
   "devDependencies": {
-    "fake-indexeddb": "^6.2.7",
-    "jsdom": "^30.1.3",
-    "prettier": "^3.9.10"
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "6.0.3",
+    "vite": "^8.3.4",
+    "vitest": "5.0.5"
   }
 }

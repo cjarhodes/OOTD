@@ -1,54 +1,48 @@
-# FORM
+# OOTD
 
-**A considered wardrobe.** An iPhone-first personal wardrobe and outfit planner, built for Alex Rhodes and designed to be featured on [cjarhodes.com](https://cjarhodes.com).
+**Outfit of the day, from the wardrobe you already own.** A personal wardrobe and outfit planner built by [Alex Rhodes](https://cjarhodes.com). It is designed for iPhone first and layers outfits for the weather.
 
-FORM helps you wear more of what you own, find more adventurous combinations, and get dressed with less guesswork. The visual direction is editorial: ivory, charcoal, muted olive, original garment illustrations, and generous space.
+Status: v2 rebuild in progress. This first milestone covers the Gallery brand, the layering engine, and the Today, Wardrobe and Week screens, all on the sample wardrobe. See [the roadmap](docs/ROADMAP.md) for what comes next.
 
-## What works today
+## What works
 
-- Separate sample and personal wardrobes, stored locally in IndexedDB.
-- Batch photo imports (30 at a time), quick review of the essentials, automatic filename suggestions, and optional fit, warmth, formality, style character, and rain-suitability details.
-- Three outfit directions: comfort zone, fresh combination, adventurous.
-- Occasion-aware combinations using only available wardrobe pieces; pin an item or swap a piece.
-- City search and a 16-day weather forecast from Open-Meteo. Sample weather is explicitly labeled; missing forecasts remain provisional.
-- Date selection, a weekly planner, saved future outfits, and explicit replacement of existing plans.
-- Confirmed wear journal, outfit favorites, negative feedback, overlooked-piece discovery, and progress based on actual wears.
-- Laundry and archive states; JSON backup and restore with validation.
-- Home Screen manifest, app icons, mobile bottom navigation, and offline app-shell caching.
+- **Layering engine** (`src/lib/engine`). It builds base → mid → outer stacks with hard rules:
+  - Layers get thicker towards the outside.
+  - Layer lengths stay in a sensible order.
+  - Necklines must be compatible (collar out over a crew, hoods only under open layers).
+  - Only one busy pattern per outfit.
+  - A warmth budget across the day, plus a strip test: if a layer comes off at midday, what remains must still suit the warmest part of the day.
+- **Three looks a day:** Easy (familiar), Fresh (new combinations) and Bold (more adventurous). Each comes with a name ("Collar out, client day") and plain-language notes on why it works and when to take a layer off.
+- **Swap a piece**, pin a piece from the wardrobe, favourite or skip a look, save a plan for a future day, and log what you wore.
+- **Week view.** Suggestions vary from day to day, and saved plans are kept.
+- **Gallery brand:** Bodoni Moda, Hanken Grotesk and Azeret Mono on a white wall and stone plinth, with one cobalt accent. Each look gets a museum-style label. Light and dark themes.
+- **Installable** to the Home Screen (web app manifest).
 
-## Run and verify
+The sample wardrobe uses original illustrations and a **sample forecast**, and the UI labels both as samples. Actions in sample mode are saved in this browser only.
 
-Requires Node.js 22 or newer. No production dependencies or compilation step.
+## Run it
+
+Requires Node.js 22 or newer.
 
 ```sh
 npm ci
-npm run build
-python -m http.server 8000 --directory dist
+npm run dev        # http://localhost:3000
+npm run check      # typecheck, then tests + production build
 ```
 
-Open `http://localhost:8000`. Static hosts can serve `dist/` directly. HTTPS is required for service workers and the full installable experience outside localhost.
+`.npmrc` sets `legacy-peer-deps` to work around an npm resolver bug with Vitest's optional browser peer dependencies.
 
-`npm run build` checks JavaScript syntax and runs unit and DOM integration tests. Tests use jsdom and fake-indexeddb; they do not replace real Safari testing. Original SVG samples can be regenerated using `python make-assets.py` (Pillow or CairoSVG is needed for PNG icons).
+## Deploy
 
-## On iPhone
+The app is built for Vercel. Import the repository in Vercel; it detects Next.js with no extra configuration. The planned address is `ootd.cjarhodes.com`.
 
-Open the deployed app in Safari → Share → Add to Home Screen. Choose **Use my wardrobe**, add photos, review the suggested details, then set your city in Preferences. Add at least a top, bottom, and pair of shoes to generate an outfit. An available warm layer is needed for cold weather.
+## Layout
 
-## Privacy, cost, and portability
-
-Clothing photos, plans, feedback, and wear history stay in your browser. There is no cloud account, server-side photo storage, or device sync. Clearing browser data removes the wardrobe; export backups regularly. A Home Screen installation can have a separate storage context from an ordinary browser tab, so export/import when moving between them.
-
-Only city searches and coordinates are sent to Open-Meteo. Fonts currently load from Google Fonts with system fallbacks. Personal images are never sent to either service. Weather is cached for 30 minutes per city in session storage. Open-Meteo's free endpoint is intended for non-commercial use; review its license and terms before commercializing.
-
-There are no metered AI calls or paid runtime services in this version. Static hosting can fit the $5/month target, depending on the hosting account's terms. This is an architecture target, not a billing cap enforced by the app. No paid subscription was provisioned.
-
-## Current boundaries
-
-- Tagging uses filenames, not visual AI. Photos need manual corrections; automatic background removal is not implemented.
-- Outfit ranking is a transparent rules-based starting point. Fit is recorded for your reference; precise proportion assessment and learning from reference looks are future work.
-- Weather uses daily highs/lows, precipitation probability, and wind. It does not model hourly commuting conditions or extreme-weather safety.
-- Saved plans flag weather mismatches without silently changing your chosen pieces. Open a saved plan and use Fresh ideas to reconsider it.
-- This version ships as an owner-private preview. Making a public portfolio demo and adding the case study to cjarhodes.com are separate delivery steps; the portfolio site has not been changed.
-- Device camera/HEIC decoding, Safari storage behavior, layout, and offline installation require on-device verification. This environment did not provide the supported browser-QA runtime.
-
-See [the product brief](docs/PRODUCT.md), [architecture decisions](docs/ARCHITECTURE.md), and [delivery notes](docs/DELIVERY.md).
+```
+src/app/              routes: / (Today), /wardrobe, /week, manifest, icon
+src/components/       app shell, flat-lay composer, museum label, garment illustrations
+src/lib/engine/       layering rules, weather budget, scoring, naming, generation (+ tests)
+src/lib/              types, palette, garment defaults, sample wardrobe, dates
+src/state/            sample-mode state (localStorage)
+legacy/v1/            the original v1 app, kept for reference only
+```
