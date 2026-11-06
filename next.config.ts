@@ -2,20 +2,10 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
 
-/** The Supabase project that holds accounts, wardrobes and photos (none when unset). */
-function supabaseOrigin(): string {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").origin;
-  } catch {
-    return "";
-  }
-}
-const supabase = supabaseOrigin();
 
 /**
  * Only what the app uses: its own scripts and self-hosted fonts, on-device
- * photo previews (blob:/data:), Supabase for accounts and saved wardrobes,
- * and Open-Meteo for the forecast and last year's weather (for trips beyond
+ * photo previews (blob:/data:), and Open-Meteo for the forecast and last year's weather (for trips beyond
  * the forecast). Next's
  * inline bootstrap needs 'unsafe-inline'; dev mode also needs eval.
  */
@@ -25,7 +15,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  `connect-src 'self' data: blob:${supabase ? ` ${supabase}` : ""} https://api.open-meteo.com https://geocoding-api.open-meteo.com https://archive-api.open-meteo.com`,
+  "connect-src 'self' data: blob: https://api.open-meteo.com https://geocoding-api.open-meteo.com https://archive-api.open-meteo.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",

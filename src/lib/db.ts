@@ -4,7 +4,7 @@ import type { Comfort, FeedbackValue, Item, Plan, Trip, Wear } from "./types";
 /**
  * This device's copy of a signed-in person's wardrobe, in IndexedDB: one
  * database per account, so people sharing a device never see each other's
- * pieces. The account copy in Supabase is the one that lasts (see
+ * pieces. The copy saved to the account is the one that lasts (see
  * src/state/cloud.tsx); this one makes the app fast and work offline.
  * Photos are Blobs keyed by item id; the wardrobe state is one record.
  */

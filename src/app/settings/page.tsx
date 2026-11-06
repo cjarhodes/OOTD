@@ -63,9 +63,19 @@ export default function SettingsPage() {
   // Arriving from a sign-in link: show your own wardrobe from here on.
   const landed = useRef(false);
   useEffect(() => {
-    if (landed.current || !auth.user) return;
+    if (landed.current) return;
     const params = new URLSearchParams(window.location.search);
-    if (!params.has("signed-in")) return;
+    if (params.has("sign-in")) {
+      landed.current = true;
+      setMessage(
+        params.get("sign-in") === "unavailable"
+          ? "Accounts aren’t set up on this copy of OOTD."
+          : "That sign-in link has expired or was already used. Send a new one below.",
+      );
+      window.history.replaceState(null, "", "/settings");
+      return;
+    }
+    if (!auth.user || !params.has("signed-in")) return;
     landed.current = true;
     store.setMode("personal");
     setMessage("You’re signed in. Your wardrobe is saved to your account from now on.");

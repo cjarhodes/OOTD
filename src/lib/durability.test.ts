@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildArchive, csvField, readArchive, sniffImageType, type Photo } from "./archive";
 import { emptyPersonal, type PersonalState } from "./db";
 import { makeItem } from "./kinds";
-import { allowanceFor, isAlreadyStored, photoPath, saveFailure, signInError, userTagKey, validEmail } from "./account";
+import { canSend, checkChallenge, newChallenge } from "@/server/accounts";
+import { signInEmail } from "@/server/mail";
+import { decodeSession, encodeSession, sameOrigin } from "@/server/session";
+import { judgeSave, keepsHistory, type StoredWardrobe } from "@/server/wardrobe";
+import { allowanceFor, saveFailure, userTagKey, validEmail } from "./account";
 import { canonicalJson, decide, fingerprint, retryDelay } from "./sync";
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
@@ -182,7 +186,7 @@ describe("AI tagging allowance", () => {
   const PIXEL = "data:image/png;base64,iVBORw0KGgo=";
   const post = async () => {
     const { POST } = await import("@/app/api/tag/route");
-    const res = await POST(new Request("http://x/api/tag", { method: "POST", body: JSON.stringify({ image: PIXEL }) }));
+    const res = await POST(new Request("http://x/api/tag", { method: "POST", headers: { origin: "http://x" }, body: JSON.stringify({ image: PIXEL }) }));
     return { status: res.status, json: (await res.json()) as Record<string, unknown> };
   };
 
@@ -236,22 +240,10 @@ describe("AI tagging allowance", () => {
 });
 
 describe("account helpers", () => {
-  it("names photos by account and content, and rejects anything else", () => {
-    const uid = "11111111-1111-1111-1111-111111111111";
-    expect(photoPath(uid, HASH)).toBe(`${uid}/${HASH}`);
-    expect(() => photoPath("../x", HASH)).toThrow();
-    expect(() => photoPath(uid, "abc")).toThrow();
-    expect(isAlreadyStored({ statusCode: "409", message: "Duplicate" })).toBe(true);
-    expect(isAlreadyStored({ message: "The resource already exists" })).toBe(true);
-    expect(isAlreadyStored({ statusCode: "403", message: "new row violates row-level security policy" })).toBe(false);
-    expect(isAlreadyStored(null)).toBe(false);
-  });
-
-  it("reads save errors from the database function", () => {
+  it("reads save errors from the wardrobe API", () => {
     expect(saveFailure({ code: "OD409", details: "12" })).toEqual({ kind: "conflict", remotePieces: 12 });
     expect(saveFailure({ code: "OD410", details: "40" })).toEqual({ kind: "shrink", remotePieces: 40 });
     expect(saveFailure({ code: "28000" }).kind).toBe("signed-out");
-    expect(saveFailure({ code: "PGRST303" }).kind).toBe("signed-out");
     expect(saveFailure({ code: "OD413", message: "too big" })).toEqual({ kind: "rejected", message: "too big" });
     expect(saveFailure({ code: "XX000" }).kind).toBe("retry");
     expect(saveFailure(null).kind).toBe("retry");
@@ -264,13 +256,97 @@ describe("account helpers", () => {
     expect(allowanceFor("Me@X.com", { OOTD_OWNER_EMAILS: "other@x.com, me@x.com" })).toBeNull();
     expect(allowanceFor(null, { OOTD_OWNER_EMAILS: "me@x.com" })).toBe(20);
     expect(userTagKey("u1", new Date("2026-11-05T10:00:00Z"))).toBe("ootd:ai:tags:u1:2026-11");
-  });
-
-  it("explains sign-in problems plainly", () => {
     expect(validEmail("alex@example.com")).toBe(true);
     expect(validEmail("alex@example")).toBe(false);
-    expect(signInError("email rate limit exceeded")).toMatch(/Too many/);
-    expect(signInError("Signups not allowed for otp")).toMatch(/aren’t open/);
-    expect(signInError(undefined)).toMatch(/couldn’t be sent/);
+  });
+});
+
+describe("sign-in", () => {
+  const SECRET = "s".repeat(48);
+  const NOW = 1_800_000_000_000;
+
+  it("accepts the right code or link once, within 15 minutes", () => {
+    const { code, token, challenge } = newChallenge(SECRET, "Alex@Example.com ", null, NOW);
+    expect(code).toMatch(/^\d{6}$/);
+    // Stored only as keyed hashes.
+    expect(JSON.stringify(challenge)).not.toContain(code);
+    expect(JSON.stringify(challenge)).not.toContain(token);
+    const byCode = checkChallenge(SECRET, "alex@example.com", challenge, { code }, NOW + 60_000);
+    expect(byCode.ok).toBe(true);
+    // Used up: neither proof works again.
+    expect(checkChallenge(SECRET, "alex@example.com", byCode.challenge!, { code }, NOW + 61_000).ok).toBe(false);
+    expect(checkChallenge(SECRET, "alex@example.com", byCode.challenge!, { token }, NOW + 61_000).ok).toBe(false);
+    expect(checkChallenge(SECRET, "alex@example.com", challenge, { token }, NOW + 60_000).ok).toBe(true);
+    expect(checkChallenge(SECRET, "alex@example.com", challenge, { code }, NOW + 16 * 60_000).ok).toBe(false);
+  });
+
+  it("locks a challenge after five wrong codes and rejects another key", () => {
+    const { code, challenge } = newChallenge(SECRET, "a@b.co", null, NOW);
+    let c = challenge;
+    for (let i = 0; i < 5; i++) {
+      const r = checkChallenge(SECRET, "a@b.co", c, { code: code === "000000" ? "111111" : "000000" }, NOW);
+      expect(r.ok).toBe(false);
+      c = r.challenge!;
+    }
+    expect(checkChallenge(SECRET, "a@b.co", c, { code }, NOW).ok).toBe(false);
+    expect(checkChallenge("x".repeat(48), "a@b.co", challenge, { code }, NOW).ok).toBe(false);
+    expect(checkChallenge(SECRET, "someone@else.co", challenge, { code }, NOW).ok).toBe(false);
+  });
+
+  it("limits sign-in emails per address", () => {
+    expect(canSend(null, NOW).ok).toBe(true);
+    const once = newChallenge(SECRET, "a@b.co", null, NOW).challenge;
+    expect(canSend(once, NOW + 10_000).ok).toBe(false);
+    expect(canSend(once, NOW + 60_000).ok).toBe(true);
+    const busy = { ...once, sent: [0, 1, 2, 3, 4].map((i) => NOW - i * 120_000) };
+    expect(canSend(busy, NOW + 60_000).ok).toBe(false);
+    expect(canSend(busy, NOW + 3_700_000).ok).toBe(true);
+  });
+
+  it("signs sessions that can't be forged or outlive their date", () => {
+    const token = encodeSession({ id: "11111111-1111-1111-1111-111111111111", email: "a@b.co" }, SECRET, NOW);
+    expect(decodeSession(token, SECRET, NOW + 1000)?.email).toBe("a@b.co");
+    expect(decodeSession(token, "y".repeat(48), NOW)).toBeNull();
+    expect(decodeSession(token, SECRET, NOW + 181 * 86_400_000)).toBeNull();
+    const [payload, mac] = token.split(".");
+    const forged = Buffer.from(JSON.stringify({ id: "x", email: "evil@x.co", exp: NOW * 2 })).toString("base64url");
+    expect(decodeSession(`${forged}.${mac}`, SECRET, NOW)).toBeNull();
+    expect(decodeSession(`${payload}.`, SECRET, NOW)).toBeNull();
+  });
+
+  it("only accepts state changes from OOTD's own pages", () => {
+    expect(sameOrigin(new Request("https://ootd.test/api/x", { method: "POST", headers: { origin: "https://ootd.test" } }))).toBe(true);
+    expect(sameOrigin(new Request("https://ootd.test/api/x", { method: "POST", headers: { origin: "https://evil.test" } }))).toBe(false);
+    expect(sameOrigin(new Request("https://ootd.test/api/x", { method: "POST" }))).toBe(false);
+  });
+
+  it("escapes the sign-in email", () => {
+    const { html, subject } = signInEmail('https://ootd.test/x?a=1&b="2"', "123456");
+    expect(subject).toBe("123456 is your OOTD sign-in code");
+    expect(html).toContain("a=1&amp;b=&quot;2&quot;");
+  });
+});
+
+describe("saving a wardrobe", () => {
+  const stored = (pieces: number): { value: StoredWardrobe; etag: string } => ({
+    value: { savedAt: "2026-11-06T10:15:00.000Z", pieces, snapshots: 0, state: { items: [] } },
+    etag: "e1",
+  });
+
+  it("needs the version it replaces, and won't empty or halve a wardrobe unless forced", () => {
+    expect(judgeSave(null, 3, null, false).ok).toBe(true);
+    expect(judgeSave(stored(10), 11, "e1", false).ok).toBe(true);
+    expect(judgeSave(stored(10), 11, "e0", false)).toEqual({ ok: false, code: "OD409" });
+    expect(judgeSave(stored(10), 11, null, false)).toEqual({ ok: false, code: "OD409" });
+    expect(judgeSave(stored(10), 0, "e1", false)).toEqual({ ok: false, code: "OD410" });
+    expect(judgeSave(stored(10), 4, "e1", false)).toEqual({ ok: false, code: "OD410" });
+    expect(judgeSave(stored(10), 5, "e1", false).ok).toBe(true);
+    expect(judgeSave(stored(10), 0, null, true).ok).toBe(true);
+  });
+
+  it("keeps a history copy before each hour's first change and every forced save", () => {
+    expect(keepsHistory("2026-11-06T10:15:00.000Z", new Date("2026-11-06T10:50:00.000Z"), false)).toBe(false);
+    expect(keepsHistory("2026-11-06T10:15:00.000Z", new Date("2026-11-06T11:01:00.000Z"), false)).toBe(true);
+    expect(keepsHistory("2026-11-06T10:15:00.000Z", new Date("2026-11-06T10:20:00.000Z"), true)).toBe(true);
   });
 });

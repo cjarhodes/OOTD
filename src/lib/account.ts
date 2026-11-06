@@ -1,23 +1,7 @@
 /**
- * Pure helpers for accounts: where photos live, how save errors read, and
- * each person's monthly AI allowance. The Supabase calls are in
- * src/state/cloud.tsx and src/server/auth.ts; the schema is in
- * supabase/migrations.
+ * Pure helpers for accounts: how save errors read, email checks, and each
+ * person's monthly AI allowance. Storage and sign-in live in src/server.
  */
-
-export const PHOTO_BUCKET = "ootd-photos";
-
-/** Photos are stored by content: <user id>/<sha256 of the bytes>. */
-export function photoPath(userId: string, hash: string): string {
-  if (!/^[0-9a-f-]{36}$/.test(userId) || !/^[a-f0-9]{64}$/.test(hash)) throw new Error("Bad photo path");
-  return `${userId}/${hash}`;
-}
-
-/** An upload of a photo that's already stored is a success: same name, same bytes. */
-export function isAlreadyStored(error: { message?: string; statusCode?: string | number } | null | undefined): boolean {
-  if (!error) return false;
-  return String(error.statusCode) === "409" || /already exists|duplicate/i.test(error.message ?? "");
-}
 
 export type SaveFailure =
   | { kind: "conflict"; remotePieces: number | null }
@@ -26,7 +10,7 @@ export type SaveFailure =
   | { kind: "rejected"; message: string }
   | { kind: "retry"; message: string };
 
-/** Read an error from ootd_save_wardrobe (see the migration for the codes). */
+/** Read an error from PUT /api/wardrobe (codes are set in src/app/api/wardrobe/route.ts). */
 export function saveFailure(error: { code?: string; details?: string | null; message?: string } | null | undefined): SaveFailure {
   const pieces = Number(error?.details);
   const remotePieces = Number.isFinite(pieces) && error?.details ? pieces : null;
@@ -36,8 +20,6 @@ export function saveFailure(error: { code?: string; details?: string | null; mes
     case "OD410":
       return { kind: "shrink", remotePieces };
     case "28000":
-    case "PGRST301":
-    case "PGRST303":
       return { kind: "signed-out" };
     case "OD413":
     case "OD422":
@@ -45,15 +27,6 @@ export function saveFailure(error: { code?: string; details?: string | null; mes
     default:
       return { kind: "retry", message: "Your wardrobe couldn’t be saved just now. It will retry." };
   }
-}
-
-/** Friendly wording for sign-in errors from Supabase Auth. */
-export function signInError(message: string | undefined): string {
-  const m = (message ?? "").toLowerCase();
-  if (m.includes("rate limit") || m.includes("too many")) return "Too many sign-in emails have gone out just now. Try again in a little while.";
-  if (m.includes("invalid") && m.includes("email")) return "That email address doesn’t look right.";
-  if (m.includes("signups not allowed") || m.includes("signup")) return "New accounts aren’t open right now.";
-  return "The sign-in email couldn’t be sent. Try again in a moment.";
 }
 
 export function validEmail(email: string): boolean {

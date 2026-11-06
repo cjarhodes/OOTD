@@ -2,13 +2,13 @@
 
 **Outfit of the day, from the wardrobe you already own.** OOTD plans a layered outfit for the weather from photos of your own clothes. It is built for iPhone first, open source, and made by [Alex Rhodes](https://www.cjarhodes.com).
 
-**Try it:** [ootd.cjarhodes.com](https://ootd.cjarhodes.com). The sample wardrobe needs no account. To keep your own, sign in with your email (we send a link, no password) and add photos of your clothes.
+**Try it:** [ootd.cjarhodes.com](https://ootd.cjarhodes.com). The sample wardrobe needs no account. To keep your own, sign in with your email (we send a link and a 6-digit code, no password) and add photos of your clothes.
 
-[![Deploy your own with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FClothing&project-name=ootd&repository-name=ootd&env=NEXT_PUBLIC_SUPABASE_URL%2CNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY&envDescription=Your%20Supabase%20project%20URL%20and%20publishable%20key%2C%20after%20applying%20supabase%2Fmigrations&envLink=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FClothing%23run-your-own-copy)
+[![Deploy your own with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FClothing&project-name=ootd&repository-name=ootd&env=RESEND_API_KEY%2COOTD_EMAIL_FROM&envDescription=A%20Resend%20API%20key%20for%20sign-in%20emails%2C%20and%20the%20sender%20address%20on%20your%20Resend-verified%20domain&envLink=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FClothing%23run-your-own-copy&stores=%5B%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22private%22%7D%5D)
 
 ## How it handles your data
 
-- **Your wardrobe belongs to your account.** Pieces, photos, plans, trips and wear history are saved to your account a few seconds after each change, and are on every device you sign in on. Row-level security means only you can read or change them.
+- **Your wardrobe belongs to your account.** Pieces, photos, plans, trips and wear history are saved to your account a few seconds after each change, and are on every device you sign in on. They're kept in private storage that only your signed-in session can read or change.
 - **It works offline.** Each device keeps a copy (IndexedDB, one per account), so the app is fast and keeps working without a connection; changes are saved when it's back.
 - **Nothing is lost by accident.**
   - Photos are stored under their own SHA-256 and are never overwritten.
@@ -23,7 +23,7 @@
   - a README that describes every field
 
   OOTD restores from that ZIP on any device.
-- **No tracking or ads.** There's no analytics. Your email is used only to sign you in.
+- **No tracking or ads.** There's no analytics. Your email is used only to sign you in, and sign-in codes are stored only as keyed hashes.
 - **AI tagging is optional.** It sends one small copy of a photo to Claude only when you tap **Tag with AI**, with a monthly allowance per person.
 - **Weather** comes from [Open-Meteo](https://open-meteo.com), which is sent only the coordinates of the city you choose. Your location is never requested.
 
@@ -51,14 +51,21 @@
 
 ## Run your own copy
 
-You need a [Supabase](https://supabase.com) project (the free plan is enough) and a Vercel account.
+OOTD runs its own sign-in, so all it needs is a Vercel account and a free [Resend](https://resend.com) account for the sign-in emails.
 
-1. In Supabase, run [`supabase/migrations/20261105222014_ootd_accounts.sql`](supabase/migrations/20261105222014_ootd_accounts.sql) in the SQL editor, or link the project and run `supabase db push`. It creates the wardrobe and history tables, the save function and a private `ootd-photos` bucket. Everything is prefixed `ootd_`, so it can share a project with other apps.
-2. Under **Authentication → URL Configuration**, set the Site URL to your domain and add `https://<your domain>/**` to the Redirect URLs.
-3. Under **Authentication → Emails → SMTP**, add your own email sender (Resend, Postmark and others work). Supabase's built-in sender is only for testing: it sends a handful of emails an hour.
-4. Click the deploy button above and paste in the project URL and publishable key (**Project Settings → API**).
+1. In Resend, verify a domain you own and create an API key.
+2. Click the deploy button above. It creates a private Blob store for accounts, wardrobes and photos, and asks for two values:
+   - `RESEND_API_KEY`: the key from step 1.
+   - `OOTD_EMAIL_FROM`: the sender, on your verified domain, for example `OOTD <signin@example.com>`.
 
-Once it's deployed, open Settings and sign in. The **Account** section should read "Saved to your account" after your first change.
+Once it's deployed, open Settings and sign in with your email. The **Account** section should read "Saved to your account" after your first change.
+
+**How sign-in works.**
+- **The email:** OOTD emails a link and a 6-digit code. Both work once, within 15 minutes, and the code locks after five wrong tries.
+- **The link:** it opens a confirmation page, so mail apps that scan links can't use it up.
+- **The code:** it works inside the iPhone Home Screen app, where links open in Safari instead.
+- **The session:** a signed, HttpOnly cookie that lasts 180 days.
+- **The signing key:** generated on first use and kept in the private store, unless you set `OOTD_SESSION_SECRET` yourself.
 
 **AI tagging (optional).** This fills in a piece's details from its photo with Claude, against a monthly spending cap. Add these to the Production environment:
 
@@ -79,22 +86,19 @@ npm run dev        # http://localhost:3000
 npm run check      # typecheck, then tests and a production build
 ```
 
-`.npmrc` sets `legacy-peer-deps` to work around an npm resolver bug with Vitest's optional browser peer dependencies. Without the Supabase values in `.env.local`, the app runs with the sample wardrobe only.
+`.npmrc` sets `legacy-peer-deps` to work around an npm resolver bug with Vitest's optional browser peer dependencies. In `npm run dev`, sign-in emails are printed to the terminal instead of sent. To try accounts without a Blob store, set `OOTD_FAKE_BLOB_DIR` to an empty folder: storage then goes to files there (local testing only).
 
 ```
-src/app/              routes: / (Today), /wardrobe, /week, /trips, /add, /settings, /api/tag
+src/app/              routes: / (Today), /wardrobe, /week, /trips, /add, /settings, /api/auth/*, /api/wardrobe, /api/photos/*, /api/tag
 src/components/       app shell, flat-lay composer, museum label, garment illustrations, sign-in and account panels
 src/lib/engine/       layering rules, weather budget, scoring, naming, generation, capsule packing (+ tests)
 src/lib/              types, palette, garment defaults, sample wardrobe, dates, export ZIP (archive.ts), sync rules (sync.ts), account helpers
 src/state/            sign-in, wardrobe state (sample: localStorage, yours: IndexedDB per account), saving to the account, forecast, AI
-src/server/           checking the caller's sign-in, and the AI spending cap (server only)
-supabase/migrations/  the database schema: tables, the save function, the photo bucket and its policies
+src/server/           sign-in, sessions, accounts, wardrobe and photo storage, email, and the AI spending cap (server only)
 docs/ROADMAP.md       research, decisions and progress
 ```
 
 Issues and pull requests are welcome. Please run `npm run check` first. For security reports, see [SECURITY.md](SECURITY.md).
-
-Accounts on ootd.cjarhodes.com live in a Supabase project shared with the [chess app](https://chess.cjarhodes.com); OOTD's tables and bucket are prefixed `ootd_` and its migration is mirrored in that project's repository so both stay in step.
 
 ## Licence
 
