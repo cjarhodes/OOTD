@@ -265,7 +265,10 @@ export function TodayView() {
               aria-pressed={loved}
               aria-label={loved ? "Remove from favourites" : "Add to favourites"}
               style={{ ["--heart-fill" as string]: loved ? 1 : 0 }}
-              onClick={() => store.setFeedback(look.signature, loved ? null : "love")}
+              onClick={() => {
+                store.setFeedback(look.signature, loved ? null : "love");
+                if (!loved) setToast("Kept in your lookbook.");
+              }}
             >
               <Heart />
             </button>
