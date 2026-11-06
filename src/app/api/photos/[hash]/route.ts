@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { accountActive } from "@/server/accounts";
 import { json, problem } from "@/server/http";
 import { currentCaller, sameOrigin } from "@/server/session";
 import { loadPhoto, MAX_PHOTOS, PHOTO_TYPES, sha256Hex, storePhoto } from "@/server/wardrobe";
@@ -14,6 +15,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ hash
   if (!sameOrigin(request)) return problem("Upload from OOTD itself.", 403);
   const caller = await currentCaller();
   if (!caller) return problem("Sign in to save photos.", 401);
+  if (!(await accountActive(caller))) return problem("This account was deleted. Sign in again to start a new one.", 401);
   const { hash } = await params;
   if (!HASH.test(hash)) return problem("Bad photo id.", 400);
   const type = request.headers.get("content-type")?.split(";")[0]?.trim() ?? "";

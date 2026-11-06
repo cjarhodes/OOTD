@@ -10,6 +10,7 @@
   --line: #e0ded8;
   --cobalt: #2335c8;
   --cobalt-tint: #e8eafb;
+  --danger: #a3241c;
   --on-ink: #fbfbf9;
   --shadow: rgba(26, 26, 25, 0.16);
 
@@ -36,6 +37,7 @@
     --line: #2c2c29;
     --cobalt: #8c9bff;
     --cobalt-tint: #1d2147;
+    --danger: #ff8a7f;
     --on-ink: #121211;
     --shadow: rgba(0, 0, 0, 0.45);
     color-scheme: dark;
@@ -1272,4 +1274,26 @@ li[data-done] .first-run-tick {
 }
 .lookbook-meta {
   color: var(--ink-2);
+}
+
+/* ---------- delete account ---------- */
+
+.delete-account {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  padding: 14px 16px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-tile);
+}
+.delete-account .field {
+  width: 100%;
+}
+.btn.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--wall);
+}
+.danger-link {
+  color: var(--danger);
 }

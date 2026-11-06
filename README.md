@@ -15,10 +15,11 @@
   - If two devices both change your wardrobe, OOTD asks which copy to keep.
   - A nearly empty device can't overwrite a full wardrobe without your say-so.
   - A copy from before each hour's first change is kept (the last 30), under **Earlier versions**.
+- **Delete it any time.** Settings → Your data → Delete my account and data removes your wardrobe, every photo, the hourly copies and your sign-in from storage, and this device's copy. You confirm by typing your email. Other signed-in devices are signed out, and can't write it back.
 - **Export any time.** Settings → Export downloads a ZIP that is useful without OOTD:
   - `wardrobe.csv`: one row per piece; opens in Numbers, Excel or Sheets
   - `wears.csv`: your wear log
-  - your photos as ordinary PNG and JPEG files
+  - your photos as ordinary image files (JPEG, PNG or WebP)
   - `wardrobe.json`: everything, in a documented format
   - a README that describes every field
 

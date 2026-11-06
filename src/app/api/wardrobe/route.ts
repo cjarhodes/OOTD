@@ -1,4 +1,5 @@
 import { parseBackup } from "@/lib/backup";
+import { accountActive } from "@/server/accounts";
 import { json, problem } from "@/server/http";
 import { currentCaller, sameOrigin } from "@/server/session";
 import { readWardrobe, saveWardrobe } from "@/server/wardrobe";
@@ -26,6 +27,8 @@ export async function PUT(request: Request) {
   if (!sameOrigin(request)) return problem("Save from OOTD itself.", 403);
   const caller = await currentCaller();
   if (!caller) return problem("Sign in to save your wardrobe.", 401, { code: "28000" });
+  // A deleted account's old cookie can't bring its data back.
+  if (!(await accountActive(caller))) return problem("This account was deleted. Sign in again to start a new one.", 401, { code: "28000" });
   const text = await request.text();
   if (text.length > MAX_BYTES) return problem("That wardrobe is too large to save in one go.", 413, { code: "OD413" });
   let body: { state?: unknown; ifMatch?: unknown; force?: unknown };
