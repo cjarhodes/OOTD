@@ -2,7 +2,7 @@ import { MATERIAL_LABEL } from "../kinds";
 import { PALETTE, type ColorFamily } from "../palette";
 import type { Item, Occasion, Pieces, RecipeId } from "../types";
 import { upperLayers } from "./rules";
-import { columnOf, isOpenShirtLayer, proportionIdea } from "./style";
+import { columnOf, isOpenShirtLayer, proportionIdea, shoeIdea } from "./style";
 
 export const OCCASION_LABEL: Record<Occasion, string> = {
   office: "Office",
@@ -115,6 +115,20 @@ export function lower(item: Item): string {
   return item.name.charAt(0).toLowerCase() + item.name.slice(1);
 }
 
+/** "a" or "an" before a piece's name, by how it sounds. */
+export function aOrAn(item: Item): string {
+  const name = lower(item);
+  // "u" sounds like "you" before a single consonant and a vowel (utility, uniform).
+  const an = /^[aeio]/i.test(name) || (/^u/i.test(name) && !/^u[b-df-hj-np-tv-z][aeiou]/i.test(name));
+  return an ? `an ${name}` : `a ${name}`;
+}
+
+/** A piece's name with a leading capital article, for the start of a sentence. */
+function AOrAn(item: Item): string {
+  const s = aOrAn(item);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 const TEXTURED = new Set(["knit", "wool", "suede", "waxed", "corduroy", "denim", "fleece", "canvas"]);
 
 export function textureContrast(p: Pieces): [Item, Item] | null {
@@ -130,7 +144,7 @@ export function textureContrast(p: Pieces): [Item, Item] | null {
 }
 
 /** Plain-language reasons the look works, most specific first. */
-export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, wet = false): string[] {
+export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, wet = false, occasion?: Occasion): string[] {
   const notes: string[] = [];
   const { base, mid, outer } = p;
   switch (recipeOf(p)) {
@@ -144,7 +158,7 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
       notes.push(`Three layers, thickest on the outside: ${lower(base)}, ${lower(mid!)}, ${lower(outer!)}.`);
       break;
     case "high-low":
-      notes.push(`A ${lower(mid!)} under a ${lower(outer!)} keeps the tailoring relaxed.`);
+      notes.push(`${AOrAn(mid!)} under ${aOrAn(outer!)} keeps the tailoring relaxed.`);
       break;
     case "open-shirt":
       notes.push(
@@ -154,10 +168,10 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
       );
       break;
     case "roll-neck":
-      notes.push(`A ${lower(base)} under the ${lower(outer!)} does the job of a shirt and tie, quieter.`);
+      notes.push(`${AOrAn(base)} under the ${lower(outer!)} does the job of a shirt and tie, quieter.`);
       break;
     case "smart-soft":
-      notes.push(`A ${lower(base)} under a ${lower(outer!)} looks sharp without a tie.`);
+      notes.push(`${AOrAn(base)} under ${aOrAn(outer!)} looks sharp without a tie.`);
       break;
     case "gilet":
       notes.push(`The ${lower(mid!)} adds warmth without hiding the ${lower(base)}.`);
@@ -189,8 +203,18 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
   if (idea && notes.length < 3) {
     const top = outer ?? mid ?? base;
     if (idea === "a-line") notes.push(`Slim on top, wide below: the ${lower(base)} keeps the ${lower(p.bottom)} looking deliberate.`);
-    else if (idea === "easy-line") notes.push(`Roomy top and relaxed ${lower(p.bottom)}: one easy, generous line.`);
+    else if (idea === "easy-line") notes.push(`Roomy through the top and the ${lower(p.bottom)}: one easy, generous line.`);
     else notes.push(`The cropped ${lower(top)} stops at the waist, so let the layer underneath show below it.`);
+  }
+
+  const shoe = occasion ? shoeIdea(p, occasion) : null;
+  if (shoe && notes.length < 3) {
+    const s = lower(p.shoes);
+    if (shoe === "lift") notes.push(`The ${s} lift all that dark; they keep it from feeling heavy.`);
+    else if (shoe === "tailored") notes.push(`The ${s} finish the tailoring where trainers would undercut it.`);
+    else if (shoe === "weight") notes.push(`The ${s} have the weight to carry the heavier pieces.`);
+    else if (shoe === "easy") notes.push(`The ${s} keep the relaxed line easy.`);
+    else notes.push(`The ${s} pick up the ${lower(p.outer && PALETTE[p.shoes.color].family === PALETTE[p.outer.color].family ? p.outer : p.bottom)}, so the look holds together.`);
   }
 
   const contrast = textureContrast(p);

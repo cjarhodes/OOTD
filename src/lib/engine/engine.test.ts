@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeItem } from "../kinds";
 import { SAMPLE_ITEMS, sampleWears } from "../sample";
 import type { DayWeather, Item, Pieces } from "../types";
-import { lookName, lookNotes, recipeOf, tonalFamily } from "./describe";
+import { lookName, lookNotes, recipeOf, tonalFamily, aOrAn } from "./describe";
 import { generateLooks, lookFromIds, planWeek, swapPiece } from "./generate";
 import { necklinesWork, stackIsValid, upperLayers, weatherFit } from "./rules";
 import { signatureOf } from "./score";
@@ -127,6 +127,13 @@ describe("recipes and names", () => {
     expect(recipeOf(look({ base: turtle, outer: blazer }))).toBe("roll-neck");
     expect(recipeOf(look({ base: tee, mid: crew, outer: waxed }))).toBe("three-layer");
     expect(recipeOf(look({}))).toBe("single");
+  });
+
+  it("uses a or an by sound", () => {
+    expect(aOrAn({ ...crew, name: "Indigo chore coat" })).toBe("an indigo chore coat");
+    expect(aOrAn({ ...crew, name: "Oatmeal henley" })).toBe("an oatmeal henley");
+    expect(aOrAn({ ...crew, name: "Navy blazer" })).toBe("a navy blazer");
+    expect(aOrAn({ ...crew, name: "Utility jacket" })).toBe("a utility jacket");
   });
 
   it("names looks from the recipe and occasion", () => {

@@ -1,6 +1,7 @@
 import { fitOf } from "../kinds";
 import { PALETTE } from "../palette";
-import type { Fit, Item, Pieces, RecipeId, Tier } from "../types";
+import type { Fit, Item, Occasion, Pieces, RecipeId, Tier } from "../types";
+import { upperLayers } from "./rules";
 import type { DayNeeds } from "./weather";
 
 /**
@@ -135,6 +136,54 @@ export function proportionScore(p: Pieces): number {
   else if (idea === "easy-line") score += 0.3;
   else if (idea === "cropped-over-long") score += 0.6;
   return score;
+}
+
+/** The one coloured piece in an otherwise neutral look, if that's what the look is. */
+export function accentPiece(p: Pieces): Item | null {
+  const coloured = [...upperLayers(p), p.bottom, p.shoes].filter((i) => !PALETTE[i.color].neutral);
+  return coloured.length === 1 ? coloured[0]! : null;
+}
+
+/** Outer layers and trousers with enough weight to carry a boot. */
+const HEAVY_OUTER = new Set(["waxed", "wool", "leather", "corduroy", "canvas"]);
+const HEAVY_BOTTOM = new Set(["corduroy", "canvas"]);
+
+/** How the shoes finish the look: echo it, lift it, or suit its weight and occasion. */
+export type ShoeIdea = "tone" | "lift" | "tailored" | "weight" | "easy";
+
+export function shoeIdea(p: Pieces, occasion: Occasion, needs?: DayNeeds): ShoeIdea | null {
+  const s = p.shoes;
+  const fam = PALETTE[s.color].family;
+  const body = [...upperLayers(p), p.bottom];
+  const dark = body.filter((i) => PALETTE[i.color].lightness < 0.4).length >= Math.ceil(body.length * 0.6);
+  if (dark && PALETTE[s.color].lightness >= 0.85) return "lift";
+  const tailored = p.bottom.kind === "trousers" || p.outer?.kind === "blazer" || p.outer?.kind === "overcoat";
+  if (s.kind === "loafers" && tailored && occasion !== "weekend") return "tailored";
+  if (s.kind === "boots" && (needs?.wet || (needs && needs.coldest <= 3) || (p.outer && HEAVY_OUTER.has(p.outer.material)) || HEAVY_BOTTOM.has(p.bottom.material))) return "weight";
+  if (s.kind === "runners" && (occasion === "weekend" || occasion === "travel") && VOLUME[fitOf(p.bottom)] >= 2) return "easy";
+  if (fam === PALETTE[p.bottom.color].family || (p.outer && fam === PALETTE[p.outer.color].family)) return "tone";
+  return null;
+}
+
+/** Shoes that finish the look score up; shoes that fight it score down. */
+export function shoeScore(p: Pieces, occasion: Occasion, needs?: DayNeeds): number {
+  const s = p.shoes;
+  let score = 0;
+  const idea = shoeIdea(p, occasion, needs);
+  if (idea === "lift") score += 0.5;
+  else if (idea === "tailored") score += 0.4;
+  else if (idea === "weight" || idea === "easy" || idea === "tone") score += 0.3;
+  // Boots weigh down a light, dry look with nothing heavy in it.
+  if (s.kind === "boots" && idea !== "weight") score -= 0.4;
+  // Runners read too casual for a client.
+  if (s.kind === "runners" && occasion === "client") score -= 0.4;
+  return score;
+}
+
+/** One deliberate colour against neutrals: a styling idea for fresh and bold looks. */
+export function accentScore(p: Pieces, tier: Tier): number {
+  if (!accentPiece(p)) return 0;
+  return tier === "fresh" ? 0.35 : tier === "bold" ? 0.4 : 0;
 }
 
 export const CREATIVE_RECIPES = new Set<RecipeId>(["open-shirt", "high-low", "roll-neck"]);
