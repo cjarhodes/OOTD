@@ -168,7 +168,7 @@ export default function WardrobePage() {
           <p className="display" style={{ fontSize: 28, color: "var(--ink)" }}>
             Nothing here yet
           </p>
-          <p>Add photos of your clothes. Cut-outs from the Photos app look best.</p>
+          <p>Photograph your clothes on a plain floor, bed or wall. OOTD removes the background and reads the colour, on your phone.</p>
           <Link href="/add" className="btn">
             Add pieces
           </Link>
