@@ -63,7 +63,7 @@ Once it's deployed, open Settings and sign in with your email. The **Account** s
 **How sign-in works.**
 - **The email:** OOTD emails a link and a 6-digit code. Both work once, within 15 minutes, and the code locks after five wrong tries.
 - **The link:** it opens a confirmation page, so mail apps that scan links can't use it up.
-- **The code:** it works inside the iPhone Home Screen app, where links open in Safari instead.
+- **The code:** it works anywhere a link can't reach: inside a Home Screen app, or when an email app opens links in its own browser.
 - **The session:** a signed, HttpOnly cookie that lasts 180 days.
 - **The signing key:** generated on first use and kept in the private store, unless you set `OOTD_SESSION_SECRET` yourself.
 

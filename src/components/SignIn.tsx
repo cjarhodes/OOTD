@@ -60,7 +60,8 @@ export function SignIn({ title = "Sign in to keep your wardrobe", compact = fals
           </p>
         )}
         <p className="setting-note">
-          Using OOTD from your Home Screen? Enter the code: the link opens in Safari and signs in there instead.{" "}
+          The link signs in whichever browser opens it. If your email app opens links in its own browser, or you use OOTD from your Home Screen,
+          enter the code here instead.{" "}
           <button
             type="button"
             className="text-link"
