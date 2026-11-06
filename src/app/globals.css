@@ -46,6 +46,11 @@
   box-sizing: border-box;
 }
 
+/* Reserve the scrollbar's room, so the page doesn't jump sideways when content grows past the window. */
+html {
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   margin: 0;
@@ -463,6 +468,10 @@ button {
   padding: 10px 6px 2px;
   position: relative;
 }
+/* Holds the flat-lay's shape while looks are worked out, so nothing jumps. */
+.stage-wait {
+  aspect-ratio: 290 / 260;
+}
 .stage-tag {
   position: absolute;
   left: 12px;
@@ -636,7 +645,7 @@ button {
   font-size: 10px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--label);
+  color: var(--ink-2);
 }
 .tile-meta.new {
   color: var(--cobalt);

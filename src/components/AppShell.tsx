@@ -49,8 +49,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link href="/" className="wordmark" aria-label="OOTD, today">
             OOTD<i>.</i>
           </Link>
-          <Link href="/settings" className="label mode" aria-label="Switch wardrobe in Settings">
+          <Link href="/settings" className="label mode">
             {mode === "personal" ? "My wardrobe" : "Sample wardrobe"}
+            <span className="sr-only">: switch in Settings</span>
           </Link>
           <nav className="topnav" aria-label="Main">
             {NAV.map((n) => (

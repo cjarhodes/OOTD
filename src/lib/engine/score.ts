@@ -130,18 +130,40 @@ export function buildHistory(wears: Wear[], date: string): History {
 }
 
 export function historyScore(p: Pieces, tier: Tier, h: History, feedback: Record<string, FeedbackValue>): number {
-  const pieces = [...upperLayers(p), p.bottom, p.shoes];
-  const sig = signatureOf(p);
-  let score = 0;
-  for (const i of pieces) {
-    const count = h.wearCounts.get(i.id) ?? 0;
-    if (tier === "easy") score += Math.min(count, 10) * 0.08;
-    else if (count < h.medianWears) score += 0.3;
-    if (h.recentItems.has(i.id)) score -= 0.6;
+  return historyScores(p, h, feedback)[tier];
+}
+
+/** History for all three tiers at once: the signature and wear counts are worked out once. */
+export function historyScores(p: Pieces, h: History, feedback: Record<string, FeedbackValue>): Record<Tier, number> {
+  // Nothing worn and nothing rated yet: only the bold tier's "never worn" nudge applies.
+  if (h.wearCounts.size === 0 && h.everWorn.size === 0) {
+    let none = true;
+    for (const _ in feedback) {
+      none = false;
+      break;
+    }
+    if (none) return { easy: 0, fresh: 0, bold: 0.5 };
   }
-  if (h.recentSignatures.has(sig)) score -= 2;
-  if (tier === "bold" && !h.everWorn.has(sig)) score += 0.5;
-  if (feedback[sig] === "love") score += 1;
-  if (feedback[sig] === "skip") score -= 3;
-  return score;
+  let easy = 0;
+  let other = 0;
+  for (const i of [p.base, p.mid, p.outer, p.bottom, p.shoes]) {
+    if (!i) continue;
+    const count = h.wearCounts.get(i.id) ?? 0;
+    easy += Math.min(count, 10) * 0.08;
+    if (count < h.medianWears) other += 0.3;
+    if (h.recentItems.has(i.id)) {
+      easy -= 0.6;
+      other -= 0.6;
+    }
+  }
+  const sig = signatureOf(p);
+  let shared = 0;
+  if (h.recentSignatures.has(sig)) shared -= 2;
+  if (feedback[sig] === "love") shared += 1;
+  if (feedback[sig] === "skip") shared -= 3;
+  return {
+    easy: easy + shared,
+    fresh: other + shared,
+    bold: other + shared + (h.everWorn.has(sig) ? 0 : 0.5),
+  };
 }

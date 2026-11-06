@@ -7,17 +7,19 @@ import type {
   Occasion,
   Pieces,
   Slot,
+  RecipeId,
   Tier,
   Wear,
 } from "../types";
 import { lookName, lookNotes, recipeOf, tonalFamily } from "./describe";
-import { stackIsValid, upperLayers, weatherFit } from "./rules";
+import { layersAreValid, layersFitWeather, lowerFitsWeather, patternsWork, stackIsValid, upperLayers, weatherFit } from "./rules";
 import { accentScore, asOpenShirt, creativityScore, OPEN_SHIRT_KINDS, openShirtFits, seasonScore, shoeScore } from "./style";
 import {
   buildHistory,
   colourScore,
   formalityScore,
   historyScore,
+  historyScores,
   lookBoldness,
   OCCASION_FORMALITY,
   signatureOf,
@@ -48,6 +50,8 @@ export type Looks = Record<Tier, Look | null>;
 
 /** Per-slot pool size. Keeps the search fast for large wardrobes. */
 const POOL = 9;
+/** Candidates considered for the three tiers, best first (see generateLooks). */
+const SHORTLIST = 1500;
 
 export interface Candidate {
   pieces: Pieces;
@@ -55,6 +59,10 @@ export interface Candidate {
   boldness: number;
   shed?: Item;
   backOn: boolean;
+  /** Worked out once per candidate, then reused for each tier. */
+  hist?: Record<Tier, number>;
+  recipe?: RecipeId;
+  tonal?: boolean;
 }
 
 function rng(seed: number) {
@@ -101,14 +109,20 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
     const mids = [undefined, ...pool.mid, ...openShirts.filter((s) => openShirtFits(base, s))];
     for (const mid of mids) {
       for (const outer of [undefined, ...pool.outer]) {
+        // Settle everything that depends only on the top half once, not for every trousers and shoes.
+        const upper = { base, mid, outer };
+        if (!layersAreValid(upper)) continue;
+        const fit = ignoreWeather ? { ok: true, shed: undefined, backOn: false } : layersFitWeather(upper, needs, rainLayerAvailable);
+        if (!fit.ok) continue;
+        const pinnedAbove = Boolean(input.pin && [base, mid, outer].some((i) => i?.id === input.pin));
         for (const bottom of pool.bottom) {
           for (const shoes of pool.shoes) {
             const pieces: Pieces = { base, mid, outer, bottom, shoes };
-            if (input.pin && ![base, mid, outer, bottom, shoes].some((i) => i?.id === input.pin)) continue;
-            if (!stackIsValid(pieces)) continue;
-            const fit = ignoreWeather ? { ok: true, shed: undefined, backOn: false } : weatherFit(pieces, needs, rainLayerAvailable);
-            if (!fit.ok) continue;
+            if (input.pin && !pinnedAbove && bottom.id !== input.pin && shoes.id !== input.pin) continue;
+            if (!patternsWork(pieces)) continue;
+            if (!ignoreWeather && !lowerFitsWeather(pieces, needs)) continue;
             const boldness = lookBoldness(pieces);
+            const hist = historyScores(pieces, history, feedback);
             // Without a weather fit, prefer the warmest stacks so the closest look is the most useful one.
             const warmthBias = ignoreWeather ? upperLayers(pieces).reduce((s, i) => s + i.warmth, 0) * 0.8 : 0;
             const score =
@@ -117,10 +131,10 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
               textureScore(pieces) +
               formalityScore(pieces, input.occasion) +
               shoeScore(pieces, input.occasion, ignoreWeather ? undefined : needs) +
-              historyScore(pieces, "fresh", history, feedback) * 0.5 +
+              hist.fresh * 0.5 +
               (ignoreWeather ? 0 : seasonScore(pieces, needs)) +
               (random() - 0.5) * 1.0;
-            out.push({ pieces, base: score, boldness, shed: fit.shed, backOn: fit.backOn });
+            out.push({ pieces, base: score, boldness, shed: fit.shed, backOn: fit.backOn, hist });
           }
         }
       }
@@ -192,6 +206,10 @@ export function generateLooks(input: GenerateInput): Looks {
   const feedback = input.feedback ?? {};
   const wet = dayNeeds(input.weather, input.comfort).wet;
 
+  // Tier bonuses move a candidate by a few points at most, so only the strongest
+  // few hundred can win a tier. Scoring the rest three times over is wasted work.
+  if (pool.length > SHORTLIST) pool = [...pool].sort((a, b) => b.base - a.base).slice(0, SHORTLIST);
+
   const result: Looks = { easy: null, fresh: null, bold: null };
   const chosen: Pieces[] = [];
   // In the fallback, only the warmest look is worth showing; it goes in the default tier.
@@ -200,12 +218,14 @@ export function generateLooks(input: GenerateInput): Looks {
     for (const c of pool) {
       // Each tier is a different look: never the same top half with new trousers.
       if (chosen.some((p) => overlap(p, c.pieces) > 3 || upperShared(p, c.pieces) > 1)) continue;
+      c.recipe ??= recipeOf(c.pieces);
+      c.tonal ??= tonalFamily(c.pieces) !== null;
       const s =
         c.base +
         tierScore(c.boldness, tier) +
-        creativityScore(c.pieces, recipeOf(c.pieces), tonalFamily(c.pieces) !== null, tier) +
+        creativityScore(c.pieces, c.recipe, c.tonal, tier) +
         accentScore(c.pieces, tier) +
-        historyScore(c.pieces, tier, history, feedback) * 0.5;
+        (c.hist ?? historyScores(c.pieces, history, feedback))[tier] * 0.5;
       if (!best || s > best.s) best = { c, s };
     }
     if (best) {
