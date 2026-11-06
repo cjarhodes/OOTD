@@ -12,7 +12,7 @@ import type {
 } from "../types";
 import { lookName, lookNotes, recipeOf, tonalFamily } from "./describe";
 import { stackIsValid, upperLayers, weatherFit } from "./rules";
-import { asOpenShirt, creativityScore, OPEN_SHIRT_KINDS, openShirtFits, seasonScore } from "./style";
+import { accentScore, asOpenShirt, creativityScore, OPEN_SHIRT_KINDS, openShirtFits, seasonScore, shoeScore } from "./style";
 import {
   buildHistory,
   colourScore,
@@ -116,6 +116,7 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
               colourScore(pieces) +
               textureScore(pieces) +
               formalityScore(pieces, input.occasion) +
+              shoeScore(pieces, input.occasion, ignoreWeather ? undefined : needs) +
               historyScore(pieces, "fresh", history, feedback) * 0.5 +
               (ignoreWeather ? 0 : seasonScore(pieces, needs)) +
               (random() - 0.5) * 1.0;
@@ -167,7 +168,7 @@ function toLook(c: Candidate, score: number, input: GenerateInput, wet: boolean)
     recipe: recipeOf(c.pieces),
     tonal: tonalFamily(c.pieces) !== null,
     name: lookName(c.pieces, input.occasion),
-    notes: lookNotes(c.pieces, c.shed ? { layer: c.shed, backOn: c.backOn } : undefined, wet),
+    notes: lookNotes(c.pieces, c.shed ? { layer: c.shed, backOn: c.backOn } : undefined, wet, input.occasion),
     shed: c.shed ? { layer: c.shed, backOn: c.backOn } : undefined,
   };
 }
@@ -203,6 +204,7 @@ export function generateLooks(input: GenerateInput): Looks {
         c.base +
         tierScore(c.boldness, tier) +
         creativityScore(c.pieces, recipeOf(c.pieces), tonalFamily(c.pieces) !== null, tier) +
+        accentScore(c.pieces, tier) +
         historyScore(c.pieces, tier, history, feedback) * 0.5;
       if (!best || s > best.s) best = { c, s };
     }
@@ -267,6 +269,7 @@ export function swapPiece(
       colourScore(pieces) +
       textureScore(pieces) +
       formalityScore(pieces, input.occasion) +
+      shoeScore(pieces, input.occasion, needs) +
       historyScore(pieces, "fresh", history, feedback) * 0.5;
     if (!best || s > best.s) best = { pieces, s, shed: fit.shed, backOn: fit.backOn };
   }

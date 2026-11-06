@@ -4,7 +4,8 @@ import { SAMPLE_ITEMS } from "../sample";
 import type { DayWeather, Look, Occasion, Tier } from "../types";
 import { generateLooks, idsOf, lookFromIds } from "./generate";
 import { fitOf } from "../kinds";
-import { CREATIVE_RECIPES, isMuddy, proportionIdea, VOLUME } from "./style";
+import { PALETTE } from "../palette";
+import { accentPiece, CREATIVE_RECIPES, isMuddy, proportionIdea, VOLUME } from "./style";
 
 /**
  * The style audit: a fixed set of days and occasions run against the sample
@@ -124,6 +125,31 @@ describe("style audit", () => {
     const bottoms = new Map<string, number>();
     for (const r of looks) bottoms.set(r.look.pieces.bottom.id, (bottoms.get(r.look.pieces.bottom.id) ?? 0) + 1);
     expect(Math.max(...bottoms.values()) / looks.length).toBeLessThanOrEqual(1 / 3);
+  });
+
+  it("uses colour deliberately: one accent, never a clash", () => {
+    const styled = looks.filter((r) => r.tier !== "easy");
+    // Plenty of fresh and bold looks carry one deliberate colour against neutrals...
+    expect(styled.filter((r) => accentPiece(r.look.pieces)).length / styled.length).toBeGreaterThanOrEqual(0.35);
+    // ...and no look mixes two colour families.
+    const clash = looks.filter(({ look: { pieces: p } }) => {
+      const families = new Set([p.base, p.mid, p.outer, p.bottom, p.shoes].filter((i) => i && !PALETTE[i.color].neutral).map((i) => PALETTE[i!.color].family));
+      return families.size > 1;
+    });
+    expect(clash.map(named)).toEqual([]);
+  });
+
+  it("finishes looks with the right shoes", () => {
+    const counts = new Map<string, number>();
+    for (const r of looks) counts.set(r.look.pieces.shoes.id, (counts.get(r.look.pieces.shoes.id) ?? 0) + 1);
+    // Every pair gets worn, and no pair carries the whole audit.
+    expect(counts.size).toBe(SAMPLE_ITEMS.filter((i) => i.slot === "shoes").length);
+    expect(Math.max(...counts.values()) / looks.length).toBeLessThanOrEqual(0.45);
+    // Boots stay for weather and weight, not warm dry days.
+    const warmBoots = on(["hot", "warm", "mild"]).filter((r) => r.look.pieces.shoes.kind === "boots");
+    expect(warmBoots.length / on(["hot", "warm", "mild"]).length).toBeLessThanOrEqual(0.1);
+    // Runners are too casual for a client.
+    expect(looks.filter((r) => r.occasion === "client" && r.look.pieces.shoes.kind === "runners").map(named)).toEqual([]);
   });
 
   it("round-trips a shirt worn open through a saved plan", () => {
