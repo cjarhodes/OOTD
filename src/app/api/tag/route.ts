@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { TAG_SCHEMA, validateTags } from "@/lib/tagging";
 import { allowanceFor, userTagKey } from "@/lib/account";
 import { callerFrom } from "@/server/auth";
+import { sameOrigin } from "@/server/session";
 import { budgetConfig, costOf, countInWindow, readCount, reserve, settle, spentThisMonth, uncount } from "@/server/budget";
 
 export const runtime = "nodejs";
@@ -50,6 +51,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!sameOrigin(request)) return error("Tag photos from OOTD itself.", 403);
   // 1. Signed-in people only.
   const caller = await callerFrom(request);
   if (!caller) return error("Sign in to use AI tagging.", 401);

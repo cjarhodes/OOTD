@@ -15,19 +15,18 @@ const OFF: AIStatus = { configured: false, limit: null, used: 0 };
 
 /** AI tagging for the signed-in person: whether it's on and what's left this month. */
 export function useAI() {
-  const { user, accessToken } = useAuth();
+  const { user } = useAuth();
   const [status, setStatus] = useState<AIStatus>(OFF);
 
   const refresh = useCallback(async () => {
-    const token = user ? await accessToken() : null;
-    if (!token) return setStatus(OFF);
+    if (!user) return setStatus(OFF);
     try {
-      const res = await fetch("/api/tag", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const res = await fetch("/api/tag", { cache: "no-store" });
       setStatus(res.ok ? { ...OFF, ...((await res.json()) as Partial<AIStatus>) } : OFF);
     } catch {
       setStatus(OFF);
     }
-  }, [user, accessToken]);
+  }, [user]);
 
   useEffect(() => {
     void refresh();
@@ -38,12 +37,11 @@ export function useAI() {
 
   const requestTags = useCallback(
     async (image: string): Promise<{ tags: Tags; costUsd: number } | { error: string }> => {
-      const token = await accessToken();
-      if (!token) return { error: "Sign in to use AI tagging." };
+      if (!user) return { error: "Sign in to use AI tagging." };
       try {
         const res = await fetch("/api/tag", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image }),
         });
         const json = (await res.json()) as { tags?: Tags; costUsd?: number; error?: string };
@@ -53,7 +51,7 @@ export function useAI() {
         return { error: "Couldn’t reach the server." };
       }
     },
-    [accessToken],
+    [user],
   );
 
   return { status, left, canTag, refresh, requestTags };

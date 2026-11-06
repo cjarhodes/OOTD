@@ -227,7 +227,8 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | AI tagging: Claude structured output, monthly cap and per-person allowance in Redis, fails closed | Done (needs keys on Vercel) |
 | Vercel project `ootd-cjarhodes` at `ootd.cjarhodes.com` | Waiting on the import in Vercel and a DNS record in Cloudflare |
 | On-device check on iPhone: Safari, Add to Home Screen, Shortcut batch import | Next |
-| Accounts: Supabase magic-link sign-in, wardrobe and photos saved per account with row-level security, version-checked saves with shrink guard, 30-slot history, per-device copy for offline use, per-person AI allowance. Replaces the owner passphrase and Vercel Blob backup | Done |
+| Accounts: Supabase magic-link sign-in, wardrobe and photos saved per account with row-level security, version-checked saves with shrink guard, 30-slot history, per-device copy for offline use, per-person AI allowance. Replaces the owner passphrase and Vercel Blob backup | Superseded by OOTD's own sign-in |
+| Own sign-in: emailed link plus 6-digit code through Resend, signed session cookie, accounts and wardrobes in a private Vercel Blob store. No Supabase, nothing shared with other apps | Done (needs a Resend key) |
 | Style, round 1: open-shirt, high-low, roll-neck and column looks; tonal cream; season sense; bold must be creative and varied; muddy penalty; tiers never share a top half; style audit with checks; modern sample pieces | Done |
 | Open source: MIT licence, public README with a one-click Vercel deploy (private Blob store included), visitor-facing copy for the no-accounts model | Done |
 | Portfolio Builds entry and case study | After two weeks of real use |

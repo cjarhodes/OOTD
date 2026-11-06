@@ -1,18 +1,17 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { isAlreadyStored, PHOTO_BUCKET, photoPath, saveFailure } from "@/lib/account";
+import { saveFailure } from "@/lib/account";
 import { parseBackup } from "@/lib/backup";
 import type { PersonalState } from "@/lib/db";
 import { hashBlob } from "@/lib/photo";
 import { decide, fingerprint, retryDelay, type Remote, type SyncedMark } from "@/lib/sync";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "./auth";
 import { useWardrobe } from "./wardrobe";
 
 /**
- * Keeps the signed-in person's wardrobe saved to their account (Supabase:
- * the ootd_wardrobes row and the private ootd-photos bucket). Changes are
+ * Keeps the signed-in person's wardrobe saved to their account (OOTD's own
+ * API: /api/wardrobe and /api/photos, backed by private storage). Changes are
  * sent a few seconds after they happen, photos first, so the account never
  * lists a piece whose photo it doesn't hold. Nothing on the device or in the
  * account is replaced without a choice when both have changed.
@@ -115,19 +114,25 @@ type Fetched =
 
 /** The account's wardrobe, or one of its history slots when `at` is given. */
 async function fetchRemote(at?: string): Promise<Fetched> {
-  const client = supabase();
-  if (!client || !uid) return { kind: "off" };
-  const query = at
-    ? client.from("ootd_wardrobe_history").select("state, pieces, saved_at").eq("slot", Number(at)).maybeSingle()
-    : client.from("ootd_wardrobes").select("state, version, pieces, saved_at").maybeSingle();
-  const { data, error } = await query;
-  if (error) {
-    if (saveFailure(error).kind === "signed-out") return { kind: "off" };
+  if (!uid) return { kind: "off" };
+  try {
+    const res = await fetch(at ? `/api/wardrobe/history?slot=${encodeURIComponent(at)}` : "/api/wardrobe", { cache: "no-store" });
+    if (res.status === 401) return { kind: "off" };
+    const json = (await res.json().catch(() => ({}))) as {
+      wardrobe?: { state: unknown; etag: string; savedAt: string; pieces: number } | null;
+      state?: unknown;
+      savedAt?: string;
+      pieces?: number;
+      error?: string;
+    };
+    if (!res.ok) return { kind: "error", message: json.error ?? "Couldn’t reach your account. It will retry." };
+    if (at) return { kind: "ok", remote: { etag: "", savedAt: json.savedAt ?? "", pieces: json.pieces ?? 0 }, state: json.state };
+    if (!json.wardrobe) return { kind: "none" };
+    const w = json.wardrobe;
+    return { kind: "ok", remote: { etag: w.etag, savedAt: w.savedAt, pieces: w.pieces }, state: w.state };
+  } catch {
     return { kind: "error", message: "Couldn’t reach your account. It will retry." };
   }
-  if (!data) return at ? { kind: "error", message: "That earlier version isn’t there any more." } : { kind: "none" };
-  const row = data as { state: unknown; version?: number; pieces: number; saved_at: string };
-  return { kind: "ok", remote: { etag: String(row.version ?? ""), savedAt: row.saved_at, pieces: row.pieces }, state: row.state };
 }
 
 const IDLE: CloudStatus = { phase: "off", savedAt: null, remotePieces: null, photosLeft: 0, message: null };
@@ -136,7 +141,7 @@ const Ctx = createContext<CloudContext | null>(null);
 export function CloudProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { personalState, photoBlobs, replacePersonal } = useWardrobe();
-  const available = Boolean(user && supabase());
+  const available = Boolean(user);
   uid = user?.id ?? "";
   const [status, setStatus] = useState<CloudStatus>(IDLE);
   const set = useCallback((patch: Partial<CloudStatus>) => setStatus((s) => ({ ...s, ...patch })), []);
@@ -169,16 +174,15 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         if (blob && item.photoHash) {
           // Only send bytes that still match the hash the state records.
           if ((await hashBlob(blob)) !== item.photoHash) return "A photo changed while it was saving. It will retry.";
-          const client = supabase();
-          if (!client || !uid) return "Sign in to save your wardrobe.";
-          const { error } = await client.storage
-            .from(PHOTO_BUCKET)
-            .upload(photoPath(uid, item.photoHash), await blob.arrayBuffer(), { contentType: blob.type || "image/png", upsert: false })
-            .catch(() => ({ error: { message: "network" } }));
-          if (error && !isAlreadyStored(error as { message?: string; statusCode?: string })) {
-            return /row-level security|policy/i.test(error.message)
-              ? "Your account has reached its photo limit (600). Archive or remove pieces to add more."
-              : "A photo couldn’t be uploaded. It will retry.";
+          const res = await fetch(`/api/photos/${item.photoHash}`, {
+            method: "PUT",
+            headers: { "Content-Type": blob.type || "image/png" },
+            body: blob,
+          }).catch(() => null);
+          if (!res) return "A photo couldn’t be uploaded. It will retry.";
+          if (!res.ok) {
+            const json = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
+            return json.code === "limit" ? (json.error ?? "Your account is full of photos.") : "A photo couldn’t be uploaded. It will retry.";
           }
           uploaded.add(item.photoHash);
           writeUploaded(uploaded);
@@ -202,22 +206,21 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         const photoError = await uploadPhotos(copy);
         if (photoError) throw new Error(photoError);
         const ifMatch = opts.ifMatch ?? readMark()?.etag ?? remoteRef.current?.etag;
-        const client = supabase();
-        if (!client) {
-          set({ phase: "off", message: null });
-          return;
-        }
-        const expected = ifMatch && /^\d+$/.test(ifMatch) ? Number(ifMatch) : null;
-        const { data, error } = await client.rpc("ootd_save_wardrobe", { p_state: copy, p_expected_version: expected, p_force: opts.force === true });
-        if (!error && data) {
-          const saved = data as { version: number; saved_at: string; pieces: number };
-          const etag = String(saved.version);
-          writeMark({ etag, savedAt: saved.saved_at, fingerprint: fingerprint(copy) });
-          remoteRef.current = { etag, savedAt: saved.saved_at, pieces: saved.pieces };
+        const res = await fetch("/api/wardrobe", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state: copy, ifMatch: ifMatch ?? null, force: opts.force === true }),
+        }).catch(() => null);
+        if (!res) throw new Error("Couldn’t reach your account. It will retry.");
+        const data = (await res.json().catch(() => ({}))) as { etag?: string; savedAt?: string; pieces?: number; code?: string; details?: string; error?: string };
+        if (res.ok && data.etag && data.savedAt) {
+          writeMark({ etag: data.etag, savedAt: data.savedAt, fingerprint: fingerprint(copy) });
+          remoteRef.current = { etag: data.etag, savedAt: data.savedAt, pieces: data.pieces ?? copy.items.length };
           attempts.current = 0;
-          set({ phase: "synced", savedAt: saved.saved_at, remotePieces: saved.pieces, message: null });
+          set({ phase: "synced", savedAt: data.savedAt, remotePieces: data.pieces ?? copy.items.length, message: null });
           return;
         }
+        const error = { code: res.status === 401 ? "28000" : data.code, details: data.details, message: data.error };
         const failure = saveFailure(error);
         if (failure.kind === "conflict" || failure.kind === "shrink") {
           set({ phase: failure.kind, remotePieces: failure.remotePieces, message: error?.message ?? null });
@@ -271,10 +274,8 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         await Promise.all(
           Array.from({ length: 4 }, async () => {
             for (let item = queue.shift(); item; item = queue.shift()) {
-              const client = supabase();
-              const { data: blob } = client && uid
-                ? await client.storage.from(PHOTO_BUCKET).download(photoPath(uid, item.photoHash!)).catch(() => ({ data: null }))
-                : { data: null };
+              const res = await fetch(`/api/photos/${item.photoHash}`).catch(() => null);
+              const blob = res && res.ok ? await res.blob() : null;
               if (blob && (await hashBlob(blob)) === item.photoHash) photos.set(item.id, blob);
               else failed += 1;
               left -= 1;
@@ -382,10 +383,14 @@ export function CloudProvider({ children }: { children: ReactNode }) {
       restore,
       keepThisDevice: () => void push({ force: true }),
       listSnapshots: async () => {
-        const client = supabase();
-        if (!client || !uid) return [];
-        const { data } = await client.from("ootd_wardrobe_history").select("slot, saved_at, pieces").order("saved_at", { ascending: false });
-        return ((data ?? []) as { slot: number; saved_at: string; pieces: number }[]).map((r) => ({ at: String(r.slot), savedAt: r.saved_at, pieces: r.pieces }));
+        try {
+          const res = await fetch("/api/wardrobe/history", { cache: "no-store" });
+          if (!res.ok) return [];
+          const json = (await res.json()) as { snapshots?: { slot: number; savedAt: string; pieces: number }[] };
+          return (json.snapshots ?? []).map((r) => ({ at: String(r.slot), savedAt: r.savedAt, pieces: r.pieces }));
+        } catch {
+          return [];
+        }
       },
     }),
     [status, available, push, check, restore],
