@@ -19,7 +19,7 @@ import {
   type PersonalState,
 } from "@/lib/db";
 import type { City } from "@/lib/forecast";
-import { hashBlob } from "@/lib/photo";
+import { hashBlob, photoUrl } from "@/lib/photo";
 import { SAMPLE_ITEMS, sampleWears } from "@/lib/sample";
 import { useAuth } from "./auth";
 import type { Comfort, FeedbackValue, Item, Occasion, Plan, Tier, Trip, TripDay, Wear } from "@/lib/types";
@@ -136,6 +136,8 @@ interface WardrobeContext {
   setComfort: (comfort: Comfort) => void;
   addPieces: (pieces: NewPiece[]) => Promise<void>;
   updateItem: (item: Item) => void;
+  /** Swap a piece's photo (e.g. for one with the background removed). */
+  replacePhoto: (id: string, blob: Blob, patch?: Partial<Item>) => Promise<void>;
   removeItem: (id: string) => Promise<void>;
   /** A ZIP of everything: CSV, JSON and the photos as ordinary files. */
   exportBackup: () => Promise<Blob>;
@@ -202,7 +204,7 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         }
         if (cancelled) return;
         setPersonal(state);
-        setImageUrls(new Map([...blobs].map(([id, b]) => [id, URL.createObjectURL(b)])));
+        setImageUrls(new Map([...blobs].map(([id, b]) => [id, photoUrl(b)])));
         personalLoaded.current = true;
         setPersonalReady(true);
         // Pieces added before photos were hashed get their hash now.
@@ -232,7 +234,7 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
   const urlsRef = useRef(imageUrls);
   useEffect(() => {
     const previous = urlsRef.current;
-    for (const [id, url] of previous) if (imageUrls.get(id) !== url) URL.revokeObjectURL(url);
+    for (const [id, url] of previous) if (imageUrls.get(id) !== url) URL.revokeObjectURL(url.split("#")[0]!);
     urlsRef.current = imageUrls;
   }, [imageUrls]);
 
@@ -266,7 +268,7 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
     personalLoaded.current = true;
     setPersonalReady(true);
     setPersonal(state);
-    setImageUrls(new Map([...photos].map(([id, b]) => [id, URL.createObjectURL(b)])));
+    setImageUrls(new Map([...photos].map(([id, b]) => [id, photoUrl(b)])));
     setStorageError(null);
   }, []);
 
@@ -332,7 +334,7 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         }
         setImageUrls((prev) => {
           const next = new Map(prev);
-          for (const p of pieces) next.set(p.item.id, URL.createObjectURL(p.blob));
+          for (const p of pieces) next.set(p.item.id, photoUrl(p.blob));
           return next;
         });
         updatePersonal((s) => ({
@@ -345,6 +347,14 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         const { image: _i, ...rest } = item;
         // Editing details never changes the photo, so keep its hash.
         updatePersonal((s) => ({ ...s, items: s.items.map((i) => (i.id === item.id ? ({ ...rest, photoHash: i.photoHash } as Item) : i)) }));
+      },
+      replacePhoto: async (id, blob, patch) => {
+        if (!personalLoaded.current) throw new Error("Your wardrobe isn’t available on this device.");
+        await putImage(id, blob);
+        const hash = await hashBlob(blob);
+        setImageUrls((prev) => new Map(prev).set(id, photoUrl(blob)));
+        // A new hash makes the account copy upload the new photo; the old one stays in the account.
+        updatePersonal((s) => ({ ...s, items: s.items.map((i) => (i.id === id ? { ...i, ...patch, photoHash: hash } : i)) }));
       },
       removeItem: async (id) => {
         await deleteImage(id);

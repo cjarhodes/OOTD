@@ -43,7 +43,7 @@ Apple's subject lifting is the best free option: high quality, on-device, and no
 1. **Batch, the main path**: a shared iOS Shortcut, "Cut out for wardrobe". You select many photos, it runs the Shortcuts **Remove Background** action on each, and saves transparent PNGs to a "Wardrobe" album. The app then imports that album in one go. Verify the action's name and behaviour on the current iOS version during the on-device check.
 2. **One-off**: long-press the garment in Photos, choose Lift Subject, then Share and save as a PNG.
 
-The app accepts PNGs with alpha and nudges you if a photo arrives without a transparent background. There is no in-browser segmentation model.
+Update (November 2026): ordinary photos now work too. OOTD removes the background itself, on the device, with classical image processing rather than a downloaded model (`src/lib/cutout.ts`, tested against real garment photos on floors, carpets, boards, beds and walls). It refuses rather than guesses on busy backgrounds or close-ups, and the person can always keep the background. Apple's cut-outs still import untouched.
 3. **Auto colour**: k-means over non-transparent pixels, mapped to the named palette, plus a secondary colour and pattern flag (solid, stripe, check, print).
 4. **Closet sprint mode**: shoot 30 in a row on the same backdrop, then review in a swipe stack (category → colour → done).
 
@@ -206,7 +206,7 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | Topic | Decision |
 | --- | --- |
 | Owner and case-study name | Alex Rhodes |
-| Background removal | Apple's on-device subject lifting only (Shortcut batch + Lift Subject) |
+| Background removal | On the device in OOTD for ordinary photos (no model, no upload); Apple's Lift Subject cut-outs kept as they are |
 | AI | Yes, behind a monthly spending cap and owner-only access |
 | Hosting | Vercel |
 | Brand | Gallery, independent of the portfolio |
@@ -231,5 +231,6 @@ The dark theme uses a graphite wall with a lifted cobalt. Both themes are requir
 | Own sign-in: emailed link plus 6-digit code through Resend, signed session cookie, accounts and wardrobes in a private Vercel Blob store. No Supabase, nothing shared with other apps | Done (needs a Resend key) |
 | Style, round 1: open-shirt, high-low, roll-neck and column looks; tonal cream; season sense; bold must be creative and varied; muddy penalty; tiers never share a top half; style audit with checks; modern sample pieces | Done |
 | Style, round 2: fit (slim, regular, relaxed, boxy, wide) on every piece, with kind defaults, an edit field and AI tagging; proportion scoring (A-line, easy line, cropped over long; no layer squeezed over a roomier one, no skinny on skinny); a hood under a bomber is no longer high-low; art drawn to the cut; audit checks on proportion and trouser spread | Done |
+| Adding photos, reworked after adding real photos end to end: background removed on the device in a worker, colour from the garment in Lab (a Red swatch added), first photo ready in about 0.3 s while the rest prepare, cut-outs saved as WebP, keep-the-background toggle, Remove background on saved pieces, photos with a background framed as prints in looks, and the review scrolls each new piece into view | Done |
 | Open source: MIT licence, public README with a one-click Vercel deploy (private Blob store included), visitor-facing copy for the no-accounts model | Done |
 | Portfolio Builds entry and case study | After two weeks of real use |

@@ -5,81 +5,160 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ItemFields, type Draft } from "@/components/ItemFields";
 import { makeItem } from "@/lib/kinds";
-import { preparePhoto, taggingImage, type PreparedPhoto } from "@/lib/photo";
+import type { CutoutFailure } from "@/lib/cutout";
+import { KINDS } from "@/lib/kinds";
+import { preparePhoto, releasePhoto, taggingImage, type PreparedPhoto, type PhotoVersion } from "@/lib/photo";
+import type { Slot } from "@/lib/types";
 import { applyTags } from "@/lib/tagging";
 import { useAI } from "@/state/ai";
 import { newId, useWardrobe } from "@/state/wardrobe";
 
 interface Pending {
   id: string;
-  photo: PreparedPhoto;
+  file: File;
+  /** Null while the photo is still being prepared. */
+  photo: PreparedPhoto | null;
+  /** Save the garment on its own (true) or the photo as taken. */
+  useCutout: boolean;
   draft: Draft;
-  state: "review" | "tagging" | "saving" | "saved" | "skipped";
+  /** The colour was picked by hand or by AI: keep it when switching versions. */
+  colorChosen: boolean;
+  state: "preparing" | "review" | "tagging" | "saving" | "saved" | "skipped" | "failed";
   note?: string;
 }
 
+const FAILURE_NOTE: Record<CutoutFailure, string> = {
+  "fills-frame": "The piece fills the photo, so its background stays. Step back so there’s floor or wall all round it.",
+  "busy-background": "The background is too close to the piece, or too busy, to remove cleanly. A plain floor, bed or wall in daylight works best.",
+  "no-subject": "Couldn’t find one clear piece in this photo, so its background stays. One garment per photo, the whole piece in frame.",
+};
+
+const SLOT_ORDER: Slot[] = ["base", "bottom", "shoes", "mid", "outer"];
+const SLOT_NEED: Record<Slot, string> = { base: "a top", mid: "a knit or sweatshirt", outer: "a jacket or coat", bottom: "trousers", shoes: "shoes" };
+
+/** The version of a pending piece's photo that will be saved. */
+function chosen(p: Pending): PhotoVersion | null {
+  if (!p.photo) return null;
+  return p.useCutout && p.photo.cutout ? p.photo.cutout : p.photo.original;
+}
+
+const fileKey = (f: File) => `${f.name}:${f.size}:${f.lastModified}`;
+
 export default function AddPage() {
-  const { mode, setMode, addPieces, storageError, personalCount } = useWardrobe();
+  const { mode, setMode, addPieces, storageError, personalCount, items } = useWardrobe();
   const ai = useAI();
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [queue, setQueue] = useState<Pending[]>([]);
-  const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Release preview URLs when leaving the page.
   const queueRef = useRef(queue);
   queueRef.current = queue;
-  useEffect(() => () => queueRef.current.forEach((p) => URL.revokeObjectURL(p.photo.previewUrl)), []);
+  useEffect(() => () => queueRef.current.forEach((p) => p.photo && releasePhoto(p.photo)), []);
 
-  const current = queue.find((p) => p.state === "review" || p.state === "tagging" || p.state === "saving");
+  // One piece at a time, in the order chosen; later photos prepare while this one is reviewed.
+  const current = queue.find((p) => p.state !== "saved" && p.state !== "skipped");
   const done = queue.filter((p) => p.state === "saved").length;
+  // Each new piece starts with its photo in view, not where the last form was scrolled to.
+  const reviewRef = useRef<HTMLElement>(null);
+  const shownId = useRef<string | null>(null);
+  useEffect(() => {
+    const id = current?.id ?? null;
+    if (id && shownId.current && id !== shownId.current) {
+      const top = reviewRef.current?.getBoundingClientRect().top ?? 0;
+      if (top < 0) window.scrollTo({ top: window.scrollY + top - 80, behavior: "smooth" });
+    }
+    shownId.current = id;
+  }, [current?.id]);
+  const preparing = queue.filter((p) => p.state === "preparing").length;
 
-  const update = (id: string, patch: Partial<Pending>) => setQueue((q) => q.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  const update = (id: string, patch: Partial<Pending> | ((p: Pending) => Partial<Pending>)) =>
+    setQueue((q) => q.map((p) => (p.id === id ? { ...p, ...(typeof patch === "function" ? patch(p) : patch) } : p)));
 
-  async function onFiles(files: FileList | null) {
+  // Prepare queued photos one by one, in the background.
+  const working = useRef(false);
+  useEffect(() => {
+    if (working.current) return;
+    const next = queue.find((p) => p.state === "preparing");
+    if (!next) return;
+    working.current = true;
+    void (async () => {
+      try {
+        const photo = await preparePhoto(next.file);
+        const v = photo.cutout ?? photo.original;
+        update(next.id, (p) => ({
+          photo,
+          useCutout: Boolean(photo.cutout),
+          state: "review",
+          draft: p.colorChosen ? p.draft : { ...p.draft, color: v.color },
+          note: photo.failure ? FAILURE_NOTE[photo.failure] : undefined,
+        }));
+      } catch {
+        update(next.id, { state: "failed", note: `“${next.file.name}” couldn’t be read. Try exporting it from Photos as a JPEG or PNG.` });
+      } finally {
+        working.current = false;
+        // Trigger the next one.
+        setQueue((q) => [...q]);
+      }
+    })();
+  }, [queue]);
+
+  function onFiles(files: FileList | null) {
     if (!files?.length) return;
     if (mode !== "personal") setMode("personal");
     setError(null);
-    const list = [...files].slice(0, 40);
-    const prepared: Pending[] = [];
-    for (let i = 0; i < list.length; i++) {
-      setBusy(`Preparing photo ${i + 1} of ${list.length}…`);
-      try {
-        const photo = await preparePhoto(list[i]!);
-        prepared.push({
-          id: newId(),
-          photo,
-          state: "review",
-          draft: { name: "", nameEdited: false, kind: null, color: photo.color, material: "cotton", pattern: "solid", fit: "regular", formality: 2, boldness: 0 },
-        });
-      } catch {
-        setError(`“${list[i]!.name}” couldn’t be read. Try exporting it from Photos as a PNG or JPEG.`);
-      }
-    }
-    setBusy(null);
-    setQueue((q) => [...q, ...prepared]);
+    const seen = new Set(queueRef.current.map((p) => fileKey(p.file)));
+    const list = [...files].filter((f) => !seen.has(fileKey(f)));
+    const room = Math.max(0, 40 - queueRef.current.filter((p) => p.state !== "saved" && p.state !== "skipped").length);
+    if (list.length > room) setError(`Added the first ${room} photos. Review those, then add the rest.`);
+    const fresh: Pending[] = list.slice(0, room).map((file) => ({
+      id: newId(),
+      file,
+      photo: null,
+      useCutout: true,
+      colorChosen: false,
+      state: "preparing",
+      draft: { name: "", nameEdited: false, kind: null, color: "Grey", material: "cotton", pattern: "solid", fit: "regular", formality: 2, boldness: 0 },
+    }));
+    setQueue((q) => [...q, ...fresh]);
     if (input.current) input.current.value = "";
   }
 
+  /** Switch between the garment on its own and the photo as taken. */
+  function toggleCutout(p: Pending) {
+    if (!p.photo?.cutout) return;
+    const useCutout = !p.useCutout;
+    const v = useCutout ? p.photo.cutout : p.photo.original;
+    const draft = p.colorChosen ? p.draft : { ...p.draft, color: v.color, name: p.draft.nameEdited || !p.draft.kind ? p.draft.name : `${v.color} ${KINDS[p.draft.kind].label}` };
+    update(p.id, { useCutout, draft });
+  }
+
+  // What the wardrobe still needs before Today can dress someone.
+  const slotsHave = new Set(items.filter((i) => i.status !== "archived").map((i) => i.slot));
+  const missing = SLOT_ORDER.filter((s) => (s === "base" || s === "bottom" || s === "shoes") && !slotsHave.has(s));
+
   async function tag(p: Pending) {
+    const v = chosen(p);
+    if (!v) return;
     update(p.id, { state: "tagging", note: undefined });
-    const result = await ai.requestTags(await taggingImage(p.photo.blob));
+    const result = await ai.requestTags(await taggingImage(v.blob));
     if ("error" in result) {
       update(p.id, { state: "review", note: result.error });
       return;
     }
-    update(p.id, { state: "review", draft: { ...result.tags, nameEdited: true }, note: "Tagged by Claude. Check it over." });
+    update(p.id, { state: "review", colorChosen: true, draft: { ...result.tags, nameEdited: true }, note: "Tagged by Claude. Check it over." });
     void ai.refresh();
   }
 
   async function save(p: Pending) {
-    if (!p.draft.kind) return;
+    const v = chosen(p);
+    if (!p.draft.kind || !v) return;
     update(p.id, { state: "saving" });
     const base = makeItem({ id: p.id, name: p.draft.name || "Untitled piece", kind: p.draft.kind, color: p.draft.color });
     const item = applyTags(base, { ...p.draft, kind: p.draft.kind, name: p.draft.name || base.name });
     try {
-      await addPieces([{ item, blob: p.photo.blob }]);
+      await addPieces([{ item, blob: v.blob }]);
       update(p.id, { state: "saved" });
     } catch {
       update(p.id, { state: "review", note: "This piece couldn’t be saved on this device." });
@@ -101,28 +180,26 @@ export default function AddPage() {
         <section className="add-intro">
           <div className="steps">
             <div>
-              <span className="label">Best: a batch of cut-outs</span>
+              <span className="label">Lay it out, take the photo</span>
               <p>
-                In the Shortcuts app, make a shortcut that does <strong>Select Photos</strong> (multiple) →{" "}
-                <strong>Repeat with Each</strong> → <strong>Remove Background</strong> → <strong>Save to Photo Album</strong>.
-                Run it on your garment photos, then add the whole album here.
+                One piece per photo, the whole garment in frame, on a plain floor, bed or wall in daylight. OOTD removes the background on your phone,
+                so nothing is uploaded until you save.
               </p>
             </div>
             <div>
-              <span className="label">One at a time</span>
-              <p>
-                In Photos, touch and hold the garment until it lifts off the background, then <strong>Share → Save Image</strong>.
-                The saved copy has a clear background.
-              </p>
+              <span className="label">Add many at once</span>
+              <p>Choose a batch from your photos. The first is ready in a moment and the rest get ready while you go.</p>
             </div>
             <div>
-              <span className="label">Shooting tips</span>
-              <p>Lay each piece flat or hang it against a plain wall in daylight. One garment per photo, the whole piece in frame.</p>
+              <span className="label">Already cut out?</span>
+              <p>
+                Photos with a clear background (in Photos, touch and hold the garment, then <strong>Share → Save Image</strong>) are kept exactly as they are.
+              </p>
             </div>
           </div>
           <div className="actions">
-            <button type="button" className="btn" onClick={() => input.current?.click()} disabled={Boolean(busy)}>
-              {busy ?? (queue.length ? "Add more photos" : "Choose photos")}
+            <button type="button" className="btn" onClick={() => input.current?.click()}>
+              {queue.length ? "Add more photos" : "Choose photos"}
             </button>
             {done > 0 && (
               <Link href="/wardrobe" className="btn alt">
@@ -143,7 +220,7 @@ export default function AddPage() {
         accept="image/*"
         multiple
         hidden
-        onChange={(e) => void onFiles(e.target.files)}
+        onChange={(e) => onFiles(e.target.files)}
         aria-label="Choose garment photos"
       />
       {error && (
@@ -153,39 +230,59 @@ export default function AddPage() {
       )}
 
       {current && (
-        <section className="review" aria-label="Review this piece">
-          <div className="review-photo plinth">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={current.photo.previewUrl} alt="The garment being added" />
+        <section className="review" aria-label="Review this piece" ref={reviewRef}>
+          <div className="review-photo plinth" aria-busy={current.state === "preparing"}>
+            {current.state === "preparing" ? (
+              <p className="review-wait label">Finding the garment…</p>
+            ) : current.state === "failed" ? (
+              <p className="review-wait label">Couldn’t read this photo</p>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={chosen(current)!.previewUrl} alt="The garment being added" />
+            )}
           </div>
           <div className="review-form">
             <div className="review-progress label">
-              Piece {queue.indexOf(current) + 1} of {queue.length}
+              Piece {queue.filter((p) => p.state !== "skipped").indexOf(current) + 1} of {queue.filter((p) => p.state !== "skipped").length}
               {done > 0 && ` · ${done} saved`}
+              {preparing > 0 && current.state !== "preparing" && ` · preparing ${preparing}`}
             </div>
-            {!current.photo.cutout && (
-              <p className="hint">
-                This photo still has its background. It will work, but cut-outs look much better in your looks.
-              </p>
-            )}
-            {current.note && <p className="hint">{current.note}</p>}
-            {ai.status.configured && (
-              <div className="ai-row">
-                <button type="button" className="btn alt" disabled={current.state !== "review" || !ai.canTag} onClick={() => void tag(current)}>
-                  {current.state === "tagging" ? "Tagging…" : "Tag with AI"}
+            {current.photo?.cutout && !current.photo.madeCutout && (
+              <div className="cutout-row">
+                <span className="label">{current.useCutout ? "Background removed" : "Background kept"}</span>
+                <button type="button" className="text-link" onClick={() => toggleCutout(current)} aria-pressed={!current.useCutout}>
+                  {current.useCutout ? "Keep the background" : "Remove it again"}
                 </button>
-                {ai.left !== null && (
-                  <span className="label">
-                    {ai.left} of {ai.status.limit} AI tags left this month
-                  </span>
-                )}
               </div>
             )}
-            <ItemFields value={current.draft} idPrefix={current.id} onChange={(draft) => update(current.id, { draft })} />
+            {current.note && <p className="hint">{current.note}</p>}
+            {current.state !== "preparing" && current.state !== "failed" && (
+              <>
+                {ai.status.configured && (
+                  <div className="ai-row">
+                    <button type="button" className="btn alt" disabled={current.state !== "review" || !ai.canTag} onClick={() => void tag(current)}>
+                      {current.state === "tagging" ? "Tagging…" : "Tag with AI"}
+                    </button>
+                    {ai.left !== null && (
+                      <span className="label">
+                        {ai.left} of {ai.status.limit} AI tags left this month
+                      </span>
+                    )}
+                  </div>
+                )}
+                <ItemFields
+                  value={current.draft}
+                  idPrefix={current.id}
+                  onChange={(draft) => update(current.id, (p) => ({ draft, colorChosen: p.colorChosen || draft.color !== p.draft.color }))}
+                />
+              </>
+            )}
             <div className="actions">
-              <button type="button" className="btn" disabled={!current.draft.kind || current.state !== "review"} onClick={() => void save(current)}>
-                {current.state === "saving" ? "Saving…" : current.draft.kind ? "Save piece" : "Choose what it is"}
-              </button>
+              {current.state !== "failed" && (
+                <button type="button" className="btn" disabled={!current.draft.kind || current.state !== "review"} onClick={() => void save(current)}>
+                  {current.state === "saving" ? "Saving…" : current.state === "preparing" ? "Preparing…" : current.draft.kind ? "Save piece" : "Choose what it is"}
+                </button>
+              )}
               <button type="button" className="btn quiet" onClick={() => update(current.id, { state: "skipped" })}>
                 Skip
               </button>
@@ -198,10 +295,13 @@ export default function AddPage() {
         <div className="banner">
           <span>
             {done} {done === 1 ? "piece" : "pieces"} added.
+            {missing.length > 0 && ` Add ${missing.map((m) => SLOT_NEED[m]).join(", ").replace(/, ([^,]*)$/, " and $1")} for a full look.`}
           </span>
-          <button type="button" className="text-link" onClick={() => router.push("/")}>
-            Get today’s look
-          </button>
+          {missing.length === 0 && (
+            <button type="button" className="text-link" onClick={() => router.push("/")}>
+              Get today’s look
+            </button>
+          )}
         </div>
       )}
     </>

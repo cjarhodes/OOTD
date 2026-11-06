@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
 import { ItemFields, type Draft } from "@/components/ItemFields";
 import { SLOT_LABEL, fitOf } from "@/lib/kinds";
+import { hasBackdrop, preparePhoto, releasePhoto } from "@/lib/photo";
 import { applyTags } from "@/lib/tagging";
 import type { Item, Slot, Status } from "@/lib/types";
 import { useWardrobe } from "@/state/wardrobe";
@@ -28,12 +29,34 @@ function draftOf(item: Item): Draft {
 }
 
 function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose: () => void }) {
-  const { updateItem, removeItem } = useWardrobe();
+  const { updateItem, removeItem, replacePhoto, photoBlobs } = useWardrobe();
   const router = useRouter();
   const ref = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<Draft>(draftOf(item));
   const [status, setStatus] = useState<Status>(item.status);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [cutting, setCutting] = useState<"idle" | "working" | "failed">("idle");
+
+  // Pieces saved with their background can have it removed now.
+  async function removeBackdrop() {
+    setCutting("working");
+    try {
+      const blob = (await photoBlobs([item.id])).get(item.id);
+      if (!blob) throw new Error("no photo");
+      const prepared = await preparePhoto(new File([blob], `${item.id}.jpg`, { type: blob.type }));
+      const cut = prepared.cutout;
+      if (!cut || prepared.madeCutout) {
+        releasePhoto(prepared);
+        setCutting("failed");
+        return;
+      }
+      await replacePhoto(item.id, cut.blob);
+      releasePhoto(prepared);
+      setCutting("idle");
+    } catch {
+      setCutting("failed");
+    }
+  }
 
   useEffect(() => {
     const d = ref.current;
@@ -59,6 +82,14 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
       <div className="sheet-photo plinth">
         <GarmentTile item={item} />
       </div>
+      {hasBackdrop(item.image) && (
+        <div className="cutout-row">
+          <button type="button" className="btn alt" onClick={() => void removeBackdrop()} disabled={cutting === "working"}>
+            {cutting === "working" ? "Removing background…" : "Remove background"}
+          </button>
+          {cutting === "failed" && <span className="hint">Couldn’t separate this piece from its background. A new photo on a plain floor or wall will.</span>}
+        </div>
+      )}
       <p className="label">{worn ? `Worn ${worn}×` : "Not worn yet"}</p>
       <div className="segmented" role="group" aria-label="Status" style={{ ["--count" as string]: 3 }}>
         {(Object.keys(STATUS_LABEL) as Status[]).map((s) => (

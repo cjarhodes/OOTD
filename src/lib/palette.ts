@@ -44,6 +44,7 @@ export const PALETTE = {
   Charcoal: { hex: "#3d3f44", family: "grey", neutral: true, lightness: 0.25 },
   Black: { hex: "#1d1d1d", family: "black", neutral: true, lightness: 0.1 },
   Burgundy: { hex: "#6e2d35", family: "red", neutral: false, lightness: 0.27 },
+  Red: { hex: "#b3262a", family: "red", neutral: false, lightness: 0.42 },
   Rust: { hex: "#9a4a2e", family: "red", neutral: false, lightness: 0.4 },
   Mustard: { hex: "#c39a3a", family: "yellow", neutral: false, lightness: 0.62 },
   Pink: { hex: "#d9a7a4", family: "pink", neutral: false, lightness: 0.74 },
@@ -57,14 +58,45 @@ export function swatch(name: ColorName): Swatch {
   return PALETTE[name];
 }
 
-/** Nearest palette colour to an sRGB hex, by simple Euclidean distance. */
+/** sRGB (0-255) to CIELAB (D65). Lab distances track how different colours look. */
+export function rgbToLab(r: number, g: number, b: number): [number, number, number] {
+  const lin = (v: number) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const R = lin(r);
+  const G = lin(g);
+  const B = lin(b);
+  const x = (R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047;
+  const y = R * 0.2126 + G * 0.7152 + B * 0.0722;
+  const z = (R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const fx = f(x);
+  const fy = f(y);
+  const fz = f(z);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+
+const SWATCH_LAB = Object.fromEntries(
+  (Object.keys(PALETTE) as ColorName[]).map((name) => [name, rgbToLab(...hexToRgb(PALETTE[name].hex))]),
+) as Record<ColorName, [number, number, number]>;
+
+/**
+ * Nearest palette colour to an sRGB hex, in Lab. Lightness counts a little less
+ * than hue, since photos shift it with the light; a near-grey never matches a
+ * coloured swatch just because it is closer in brightness.
+ */
 export function nearestColor(hex: string): ColorName {
-  const target = hexToRgb(hex);
+  const [L, a, b] = rgbToLab(...hexToRgb(hex));
+  const chroma = Math.hypot(a, b);
   let best: ColorName = "Grey";
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const name of COLOR_NAMES) {
-    const [r, g, b] = hexToRgb(PALETTE[name].hex);
-    const d = (r - target[0]) ** 2 + (g - target[1]) ** 2 + (b - target[2]) ** 2;
+    const [sL, sa, sb] = SWATCH_LAB[name];
+    const sChroma = Math.hypot(sa, sb);
+    // Hue matters more once there's colour to speak of.
+    const hue = (a - sa) ** 2 + (b - sb) ** 2;
+    const d = 0.6 * (L - sL) ** 2 + hue + (chroma < 8 && sChroma > 14 ? 120 : 0);
     if (d < bestDistance) {
       bestDistance = d;
       best = name;
