@@ -37,6 +37,12 @@ const KNIT_V =
 const KNIT_RIBS = "M88 182 L172 182 L172 190 L88 190 Z M78 135 L62 132 L62 140 L78 143 Z M182 135 L198 132 L198 140 L182 143 Z";
 const CARDIGAN_LEFT = "M118 42 L100 48 L70 66 L62 140 L78 143 L86 96 L88 190 L127 190 L127 98 Z";
 const OVERSHIRT_LEFT = "M118 38 L98 44 L68 62 L58 137 L74 140 L84 94 L86 200 L128 200 L128 70 Z";
+// A shirt worn open: the front edge stands well off centre so the tee shows.
+const OPEN_SHIRT_LEFT = "M116 38 L102 44 L74 60 L66 132 L80 134 L88 92 L90 204 L113 204 L110 72 Z";
+const OPEN_SHIRT_LAPEL = "M116 38 L126 50 L110 72 Z";
+// Long sleeves, a closer fit than a sweater, for roll and mock necks.
+const FINE_KNIT =
+  "M104 48 Q130 58 156 48 L184 62 L194 138 L181 140 L173 94 L170 196 L90 196 L87 94 L79 140 L66 138 L76 62 Z";
 const GILET_LEFT = "M118 40 L102 46 Q86 58 88 80 L88 188 L127 188 L127 72 Z";
 
 function jacketLeft(hem: number) {
@@ -136,7 +142,8 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
       const top = k === "turtleneck" ? 28 : 38;
       return (
         <>
-          <path d={TEE} fill={c} />
+          <path d={FINE_KNIT} fill={c} />
+          <path d="M90 188 L170 188 L170 196 L90 196 Z" fill={SHADE} opacity=".6" />
           <path d={`M114 ${top} L146 ${top} L146 52 Q130 58 114 52 Z`} fill={c} />
           <path d={`M114 ${top} L146 ${top} L146 52 Q130 58 114 52 Z`} fill={SHADE} opacity=".6" />
         </>
@@ -144,6 +151,20 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
     }
     case "oxford":
     case "camp-shirt":
+      // Worn open over a tee: two fronts with the tee showing between them.
+      if (item.front === "open")
+        return (
+          <>
+            {halves(OPEN_SHIRT_LEFT, c)}
+            {stripe && (
+              <>
+                <path d="M100 66 L102 204 M84 96 L86 204" stroke="rgba(255,255,255,.45)" strokeWidth="5" />
+                <path d="M100 66 L102 204 M84 96 L86 204" stroke="rgba(255,255,255,.45)" strokeWidth="5" transform={MIRROR} />
+              </>
+            )}
+            {halves(OPEN_SHIRT_LAPEL, SHADE)}
+          </>
+        );
       return (
         <>
           <path d={SHIRT} fill={c} />

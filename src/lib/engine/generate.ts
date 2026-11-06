@@ -12,6 +12,7 @@ import type {
 } from "../types";
 import { lookName, lookNotes, recipeOf, tonalFamily } from "./describe";
 import { stackIsValid, upperLayers, weatherFit } from "./rules";
+import { asOpenShirt, creativityScore, OPEN_SHIRT_KINDS, openShirtFits, seasonScore } from "./style";
 import {
   buildHistory,
   colourScore,
@@ -94,8 +95,11 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
   const feedback = input.feedback ?? {};
   const out: Candidate[] = [];
 
+  // Shirts can also go on open over a tee, as a light layer.
+  const openShirts = pool.base.filter((i) => OPEN_SHIRT_KINDS.has(i.kind)).map(asOpenShirt);
   for (const base of pool.base) {
-    for (const mid of [undefined, ...pool.mid]) {
+    const mids = [undefined, ...pool.mid, ...openShirts.filter((s) => openShirtFits(base, s))];
+    for (const mid of mids) {
       for (const outer of [undefined, ...pool.outer]) {
         for (const bottom of pool.bottom) {
           for (const shoes of pool.shoes) {
@@ -113,6 +117,7 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
               textureScore(pieces) +
               formalityScore(pieces, input.occasion) +
               historyScore(pieces, "fresh", history, feedback) * 0.5 +
+              (ignoreWeather ? 0 : seasonScore(pieces, needs)) +
               (random() - 0.5) * 1.0;
             out.push({ pieces, base: score, boldness, shed: fit.shed, backOn: fit.backOn });
           }
@@ -138,6 +143,14 @@ export function rankedCandidates(input: GenerateInput): { candidates: Candidate[
 
 export function candidateToLook(c: Candidate, input: GenerateInput): Look {
   return toLook(c, c.base, input, dayNeeds(input.weather, input.comfort).wet);
+}
+
+/** Upper-body pieces two looks have in common. */
+function upperShared(a: Pieces, b: Pieces): number {
+  const ids = new Set(upperLayers(a).map((i) => i.id));
+  const shared = upperLayers(b).filter((i) => ids.has(i.id)).length;
+  // Two single-layer looks in the same top are the same look.
+  return shared === upperLayers(b).length ? 2 : shared;
 }
 
 function overlap(a: Pieces, b: Pieces): number {
@@ -184,8 +197,13 @@ export function generateLooks(input: GenerateInput): Looks {
   for (const tier of warning ? (["fresh"] as Tier[]) : TIERS) {
     let best: { c: Candidate; s: number } | null = null;
     for (const c of pool) {
-      if (chosen.some((p) => overlap(p, c.pieces) > 3)) continue;
-      const s = c.base + tierScore(c.boldness, tier) + historyScore(c.pieces, tier, history, feedback) * 0.5;
+      // Each tier is a different look: never the same top half with new trousers.
+      if (chosen.some((p) => overlap(p, c.pieces) > 3 || upperShared(p, c.pieces) > 1)) continue;
+      const s =
+        c.base +
+        tierScore(c.boldness, tier) +
+        creativityScore(c.pieces, recipeOf(c.pieces), tonalFamily(c.pieces) !== null, tier) +
+        historyScore(c.pieces, tier, history, feedback) * 0.5;
       if (!best || s > best.s) best = { c, s };
     }
     if (best) {
@@ -294,11 +312,14 @@ export function idsOf(p: Pieces): string[] {
 export function lookFromIds(ids: string[], items: Item[], input: Omit<GenerateInput, "items">): Look | null {
   const found = ids.map((id) => items.find((i) => i.id === id)).filter((i): i is Item => Boolean(i));
   const get = (slot: Slot) => found.find((i) => i.slot === slot);
-  const base = get("base");
+  // Two base pieces means a shirt was worn open over the other.
+  const bases = found.filter((i) => i.slot === "base");
+  const openShirt = bases.length > 1 ? bases.find((i) => OPEN_SHIRT_KINDS.has(i.kind) && bases.some((b) => openShirtFits(b, i))) : undefined;
+  const base = openShirt ? bases.find((i) => i !== openShirt) : get("base");
   const bottom = get("bottom");
   const shoes = get("shoes");
   if (!base || !bottom || !shoes) return null;
-  const pieces: Pieces = { base, mid: get("mid"), outer: get("outer"), bottom, shoes };
+  const pieces: Pieces = { base, mid: openShirt ? asOpenShirt(openShirt) : get("mid"), outer: get("outer"), bottom, shoes };
   const needs = dayNeeds(input.weather, input.comfort);
   const fit = weatherFit(pieces, needs, false);
   return toLook(

@@ -18,6 +18,8 @@ export const SAMPLE_ITEMS: Item[] = [
   makeItem({ id: "b-mock-charcoal", name: "Charcoal mock neck", kind: "mock-neck", color: "Charcoal" }),
   makeItem({ id: "b-camp-stripe", name: "Striped camp-collar shirt", kind: "camp-shirt", color: "Forest", pattern: "stripe", boldness: 2 }),
   makeItem({ id: "b-henley-oat", name: "Oatmeal henley", kind: "henley", color: "Oatmeal" }),
+  makeItem({ id: "b-turtle-black", name: "Black merino roll neck", kind: "turtleneck", color: "Black", material: "wool", boldness: 1 }),
+  makeItem({ id: "b-tee-black", name: "Boxy black tee", kind: "tee", color: "Black" }),
 
   // mid
   makeItem({ id: "m-crew-oat", name: "Oatmeal merino crewneck", kind: "crewneck", color: "Oatmeal", material: "wool", formality: 3 }),
@@ -28,6 +30,7 @@ export const SAMPLE_ITEMS: Item[] = [
   makeItem({ id: "m-hoodie-grey", name: "Grey loopback hoodie", kind: "hoodie", color: "Grey" }),
   makeItem({ id: "m-gilet-navy", name: "Navy quilted gilet", kind: "gilet", color: "Navy" }),
   makeItem({ id: "m-qzip-sage", name: "Sage quarter-zip", kind: "quarter-zip", color: "Sage", boldness: 1 }),
+  makeItem({ id: "m-sweat-ecru", name: "Ecru heavyweight sweatshirt", kind: "sweatshirt", color: "Ecru" }),
 
   // outer
   makeItem({ id: "o-waxed-loden", name: "Loden waxed jacket", kind: "waxed-jacket", color: "Loden" }),
@@ -35,13 +38,16 @@ export const SAMPLE_ITEMS: Item[] = [
   makeItem({ id: "o-blazer-navy", name: "Navy unstructured blazer", kind: "blazer", color: "Navy" }),
   makeItem({ id: "o-overcoat-camel", name: "Camel overcoat", kind: "overcoat", color: "Camel", boldness: 1 }),
   makeItem({ id: "o-shell-black", name: "Black rain shell", kind: "rain-shell", color: "Black" }),
+  makeItem({ id: "o-bomber-black", name: "Black nylon bomber", kind: "bomber", color: "Black", boldness: 1 }),
 
   // bottoms
-  makeItem({ id: "p-jeans-indigo", name: "Straight indigo jeans", kind: "jeans", color: "Indigo" }),
+  makeItem({ id: "p-jeans-indigo", name: "Relaxed indigo jeans", kind: "jeans", color: "Indigo" }),
   makeItem({ id: "p-jeans-ecru", name: "Ecru jeans", kind: "jeans", color: "Ecru", boldness: 1 }),
   makeItem({ id: "p-trousers-charcoal", name: "Pleated charcoal trousers", kind: "trousers", color: "Charcoal" }),
   makeItem({ id: "p-chinos-khaki", name: "Khaki chinos", kind: "chinos", color: "Khaki" }),
   makeItem({ id: "p-chinos-olive", name: "Olive fatigues", kind: "chinos", color: "Olive", formality: 1 }),
+  makeItem({ id: "p-trousers-black", name: "Black wide-leg trousers", kind: "trousers", color: "Black", formality: 3, boldness: 1 }),
+  makeItem({ id: "p-carpenter-stone", name: "Stone carpenter trousers", kind: "chinos", color: "Stone", material: "canvas", formality: 1 }),
 
   // shoes
   makeItem({ id: "s-sneakers-white", name: "White leather sneakers", kind: "sneakers", color: "White" }),

@@ -123,7 +123,7 @@ describe("recipes and names", () => {
     expect(recipeOf(look({ base: oxford, mid: crew }))).toBe("collar-out");
     expect(recipeOf(look({ mid: overshirt }))).toBe("open-overshirt");
     expect(recipeOf(look({ mid: hoodie, outer: waxed }))).toBe("high-low");
-    expect(recipeOf(look({ base: turtle, outer: blazer }))).toBe("smart-soft");
+    expect(recipeOf(look({ base: turtle, outer: blazer }))).toBe("roll-neck");
     expect(recipeOf(look({ base: tee, mid: crew, outer: waxed }))).toBe("three-layer");
     expect(recipeOf(look({}))).toBe("single");
   });

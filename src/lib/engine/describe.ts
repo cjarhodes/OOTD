@@ -2,6 +2,7 @@ import { MATERIAL_LABEL } from "../kinds";
 import { PALETTE, type ColorFamily } from "../palette";
 import type { Item, Occasion, Pieces, RecipeId } from "../types";
 import { upperLayers } from "./rules";
+import { columnOf, isOpenShirtLayer } from "./style";
 
 export const OCCASION_LABEL: Record<Occasion, string> = {
   office: "Office",
@@ -29,6 +30,8 @@ const RECIPE_LABEL: Record<RecipeId, string> = {
   "two-layer": "Jacket on",
   "three-layer": "Three layers",
   "high-low": "High-low",
+  "open-shirt": "Open shirt",
+  "roll-neck": "Roll neck, tailored",
 };
 
 /** Extra boldness a recipe brings on top of the pieces themselves. */
@@ -42,12 +45,19 @@ export const RECIPE_BOLDNESS: Record<RecipeId, number> = {
   "two-layer": 0,
   "three-layer": 1,
   "high-low": 2,
+  "open-shirt": 1,
+  "roll-neck": 1,
 };
 
 export function recipeOf(p: Pieces): RecipeId {
   const { base, mid, outer } = p;
   if (!mid && !outer) return "single";
+  if (isOpenShirtLayer(p)) return "open-shirt";
   if (mid?.kind === "hoodie" && outer) return "high-low";
+  if (mid?.kind === "sweatshirt" && outer && (outer.neckline === "lapel" || outer.kind === "overcoat")) return "high-low";
+  if ((base.neckline === "turtle" || base.neckline === "mock") && outer?.neckline === "lapel" && (!mid || mid.front === "open")) {
+    return "roll-neck";
+  }
   if (outer?.kind === "blazer" && !mid) return "smart-soft";
   if (base.neckline === "collar" && mid && (mid.neckline === "crew" || mid.neckline === "v") && mid.front === "closed") {
     return "collar-out";
@@ -60,7 +70,7 @@ export function recipeOf(p: Pieces): RecipeId {
 }
 
 const FAMILY_WORD: Record<ColorFamily, string> = {
-  white: "ecru",
+  white: "cream",
   brown: "brown",
   green: "olive",
   blue: "blue",
@@ -78,7 +88,7 @@ export function tonalFamily(p: Pieces): ColorFamily | null {
   const families = new Set(layers.map((i) => PALETTE[i.color].family));
   if (families.size !== 1) return null;
   const family = PALETTE[layers[0]!.color].family;
-  if (family === "black" || family === "white") return null;
+  if (family === "black") return null;
   // Tonal means one family at different depths: every neighbouring pair must differ.
   for (let i = 1; i < layers.length; i++) {
     if (Math.abs(PALETTE[layers[i - 1]!.color].lightness - PALETTE[layers[i]!.color].lightness) < 0.08) return null;
@@ -88,7 +98,13 @@ export function tonalFamily(p: Pieces): ColorFamily | null {
 
 export function lookName(p: Pieces, occasion: Occasion): string {
   const tonal = tonalFamily(p);
-  const label = tonal ? `Tonal ${FAMILY_WORD[tonal]}` : RECIPE_LABEL[recipeOf(p)];
+  const column = columnOf(p);
+  const recipe = recipeOf(p);
+  const label = tonal
+    ? `Tonal ${FAMILY_WORD[tonal]}`
+    : column && (recipe === "single" || recipe === "layered" || recipe === "two-layer")
+      ? `${FAMILY_WORD[PALETTE[column.color].family].replace(/^./, (c) => c.toUpperCase())} column`
+      : RECIPE_LABEL[recipe];
   return `${label}, ${OCCASION_PHRASE[occasion]}`;
 }
 
@@ -127,6 +143,16 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
     case "high-low":
       notes.push(`A ${lower(mid!)} under a ${lower(outer!)} keeps the tailoring relaxed.`);
       break;
+    case "open-shirt":
+      notes.push(
+        outer
+          ? `Wear the ${lower(mid!)} unbuttoned over the ${lower(base)}, like a light jacket under the ${lower(outer)}.`
+          : `Wear the ${lower(mid!)} unbuttoned over the ${lower(base)}, sleeves rolled.`,
+      );
+      break;
+    case "roll-neck":
+      notes.push(`A ${lower(base)} under the ${lower(outer!)} does the job of a shirt and tie, quieter.`);
+      break;
     case "smart-soft":
       notes.push(`A ${lower(base)} under a ${lower(outer!)} looks sharp without a tie.`);
       break;
@@ -149,8 +175,10 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
   }
 
   const tonal = tonalFamily(p);
+  const column = columnOf(p);
   const accents = [...upperLayers(p), p.bottom, p.shoes].filter((i) => !PALETTE[i.color].neutral);
   if (tonal) notes.push(`All ${FAMILY_WORD[tonal]} tones, a different depth on each layer.`);
+  else if (column) notes.push(`The ${lower(column)} and ${lower(p.bottom)} make one long line${outer ? `, framed by the ${lower(outer)}` : ""}.`);
   else if (accents.length === 1) notes.push(`One colour does the talking: the ${lower(accents[0]!)}.`);
   else if (accents.length === 0) notes.push("Neutrals throughout, so the texture carries it.");
 
