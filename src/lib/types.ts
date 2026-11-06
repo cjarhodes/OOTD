@@ -59,6 +59,9 @@ export type Material =
 
 export type Pattern = "solid" | "stripe" | "check" | "print";
 
+/** How a piece is cut. Tops: slim to boxy; bottoms: slim to wide. Shoes ignore it. */
+export type Fit = "slim" | "regular" | "relaxed" | "boxy" | "wide";
+
 export type Occasion = "office" | "client" | "weekend" | "dinner" | "travel";
 
 export type Tier = "easy" | "fresh" | "bold";
@@ -93,6 +96,8 @@ export interface Item {
   /** Avoid in rain (suede, linen, light canvas shoes). */
   delicate: boolean;
   status: Status;
+  /** How it's cut. Older pieces have none and use their kind's default (see fitOf). */
+  fit?: Fit;
   /** A cut-out PNG (data URL or path). Sample pieces use illustrations instead. */
   image?: string;
   /** SHA-256 of the stored photo; names it in the cloud backup and exports. */

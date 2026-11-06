@@ -2,7 +2,7 @@ import { MATERIAL_LABEL } from "../kinds";
 import { PALETTE, type ColorFamily } from "../palette";
 import type { Item, Occasion, Pieces, RecipeId } from "../types";
 import { upperLayers } from "./rules";
-import { columnOf, isOpenShirtLayer } from "./style";
+import { columnOf, isOpenShirtLayer, proportionIdea } from "./style";
 
 export const OCCASION_LABEL: Record<Occasion, string> = {
   office: "Office",
@@ -49,11 +49,14 @@ export const RECIPE_BOLDNESS: Record<RecipeId, number> = {
   "roll-neck": 1,
 };
 
+const SPORTY_OUTERS = new Set(["bomber", "puffer", "rain-shell"]);
+
 export function recipeOf(p: Pieces): RecipeId {
   const { base, mid, outer } = p;
   if (!mid && !outer) return "single";
   if (isOpenShirtLayer(p)) return "open-shirt";
-  if (mid?.kind === "hoodie" && outer) return "high-low";
+  // High-low is sporty under smart. A hood under a bomber, puffer or shell is just streetwear.
+  if (mid?.kind === "hoodie" && outer && !SPORTY_OUTERS.has(outer.kind)) return "high-low";
   if (mid?.kind === "sweatshirt" && outer && (outer.neckline === "lapel" || outer.kind === "overcoat")) return "high-low";
   if ((base.neckline === "turtle" || base.neckline === "mock") && outer?.neckline === "lapel" && (!mid || mid.front === "open")) {
     return "roll-neck";
@@ -181,6 +184,14 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
   else if (column) notes.push(`The ${lower(column)} and ${lower(p.bottom)} make one long line${outer ? `, framed by the ${lower(outer)}` : ""}.`);
   else if (accents.length === 1) notes.push(`One colour does the talking: the ${lower(accents[0]!)}.`);
   else if (accents.length === 0) notes.push("Neutrals throughout, so the texture carries it.");
+
+  const idea = proportionIdea(p);
+  if (idea && notes.length < 3) {
+    const top = outer ?? mid ?? base;
+    if (idea === "a-line") notes.push(`Slim on top, wide below: the ${lower(base)} keeps the ${lower(p.bottom)} looking deliberate.`);
+    else if (idea === "easy-line") notes.push(`Roomy top and relaxed ${lower(p.bottom)}: one easy, generous line.`);
+    else notes.push(`The cropped ${lower(top)} stops at the waist, so let the layer underneath show below it.`);
+  }
 
   const contrast = textureContrast(p);
   if (contrast && notes.length < 3) {

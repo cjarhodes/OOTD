@@ -1,5 +1,6 @@
+import { fitOf } from "../kinds";
 import { PALETTE } from "../palette";
-import type { Item, Pieces, RecipeId, Tier } from "../types";
+import type { Fit, Item, Pieces, RecipeId, Tier } from "../types";
 import type { DayNeeds } from "./weather";
 
 /**
@@ -60,7 +61,7 @@ export function seasonScore(p: Pieces, needs: DayNeeds): number {
   if (camp && needs.coldest <= 8) score -= 1.8;
   else if (camp && needs.coldest < 14) score -= 0.9;
   if (needs.coldest <= 4 && p.shoes.kind === "loafers") score -= 0.4;
-  return score + pairingScore(p);
+  return score + pairingScore(p) + proportionScore(p);
 }
 
 /** Pairings that are allowed but rarely look right. */
@@ -91,10 +92,56 @@ export function isMuddy(p: Pieces): boolean {
   return [...byFamily.values()].some((n) => n >= 3);
 }
 
+/** How much room a cut takes up, for proportion. */
+export const VOLUME: Record<Fit, number> = { slim: 0, regular: 1, relaxed: 2, boxy: 2.5, wide: 3 };
+
+/** A cropped piece: a boxy cut that stops at the waist. */
+export function isCropped(i: Item): boolean {
+  return fitOf(i) === "boxy" && i.length <= 2;
+}
+
+export type ProportionIdea = "easy-line" | "a-line" | "cropped-over-long";
+
+/** The silhouette idea a look carries, if any. */
+export function proportionIdea(p: Pieces): ProportionIdea | null {
+  const layers = [p.base, p.mid, p.outer].filter((i): i is Item => Boolean(i));
+  const top = layers[layers.length - 1]!;
+  const inner = layers.length > 1 ? layers[layers.length - 2]! : null;
+  const topV = VOLUME[fitOf(top)];
+  const bottomV = VOLUME[fitOf(p.bottom)];
+  if (inner && isCropped(top) && inner.thickness <= 1 && inner.length - top.length >= 2) return "cropped-over-long";
+  // Fitted through the body, wide below. A coat that isn't boxy keeps the line.
+  const body = p.mid ?? p.base;
+  if (VOLUME[fitOf(body)] <= 0 && bottomV >= 3 && (!p.outer || VOLUME[fitOf(p.outer)] <= 2)) return "a-line";
+  if (topV >= 2 && bottomV >= 2) return "easy-line";
+  return null;
+}
+
+/** Proportion: modern silhouettes up, dated or impossible ones down. */
+export function proportionScore(p: Pieces): number {
+  const layers = [p.base, p.mid, p.outer].filter((i): i is Item => Boolean(i));
+  let score = 0;
+  // A layer can't sit over something roomier than itself.
+  for (let i = 1; i < layers.length; i++) {
+    if (VOLUME[fitOf(layers[i]!)] < VOLUME[fitOf(layers[i - 1]!)] - 1.5) score -= 1.5;
+  }
+  const top = layers[layers.length - 1]!;
+  const topV = VOLUME[fitOf(top)];
+  const bottomV = VOLUME[fitOf(p.bottom)];
+  // Skinny on skinny reads dated.
+  if (topV <= 0 && bottomV <= 0) score -= 0.8;
+  const idea = proportionIdea(p);
+  if (idea === "a-line") score += 0.5;
+  else if (idea === "easy-line") score += 0.3;
+  else if (idea === "cropped-over-long") score += 0.6;
+  return score;
+}
+
 export const CREATIVE_RECIPES = new Set<RecipeId>(["open-shirt", "high-low", "roll-neck"]);
 
 /** How much a look's styling idea is worth, per tier: bold looks must have one. */
 export function creativityScore(p: Pieces, recipe: RecipeId, tonal: boolean, tier: Tier): number {
+  // Proportion shapes every tier (seasonScore); it isn't a styling idea on its own.
   const idea = CREATIVE_RECIPES.has(recipe) || tonal || columnOf(p) !== null;
   let score = 0;
   if (tier === "bold") score += idea ? 2.4 : -1;

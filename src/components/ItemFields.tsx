@@ -1,6 +1,6 @@
 "use client";
 
-import { KINDS, MATERIAL_LABEL, SLOT_LABEL } from "@/lib/kinds";
+import { FIT_LABEL, fitsFor, KINDS, MATERIAL_LABEL, SLOT_LABEL } from "@/lib/kinds";
 import { COLOR_NAMES, PALETTE, type ColorName } from "@/lib/palette";
 import { KIND_LIST, MATERIALS, PATTERNS, type Tags } from "@/lib/tagging";
 import type { Kind, Slot } from "@/lib/types";
@@ -41,6 +41,7 @@ export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChan
                     set({
                       kind: k,
                       material: value.kind === k ? value.material : KINDS[k].material,
+                      fit: value.kind === k ? value.fit : KINDS[k].fit,
                       formality: value.kind === k ? value.formality : KINDS[k].formality,
                     })
                   }
@@ -97,6 +98,18 @@ export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChan
               ))}
             </select>
           </label>
+          {value.kind && fitsFor(KINDS[value.kind].slot).length > 0 && (
+            <label className="field" htmlFor={`${idPrefix}-fit`}>
+              <span className="label">Fit</span>
+              <select id={`${idPrefix}-fit`} className="input" value={value.fit} onChange={(e) => set({ fit: e.target.value as Draft["fit"] })}>
+                {fitsFor(KINDS[value.kind].slot).map((f) => (
+                  <option key={f} value={f}>
+                    {FIT_LABEL[f]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="field" htmlFor={`${idPrefix}-pattern`}>
             <span className="label">Pattern</span>
             <select id={`${idPrefix}-pattern`} className="input" value={value.pattern} onChange={(e) => set({ pattern: e.target.value as Draft["pattern"] })}>

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
+import { fitOf } from "@/lib/kinds";
 import { PALETTE } from "@/lib/palette";
-import type { Item, Kind, Slot } from "@/lib/types";
+import type { Fit, Item, Kind, Slot } from "@/lib/types";
 
 /**
  * Original garment illustrations for the sample wardrobe. Every upper-body
@@ -71,13 +72,18 @@ function shoeShapes(color: string, kind: Kind) {
   );
 }
 
-function bottomShape(color: string, kind: Kind) {
+/** How far each hem moves out from a regular leg, per fit. */
+const LEG_FLARE: Record<Fit, number> = { slim: -4, regular: 0, relaxed: 3, boxy: 3, wide: 7 };
+
+function bottomShape(color: string, kind: Kind, fit: Fit) {
   const hem = kind === "shorts" ? 112 : 196;
   const crotch = kind === "shorts" ? 78 : 84;
+  const f = LEG_FLARE[fit];
+  const inner = f * 0.4;
   return (
     <>
       <path
-        d={`M232 36 L288 36 L291 ${hem} L266 ${hem} L260 ${crotch} L254 ${hem} L229 ${hem} Z`}
+        d={`M232 36 L288 36 L${291 + f} ${hem} L${266 - inner} ${hem} L260 ${crotch} L${254 + inner} ${hem} L${229 - f} ${hem} Z`}
         fill={color}
       />
       <path d="M232 36 L288 36 L288.4 44 L231.6 44 Z" fill="rgba(0,0,0,.18)" />
@@ -289,7 +295,7 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
     case "chinos":
     case "trousers":
     case "shorts":
-      return bottomShape(c, k);
+      return bottomShape(c, k, fitOf(item));
     case "sneakers":
     case "runners":
     case "loafers":
@@ -316,13 +322,39 @@ export const SLOT_CROP: Record<Slot, string> = {
   shoes: "222 186 74 48",
 };
 
+/** How wide an upper-body cut is drawn, around the body's centre line. */
+const UPPER_WIDTH: Record<Fit, number> = { slim: 0.93, regular: 1, relaxed: 1.05, boxy: 1.1, wide: 1.1 };
+
+/** Width and height scale for a piece's cut. Boxy pieces are also drawn a little shorter. */
+function fitScale(item: Item): [number, number] {
+  if (item.slot === "bottom" || item.slot === "shoes") return [1, 1];
+  const fit = fitOf(item);
+  return [UPPER_WIDTH[fit], fit === "boxy" ? 0.95 : 1];
+}
+
 export function GarmentArt({ item, part = "body", box }: { item: Item; part?: ArtPart; box?: [number, number, number, number] }) {
   if (item.image) {
     if (part === "top") return null;
     const [x, y, w, h] = box ?? SLOT_BOX[item.slot];
     return <image href={item.image} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid meet" />;
   }
-  return <GarmentShape item={item} part={part} />;
+  const [sx, sy] = fitScale(item);
+  if (sx === 1 && sy === 1) return <GarmentShape item={item} part={part} />;
+  // Scale from the collar point, so collars and hems still line up between layers.
+  return (
+    <g transform={`translate(130 40) scale(${sx} ${sy}) translate(-130 -40)`}>
+      <GarmentShape item={item} part={part} />
+    </g>
+  );
+}
+
+/** The tile crop, widened for a roomy cut so it isn't clipped. */
+function cropFor(item: Item): string {
+  const [x, y, w, h] = SLOT_CROP[item.slot].split(" ").map(Number) as [number, number, number, number];
+  const [sx] = fitScale(item);
+  if (item.image || sx <= 1) return SLOT_CROP[item.slot];
+  const grow = (w * (sx - 1)) / 2;
+  return `${x - grow} ${y} ${w + grow * 2} ${h}`;
 }
 
 /** A single garment framed on its own, for wardrobe tiles. */
@@ -332,7 +364,7 @@ export function GarmentTile({ item, label }: { item: Item; label?: string }) {
     return <img src={item.image} alt={label ?? item.name} className="garment-svg garment-img" />;
   }
   return (
-    <svg viewBox={SLOT_CROP[item.slot]} role="img" aria-label={label ?? item.name} className="garment-svg">
+    <svg viewBox={cropFor(item)} role="img" aria-label={label ?? item.name} className="garment-svg">
       <g className="cutout">
         <GarmentArt item={item} />
       </g>

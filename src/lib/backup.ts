@@ -2,7 +2,7 @@ import { isDateKey } from "./dates";
 import type { PersonalState } from "./db";
 import { KINDS } from "./kinds";
 import { COLOR_NAMES } from "./palette";
-import { MATERIALS, PATTERNS } from "./tagging";
+import { FITS, MATERIALS, PATTERNS } from "./tagging";
 import type { DayWeather, FeedbackValue, Item, Kind, Occasion, Plan, Status, Tier, Trip, TripKind, Wear } from "./types";
 
 export interface Backup {
@@ -50,7 +50,8 @@ export function validItem(v: unknown): v is Item {
     typeof i.delicate === "boolean" &&
     typeof i.status === "string" &&
     (STATUSES as string[]).includes(i.status) &&
-    (i.photoHash === undefined || (typeof i.photoHash === "string" && /^[a-f0-9]{64}$/.test(i.photoHash)))
+    (i.photoHash === undefined || (typeof i.photoHash === "string" && /^[a-f0-9]{64}$/.test(i.photoHash))) &&
+    (i.fit === undefined || (typeof i.fit === "string" && (FITS as string[]).includes(i.fit)))
   );
 }
 

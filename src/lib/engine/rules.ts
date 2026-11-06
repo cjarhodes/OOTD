@@ -1,3 +1,4 @@
+import { fitOf } from "../kinds";
 import type { Item, Pieces } from "../types";
 import { COLD_CEILING, COOL_SLACK, WARM_SLACK, type DayNeeds } from "./weather";
 
@@ -39,8 +40,10 @@ export function stackIsValid(p: Pieces): boolean {
     const inner = layers[i - 1]!;
     const over = layers[i]!;
     if (inner.thickness > over.thickness) return false;
-    // A layer may hang a little below the next (a shirt hem peeking), but not by much.
-    if (inner.length - over.length > 1) return false;
+    // A layer may hang a little below the next (a shirt hem peeking), but not by much,
+    // unless the layer over it is cut cropped and boxy to show off a light shirt or tee.
+    const croppedOver = fitOf(over) === "boxy" && over.length <= 2 && inner.thickness <= 1;
+    if (inner.length - over.length > (croppedOver ? 2 : 1)) return false;
     if (!necklinesWork(inner, over)) return false;
   }
   // A turtleneck or mock neck is only ever the base layer.
