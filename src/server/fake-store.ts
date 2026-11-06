@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 /**
@@ -36,4 +36,25 @@ export function fakeCount(prefix: string): number {
   const dir = file(prefix);
   if (!existsSync(dir)) return 0;
   return readdirSync(dir).filter((n) => !n.endsWith(".type")).length;
+}
+
+/** Remove one object, or everything under a prefix ending in "/". Returns how many objects went. */
+export function fakeRemove(path: string): number {
+  const target = file(path);
+  if (!existsSync(target)) return 0;
+  if (path.endsWith("/")) {
+    const count = fakeCountDeep(target);
+    rmSync(target, { recursive: true, force: true });
+    return count;
+  }
+  rmSync(target, { force: true });
+  rmSync(`${target}.type`, { force: true });
+  return 1;
+}
+
+function fakeCountDeep(dir: string): number {
+  return readdirSync(dir, { withFileTypes: true }).reduce(
+    (n, d) => n + (d.isDirectory() ? fakeCountDeep(join(dir, d.name)) : d.name.endsWith(".type") ? 0 : 1),
+    0,
+  );
 }

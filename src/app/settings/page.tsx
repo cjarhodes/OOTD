@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { useEffect, useRef, useState } from "react";
 import { CloudBackup, SOURCE_URL, when } from "@/components/CloudBackup";
+import { DeleteAccount } from "@/components/DeleteAccount";
 import { SignIn } from "@/components/SignIn";
 import { cityLabel, searchCities, type City } from "@/lib/forecast";
 import type { Comfort } from "@/lib/types";
@@ -260,6 +261,14 @@ export default function SettingsPage() {
               </span>
             </div>
           )}
+        </section>
+
+        <section className="setting" id="delete">
+          <h2 className="setting-title">Your data</h2>
+          <p className="setting-note">
+            Your wardrobe and photos are yours. Export them any time above, or delete your account and everything in it here.
+          </p>
+          <DeleteAccount onExport={() => void download()} />
         </section>
 
         <section className="setting">

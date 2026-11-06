@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import type { Caller } from "./session";
-import { Conflict, readJson, writeJson } from "./store";
+import { Conflict, readJson, removeOne, removeUnder, writeJson } from "./store";
 
 /**
  * Accounts and sign-in challenges, kept in the private store.
@@ -114,4 +114,25 @@ export async function accountFor(email: string): Promise<Caller> {
 export async function readChallengeByKey(key: string) {
   if (!/^[a-f0-9]{64}$/.test(key)) return null;
   return readJson<Challenge>(`auth/pending/${key}.json`);
+}
+
+/** Is this signed-in account still there? False once it has been deleted, whatever the cookie says. */
+export async function accountActive(caller: Caller): Promise<boolean> {
+  const record = await readJson<{ id: string }>(userPath(normaliseEmail(caller.email)));
+  return record?.value.id === caller.id;
+}
+
+/**
+ * Delete an account and everything in it: wardrobe, history, photos, the
+ * sign-in record and any pending sign-in. Signing in again with the same
+ * email starts a new, empty account.
+ */
+export async function deleteAccount(caller: Caller): Promise<{ objects: number }> {
+  const address = normaliseEmail(caller.email);
+  // The account record goes first, so nothing can be saved to it while the rest is removed.
+  const record = await readJson<{ id: string }>(userPath(address));
+  if (record?.value.id === caller.id) await removeOne(userPath(address));
+  const objects = await removeUnder(`users/${caller.id}/`);
+  await removeOne(`auth/pending/${emailKey(address)}.json`);
+  return { objects: objects + 1 };
 }

@@ -1,5 +1,5 @@
-import { BlobPreconditionFailedError, get, head, list, put } from "@vercel/blob";
-import { fakeCount, fakeDir, fakeRead, fakeWrite } from "./fake-store";
+import { BlobPreconditionFailedError, del, get, head, list, put } from "@vercel/blob";
+import { fakeCount, fakeDir, fakeRead, fakeRemove, fakeWrite } from "./fake-store";
 
 /**
  * Private Vercel Blob storage: accounts, sign-in challenges, wardrobes and
@@ -87,4 +87,30 @@ export async function readBytes(path: string): Promise<{ stream: ReadableStream<
   const result = await get(path, { access: "private" });
   if (!result || result.statusCode !== 200) return null;
   return { stream: result.stream, contentType: result.blob.contentType ?? "application/octet-stream" };
+}
+
+/** Remove one object. Removing something already gone is fine. */
+export async function removeOne(path: string): Promise<void> {
+  if (fakeDir()) {
+    fakeRemove(path);
+    return;
+  }
+  const page = await list({ prefix: path, limit: 10 });
+  const match = page.blobs.filter((b) => b.pathname === path).map((b) => b.url);
+  if (match.length) await del(match);
+}
+
+/** Remove everything under a prefix (which must end in "/"). Returns how many objects went. */
+export async function removeUnder(prefix: string): Promise<number> {
+  if (!prefix.endsWith("/")) throw new Error("removeUnder needs a folder prefix");
+  if (fakeDir()) return fakeRemove(prefix);
+  let removed = 0;
+  let cursor: string | undefined;
+  do {
+    const page = await list({ prefix, limit: 1000, cursor });
+    if (page.blobs.length) await del(page.blobs.map((b) => b.url));
+    removed += page.blobs.length;
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor);
+  return removed;
 }
