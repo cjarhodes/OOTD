@@ -161,6 +161,11 @@ export default function WardrobePage() {
           {personal ? "Your wardrobe" : "Sample wardrobe"} · {active.length} pieces{ready && unworn > 0 ? ` · ${unworn} not worn yet` : ""}
         </span>
         <h1 className="display page-title">Wardrobe</h1>
+        <div className="head-actions">
+          <Link href="/lookbook" className="chip chip-add">
+            Lookbook
+          </Link>
+        </div>
       </div>
 
       {personal && ready && items.length === 0 ? (

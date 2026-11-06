@@ -1238,3 +1238,38 @@ li[data-done] .first-run-tick {
   white-space: nowrap;
   border: 0;
 }
+
+/* ---------- lookbook ---------- */
+
+.lookbook {
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 14px;
+}
+@media (min-width: 820px) {
+  .lookbook {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 28px 22px;
+  }
+}
+.lookbook-card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.lookbook-text {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+.lookbook-name {
+  font-family: var(--display);
+  font-size: 19px;
+  line-height: 1.2;
+}
+.lookbook-meta {
+  color: var(--ink-2);
+}
