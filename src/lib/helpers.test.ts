@@ -72,9 +72,13 @@ describe("tag validation", () => {
       color: "Navy",
       material: "knit",
       pattern: "solid",
+      fit: "regular",
       formality: 5,
       boldness: 0,
     });
+    // A fit that doesn't suit the slot is corrected, not rejected.
+    expect(validateTags({ kind: "jeans", color: "Indigo", fit: "boxy" })?.fit).toBe("wide");
+    expect(validateTags({ kind: "tee", color: "White", fit: "wide" })?.fit).toBe("boxy");
   });
 
   it("rejects unknown kinds and colours", () => {
@@ -85,7 +89,7 @@ describe("tag validation", () => {
 
   it("resets layering defaults when the kind changes", () => {
     const item = makeItem({ id: "x", name: "Mystery", kind: "tee", color: "Grey" });
-    const tagged = applyTags(item, { name: "Loden waxed jacket", kind: "waxed-jacket", color: "Loden", material: "waxed", pattern: "solid", formality: 2, boldness: 0 });
+    const tagged = applyTags(item, { name: "Loden waxed jacket", kind: "waxed-jacket", color: "Loden", material: "waxed", pattern: "solid", fit: "regular", formality: 2, boldness: 0 });
     expect(tagged.slot).toBe("outer");
     expect(tagged.thickness).toBe(4);
     expect(tagged.waterproof).toBe(true);

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
 import { ItemFields, type Draft } from "@/components/ItemFields";
-import { SLOT_LABEL } from "@/lib/kinds";
+import { SLOT_LABEL, fitOf } from "@/lib/kinds";
 import { applyTags } from "@/lib/tagging";
 import type { Item, Slot, Status } from "@/lib/types";
 import { useWardrobe } from "@/state/wardrobe";
@@ -21,6 +21,7 @@ function draftOf(item: Item): Draft {
     color: item.color,
     material: item.material,
     pattern: item.pattern,
+    fit: fitOf(item),
     formality: item.formality,
     boldness: item.boldness,
   };

@@ -37,7 +37,8 @@
   - A warmth budget across the day, plus a strip test: whatever is left after a layer comes off must still suit the warmest part of the day.
   - Rain handling, and a sense of season: no shells on dry days, no knits or boots in a heatwave, camp collars kept for warm weather.
   - When nothing is warm enough, it shows the closest look and says what to add.
-- **Modern layering moves.** A shirt worn open over a tee, a hoodie or sweatshirt under a coat or blazer, a roll neck under tailoring, tonal dressing (cream, grey, brown, blue) and a one-colour column. Bold looks always carry one of these ideas, and muddy dark-on-dark stacks are scored down. `src/lib/engine/style-audit.test.ts` runs 150 looks across ten kinds of day and holds the engine to it.
+- **Modern layering moves.** A shirt worn open over a tee, a hoodie or sweatshirt under a coat or blazer, a roll neck under tailoring, tonal dressing (cream, grey, brown, blue) and a one-colour column. Bold looks always carry one of these ideas, and muddy dark-on-dark stacks are scored down.
+- **Fit and proportion.** Every piece has a cut (slim, regular, relaxed, boxy or wide). The engine favours modern silhouettes, such as a slim knit over wide trousers, a roomy top over relaxed trousers, or a cropped boxy layer over a longer one, and scores down skinny-on-skinny or a layer squeezed over a roomier one. `src/lib/engine/style-audit.test.ts` runs 150 looks across ten kinds of day and holds the engine to it.
 - **Three looks a day:** Easy, Fresh and Bold, each named after its recipe and labelled like a museum piece. Swap or pin a piece, favourite or skip a look, plan ahead and log what you wore.
 - **Live weather:** a 16-day forecast split into morning, midday and evening.
 - **Week view,** with looks that vary from day to day.

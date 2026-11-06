@@ -75,6 +75,7 @@ const ITEM_COLUMNS: (keyof Item)[] = [
   "color",
   "material",
   "pattern",
+  "fit",
   "neckline",
   "front",
   "length",
@@ -100,6 +101,7 @@ wardrobe.csv
   color        the nearest named colour
   material     cotton, knit, wool, denim, leather, technical ...
   pattern      solid, stripe, check, texture, print
+  fit          slim, regular, relaxed, boxy (tops) or wide (bottoms)
   neckline     crew, collar, turtle, mock, hood, lapel, v
   front        open or closed (whether it can be worn open)
   length       1 cropped, 2 waist, 3 hip, 4 thigh, 5 knee

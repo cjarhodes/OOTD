@@ -1,4 +1,4 @@
-import type { Item, Kind, Material, Neckline, Slot } from "./types";
+import type { Fit, Item, Kind, Material, Neckline, Slot } from "./types";
 
 interface KindInfo {
   slot: Slot;
@@ -10,6 +10,7 @@ interface KindInfo {
   warmth: number;
   formality: number;
   material: Material;
+  fit: Fit;
   waterproof?: boolean;
   delicate?: boolean;
 }
@@ -19,40 +20,40 @@ interface KindInfo {
  * review step (or AI tagging) only needs to correct what is different.
  */
 export const KINDS: Record<Kind, KindInfo> = {
-  tee: { slot: "base", label: "tee", neckline: "crew", front: "closed", length: 3, thickness: 1, warmth: 1, formality: 1, material: "jersey" },
-  polo: { slot: "base", label: "polo", neckline: "collar", front: "closed", length: 3, thickness: 1, warmth: 1.5, formality: 2, material: "jersey" },
-  oxford: { slot: "base", label: "oxford shirt", neckline: "collar", front: "closed", length: 4, thickness: 1, warmth: 2, formality: 3, material: "cotton" },
-  "camp-shirt": { slot: "base", label: "camp-collar shirt", neckline: "collar", front: "closed", length: 3, thickness: 1, warmth: 1, formality: 2, material: "cotton" },
-  henley: { slot: "base", label: "henley", neckline: "crew", front: "closed", length: 3, thickness: 1, warmth: 1.5, formality: 1, material: "jersey" },
-  turtleneck: { slot: "base", label: "turtleneck", neckline: "turtle", front: "closed", length: 3, thickness: 2, warmth: 3, formality: 3, material: "knit" },
-  "mock-neck": { slot: "base", label: "mock neck", neckline: "mock", front: "closed", length: 3, thickness: 1, warmth: 2, formality: 3, material: "knit" },
+  tee: { slot: "base", label: "tee", neckline: "crew", front: "closed", length: 3, thickness: 1, warmth: 1, formality: 1, material: "jersey", fit: "regular" },
+  polo: { slot: "base", label: "polo", neckline: "collar", front: "closed", length: 3, thickness: 1, warmth: 1.5, formality: 2, material: "jersey", fit: "regular" },
+  oxford: { slot: "base", label: "oxford shirt", neckline: "collar", front: "closed", length: 4, thickness: 1, warmth: 2, formality: 3, material: "cotton", fit: "regular" },
+  "camp-shirt": { slot: "base", label: "camp-collar shirt", neckline: "collar", front: "closed", length: 3, thickness: 1, warmth: 1, formality: 2, material: "cotton", fit: "boxy" },
+  henley: { slot: "base", label: "henley", neckline: "crew", front: "closed", length: 3, thickness: 1, warmth: 1.5, formality: 1, material: "jersey", fit: "slim" },
+  turtleneck: { slot: "base", label: "turtleneck", neckline: "turtle", front: "closed", length: 3, thickness: 2, warmth: 3, formality: 3, material: "knit", fit: "slim" },
+  "mock-neck": { slot: "base", label: "mock neck", neckline: "mock", front: "closed", length: 3, thickness: 1, warmth: 2, formality: 3, material: "knit", fit: "slim" },
 
-  crewneck: { slot: "mid", label: "crewneck", neckline: "crew", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 2, material: "knit" },
-  "v-neck": { slot: "mid", label: "v-neck", neckline: "v", front: "closed", length: 3, thickness: 2, warmth: 2.5, formality: 3, material: "knit" },
-  cardigan: { slot: "mid", label: "cardigan", neckline: "v", front: "open", length: 3, thickness: 3, warmth: 3, formality: 2, material: "knit" },
-  "quarter-zip": { slot: "mid", label: "quarter-zip", neckline: "zip", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 2, material: "knit" },
-  hoodie: { slot: "mid", label: "hoodie", neckline: "hood", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 1, material: "fleece" },
-  sweatshirt: { slot: "mid", label: "sweatshirt", neckline: "crew", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 1, material: "fleece" },
-  overshirt: { slot: "mid", label: "overshirt", neckline: "collar", front: "open", length: 4, thickness: 2, warmth: 2.5, formality: 2, material: "canvas" },
-  gilet: { slot: "mid", label: "gilet", neckline: "zip", front: "open", length: 3, thickness: 2, warmth: 2, formality: 2, material: "technical" },
+  crewneck: { slot: "mid", label: "crewneck", neckline: "crew", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 2, material: "knit", fit: "regular" },
+  "v-neck": { slot: "mid", label: "v-neck", neckline: "v", front: "closed", length: 3, thickness: 2, warmth: 2.5, formality: 3, material: "knit", fit: "regular" },
+  cardigan: { slot: "mid", label: "cardigan", neckline: "v", front: "open", length: 3, thickness: 3, warmth: 3, formality: 2, material: "knit", fit: "relaxed" },
+  "quarter-zip": { slot: "mid", label: "quarter-zip", neckline: "zip", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 2, material: "knit", fit: "regular" },
+  hoodie: { slot: "mid", label: "hoodie", neckline: "hood", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 1, material: "fleece", fit: "relaxed" },
+  sweatshirt: { slot: "mid", label: "sweatshirt", neckline: "crew", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 1, material: "fleece", fit: "relaxed" },
+  overshirt: { slot: "mid", label: "overshirt", neckline: "collar", front: "open", length: 4, thickness: 2, warmth: 2.5, formality: 2, material: "canvas", fit: "relaxed" },
+  gilet: { slot: "mid", label: "gilet", neckline: "zip", front: "open", length: 3, thickness: 2, warmth: 2, formality: 2, material: "technical", fit: "regular" },
 
-  "chore-coat": { slot: "outer", label: "chore coat", neckline: "lapel", front: "open", length: 4, thickness: 3, warmth: 3, formality: 2, material: "canvas" },
-  "waxed-jacket": { slot: "outer", label: "waxed jacket", neckline: "collar", front: "open", length: 4, thickness: 4, warmth: 4, formality: 2, material: "waxed", waterproof: true },
-  blazer: { slot: "outer", label: "blazer", neckline: "lapel", front: "open", length: 4, thickness: 3, warmth: 2.5, formality: 4, material: "wool" },
-  bomber: { slot: "outer", label: "bomber", neckline: "zip", front: "open", length: 2, thickness: 3, warmth: 4, formality: 1, material: "technical" },
-  "rain-shell": { slot: "outer", label: "rain shell", neckline: "zip", front: "open", length: 4, thickness: 2, warmth: 2, formality: 1, material: "technical", waterproof: true },
-  overcoat: { slot: "outer", label: "overcoat", neckline: "lapel", front: "open", length: 5, thickness: 5, warmth: 6, formality: 4, material: "wool" },
-  puffer: { slot: "outer", label: "puffer", neckline: "zip", front: "open", length: 3, thickness: 5, warmth: 7, formality: 1, material: "technical", waterproof: true },
+  "chore-coat": { slot: "outer", label: "chore coat", neckline: "lapel", front: "open", length: 4, thickness: 3, warmth: 3, formality: 2, material: "canvas", fit: "boxy" },
+  "waxed-jacket": { slot: "outer", label: "waxed jacket", neckline: "collar", front: "open", length: 4, thickness: 4, warmth: 4, formality: 2, material: "waxed", waterproof: true, fit: "regular" },
+  blazer: { slot: "outer", label: "blazer", neckline: "lapel", front: "open", length: 4, thickness: 3, warmth: 2.5, formality: 4, material: "wool", fit: "regular" },
+  bomber: { slot: "outer", label: "bomber", neckline: "zip", front: "open", length: 2, thickness: 3, warmth: 4, formality: 1, material: "technical", fit: "boxy" },
+  "rain-shell": { slot: "outer", label: "rain shell", neckline: "zip", front: "open", length: 4, thickness: 2, warmth: 2, formality: 1, material: "technical", waterproof: true, fit: "relaxed" },
+  overcoat: { slot: "outer", label: "overcoat", neckline: "lapel", front: "open", length: 5, thickness: 5, warmth: 6, formality: 4, material: "wool", fit: "relaxed" },
+  puffer: { slot: "outer", label: "puffer", neckline: "zip", front: "open", length: 3, thickness: 5, warmth: 7, formality: 1, material: "technical", waterproof: true, fit: "boxy" },
 
-  jeans: { slot: "bottom", label: "jeans", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 1, material: "denim" },
-  chinos: { slot: "bottom", label: "chinos", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 2, material: "cotton" },
-  trousers: { slot: "bottom", label: "trousers", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 4, material: "wool" },
-  shorts: { slot: "bottom", label: "shorts", neckline: "crew", front: "closed", length: 2, thickness: 1, warmth: 0, formality: 1, material: "cotton" },
+  jeans: { slot: "bottom", label: "jeans", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 1, material: "denim", fit: "regular" },
+  chinos: { slot: "bottom", label: "chinos", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 2, material: "cotton", fit: "regular" },
+  trousers: { slot: "bottom", label: "trousers", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 4, material: "wool", fit: "regular" },
+  shorts: { slot: "bottom", label: "shorts", neckline: "crew", front: "closed", length: 2, thickness: 1, warmth: 0, formality: 1, material: "cotton", fit: "regular" },
 
-  sneakers: { slot: "shoes", label: "sneakers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 2, material: "leather" },
-  runners: { slot: "shoes", label: "runners", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 1, material: "technical" },
-  loafers: { slot: "shoes", label: "loafers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 4, material: "suede", delicate: true },
-  boots: { slot: "shoes", label: "boots", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 3, material: "leather", waterproof: true },
+  sneakers: { slot: "shoes", label: "sneakers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 2, material: "leather", fit: "regular" },
+  runners: { slot: "shoes", label: "runners", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 1, material: "technical", fit: "regular" },
+  loafers: { slot: "shoes", label: "loafers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 4, material: "suede", delicate: true, fit: "regular" },
+  boots: { slot: "shoes", label: "boots", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 3, material: "leather", waterproof: true, fit: "regular" },
 };
 
 export const SLOT_LABEL: Record<Slot, string> = {
@@ -95,9 +96,24 @@ export function makeItem(
     warmth: info.warmth,
     formality: info.formality,
     boldness: 0,
+    fit: info.fit,
     waterproof: info.waterproof ?? false,
     delicate: info.delicate ?? false,
     status: "available",
     ...fields,
   };
+}
+
+/** A piece's cut: its own, or its kind's default for pieces saved before fit existed. */
+export function fitOf(item: Pick<Item, "kind" | "fit">): Fit {
+  return item.fit ?? KINDS[item.kind].fit;
+}
+
+export const FIT_LABEL: Record<Fit, string> = { slim: "Slim", regular: "Regular", relaxed: "Relaxed", boxy: "Boxy", wide: "Wide" };
+
+/** The fits that make sense for a slot. */
+export function fitsFor(slot: Slot): Fit[] {
+  if (slot === "shoes") return [];
+  if (slot === "bottom") return ["slim", "regular", "relaxed", "wide"];
+  return ["slim", "regular", "relaxed", "boxy"];
 }

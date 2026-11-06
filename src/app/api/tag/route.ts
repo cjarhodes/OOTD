@@ -22,6 +22,7 @@ Identify it precisely:
 - kind: the closest garment type. Shirts with a collar and buttons are "oxford" unless clearly a camp collar. Knit pullovers are "crewneck" or "v-neck"; zip-collar knits are "quarter-zip". Open-front knits are "cardigan". Shirt-weight jackets are "overshirt". Waxed cotton field jackets are "waxed-jacket". Tailored jackets are "blazer".
 - color: the main colour, chosen from the list. Ignore the background.
 - material, pattern, formality and boldness as defined in the schema.
+- fit: judge the cut from the silhouette. Boxy means wide and short through the body; wide means wide-legged trousers.
 - name: short, colour first, in British English, e.g. "Navy lambswool crewneck". Do not invent brands.`;
 
 function error(message: string, status: number) {

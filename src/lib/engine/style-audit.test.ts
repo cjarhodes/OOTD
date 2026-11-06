@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { SAMPLE_ITEMS } from "../sample";
 import type { DayWeather, Look, Occasion, Tier } from "../types";
 import { generateLooks, idsOf, lookFromIds } from "./generate";
-import { CREATIVE_RECIPES, isMuddy } from "./style";
+import { fitOf } from "../kinds";
+import { CREATIVE_RECIPES, isMuddy, proportionIdea, VOLUME } from "./style";
 
 /**
  * The style audit: a fixed set of days and occasions run against the sample
@@ -103,6 +104,26 @@ describe("style audit", () => {
     for (const r of bold) for (const i of [r.look.pieces.base, r.look.pieces.mid, r.look.pieces.outer]) if (i) counts.set(i.id, (counts.get(i.id) ?? 0) + 1);
     expect(Math.max(...counts.values()) / bold.length).toBeLessThanOrEqual(0.4);
     expect(looks.filter((r) => isMuddy(r.look.pieces)).map(named)).toEqual([]);
+  });
+
+  it("keeps proportion believable and modern", () => {
+    const v = (i: Parameters<typeof fitOf>[0]) => VOLUME[fitOf(i)];
+    // No layer squeezed over a much roomier one.
+    const squeezed = looks.filter(({ look: { pieces: p } }) => {
+      const layers = [p.base, p.mid, p.outer].filter((i) => i !== null && i !== undefined);
+      return layers.some((l, i) => i > 0 && v(l) < v(layers[i - 1]!) - 1.5);
+    });
+    expect(squeezed.map(named)).toEqual([]);
+    // Skinny top over skinny trousers reads dated: never in fresh or bold.
+    const styled = looks.filter((r) => r.tier !== "easy");
+    const skinny = styled.filter(({ look: { pieces: p } }) => v(p.outer ?? p.mid ?? p.base) <= 0 && v(p.bottom) <= 0);
+    expect(skinny.map(named)).toEqual([]);
+    // Most styled looks carry a silhouette idea...
+    expect(styled.filter((r) => proportionIdea(r.look.pieces) !== null).length / styled.length).toBeGreaterThanOrEqual(0.5);
+    // ...without one pair of trousers doing all the work.
+    const bottoms = new Map<string, number>();
+    for (const r of looks) bottoms.set(r.look.pieces.bottom.id, (bottoms.get(r.look.pieces.bottom.id) ?? 0) + 1);
+    expect(Math.max(...bottoms.values()) / looks.length).toBeLessThanOrEqual(1 / 3);
   });
 
   it("round-trips a shirt worn open through a saved plan", () => {

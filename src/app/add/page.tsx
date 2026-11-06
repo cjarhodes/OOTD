@@ -51,7 +51,7 @@ export default function AddPage() {
           id: newId(),
           photo,
           state: "review",
-          draft: { name: "", nameEdited: false, kind: null, color: photo.color, material: "cotton", pattern: "solid", formality: 2, boldness: 0 },
+          draft: { name: "", nameEdited: false, kind: null, color: photo.color, material: "cotton", pattern: "solid", fit: "regular", formality: 2, boldness: 0 },
         });
       } catch {
         setError(`“${list[i]!.name}” couldn’t be read. Try exporting it from Photos as a PNG or JPEG.`);
