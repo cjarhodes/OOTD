@@ -52,6 +52,11 @@ export default function AddPage() {
   const [queue, setQueue] = useState<Pending[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Background removal isn't in the main bundle; fetch it now so the first photo is quick.
+  useEffect(() => {
+    void import("@/lib/analyse").then((m) => m.warmUp());
+  }, []);
+
   // Release preview URLs when leaving the page.
   const queueRef = useRef(queue);
   queueRef.current = queue;

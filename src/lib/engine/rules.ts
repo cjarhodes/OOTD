@@ -35,7 +35,12 @@ export function necklinesWork(inner: Item, over: Item): boolean {
  * and no more than one busy pattern.
  */
 export function stackIsValid(p: Pieces): boolean {
-  const layers = upperLayers(p);
+  return layersAreValid(p) && patternsWork(p);
+}
+
+/** The upper-body rules alone: thickness order, hem lengths, necklines. */
+export function layersAreValid(p: Pick<Pieces, "base" | "mid" | "outer">): boolean {
+  const layers = [p.base, p.mid, p.outer].filter((i): i is Item => Boolean(i));
   for (let i = 1; i < layers.length; i++) {
     const inner = layers[i - 1]!;
     const over = layers[i]!;
@@ -48,7 +53,12 @@ export function stackIsValid(p: Pieces): boolean {
   }
   // A turtleneck or mock neck is only ever the base layer.
   if (p.mid && (p.mid.neckline === "turtle" || p.mid.neckline === "mock")) return false;
-  const patterned = [...layers, p.bottom].filter((i) => i.pattern !== "solid");
+  return true;
+}
+
+/** No two patterns of the same type in one look (stripe on stripe clashes). */
+export function patternsWork(p: Pieces): boolean {
+  const patterned = [...upperLayers(p), p.bottom].filter((i) => i.pattern !== "solid");
   if (patterned.length > 1) {
     const kinds = new Set(patterned.map((i) => i.pattern));
     // Two patterns of the same type (stripe on stripe) clash; different types are allowed but scored down.
@@ -70,12 +80,22 @@ export interface WeatherFit {
  * and what remains (the strip test) must still suit the warmest window.
  */
 export function weatherFit(p: Pieces, needs: DayNeeds, rainLayerAvailable: boolean): WeatherFit {
-  const layers = upperLayers(p);
-  const fail: WeatherFit = { ok: false, backOn: false };
+  if (!lowerFitsWeather(p, needs)) return { ok: false, backOn: false };
+  return layersFitWeather(p, needs, rainLayerAvailable);
+}
 
-  if (p.bottom.kind === "shorts" && !needs.shortsOk) return fail;
+/** Trousers and shoes against the day: no shorts when it's cool, no delicate shoes in rain. */
+export function lowerFitsWeather(p: Pick<Pieces, "bottom" | "shoes">, needs: DayNeeds): boolean {
+  if (p.bottom.kind === "shorts" && !needs.shortsOk) return false;
+  if (needs.wet && p.shoes.delicate) return false;
+  return true;
+}
+
+/** The upper layers against the day's warmth and rain. Independent of trousers and shoes. */
+export function layersFitWeather(p: Pick<Pieces, "base" | "mid" | "outer">, needs: DayNeeds, rainLayerAvailable: boolean): WeatherFit {
+  const layers = [p.base, p.mid, p.outer].filter((i): i is Item => Boolean(i));
+  const fail: WeatherFit = { ok: false, backOn: false };
   if (needs.wet) {
-    if (p.shoes.delicate) return fail;
     if (rainLayerAvailable && !p.outer?.waterproof) return fail;
     if (p.outer && p.outer.delicate) return fail;
   }

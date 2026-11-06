@@ -261,7 +261,7 @@ function TripDetail({ trip }: { trip: Trip }) {
                 disabled={onJourney}
                 onClick={() => togglePacked(item.id)}
               >
-                <GarmentTile item={item} />
+                <GarmentTile item={item} decorative />
                 <span className="tile-name">{item.name}</span>
                 <span className={`tile-meta${done ? " new" : ""}`}>
                   {SLOT_LABEL[item.slot]} · {onJourney ? "Wear it" : done ? "Packed" : "Tap when packed"}

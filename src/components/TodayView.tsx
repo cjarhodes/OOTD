@@ -8,9 +8,10 @@ import { FlatLay } from "./FlatLay";
 import { MuseumLabel } from "./MuseumLabel";
 import { isDateKey, longWeekday, shortDate } from "@/lib/dates";
 import { OCCASION_LABEL } from "@/lib/engine/describe";
-import { generateLooks, idsOf, lookFromIds, swapPiece, TIERS, type GenerateInput } from "@/lib/engine/generate";
+import { idsOf, lookFromIds, swapPiece, TIERS, type GenerateInput } from "@/lib/engine/generate";
 import { SLOT_LABEL } from "@/lib/kinds";
 import type { Look, Occasion, Slot, Tier } from "@/lib/types";
+import { useLooks } from "@/state/engine";
 import { forecastLabel, useForecast } from "@/state/forecast";
 import { defaultOccasion, TIER_LABEL, useWardrobe } from "@/state/wardrobe";
 
@@ -29,6 +30,33 @@ function Heart() {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+/**
+ * Today's frame before the wardrobe has loaded: rendered on the server, so the
+ * page shows its heading and layout at once instead of a blank screen.
+ */
+export function TodaySkeleton() {
+  return (
+    <div className="today" aria-busy="true">
+      <section className="today-stage" aria-labelledby="today-title">
+        <div className="page-head">
+          <span className="eyebrow">{"\u00a0"}</span>
+          <h1 id="today-title" className="display page-title">
+            Today’s look
+          </h1>
+        </div>
+        <div className="chips" aria-hidden="true">
+          {OCCASIONS.map((o) => (
+            <span key={o} className="chip">
+              {OCCASION_LABEL[o]}
+            </span>
+          ))}
+        </div>
+        <div className="plinth stage stage-wait" />
+      </section>
+    </div>
   );
 }
 
@@ -78,7 +106,7 @@ export function TodayView() {
     () => ({ items, weather, occasion, date, wears, feedback, comfort, pin, shuffle }),
     [items, weather, occasion, date, wears, feedback, comfort, pin, shuffle],
   );
-  const looks = useMemo(() => (ready ? generateLooks(input) : null), [ready, input]);
+  const looks = useLooks(ready ? input : null);
   const saved = useMemo(() => (plan ? lookFromIds(plan.itemIds, items, input) : null), [plan, items, input]);
 
   const look: Look | null = override ?? (view === "saved" ? saved : (looks?.[view] ?? null));
@@ -86,7 +114,7 @@ export function TodayView() {
     if (look) shown.current.add(look.signature);
   }, [look]);
 
-  if (!ready) return <div className="empty" aria-busy="true" />;
+  if (!ready) return <TodaySkeleton />;
 
   const temps = {
     low: Math.min(weather.morning.feels, weather.midday.feels, weather.evening.feels),
@@ -173,6 +201,11 @@ export function TodayView() {
           <div className="plinth stage">
             {override && <span className="label stage-tag">Swapped</span>}
             <FlatLay pieces={look.pieces} label={`Flat-lay: ${look.name}`} />
+          </div>
+        ) : !looks && view !== "saved" && !(mode === "personal" && missingEssentials(items).length > 0) ? (
+          // Looks are being worked out (a moment, off the main thread).
+          <div className="plinth stage stage-wait" aria-busy="true">
+            <span className="sr-only">Putting today’s looks together</span>
           </div>
         ) : (
           <div className="plinth empty">

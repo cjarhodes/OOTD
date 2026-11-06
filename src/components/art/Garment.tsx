@@ -380,14 +380,14 @@ function cropFor(item: Item): string {
   return `${x - grow} ${y} ${w + grow * 2} ${h}`;
 }
 
-/** A single garment framed on its own, for wardrobe tiles. */
-export function GarmentTile({ item, label }: { item: Item; label?: string }) {
+/** A single garment framed on its own. `decorative` when its name is already written beside it. */
+export function GarmentTile({ item, label, decorative = false }: { item: Item; label?: string; decorative?: boolean }) {
   if (item.image) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={item.image} alt={label ?? item.name} className={`garment-svg garment-img${hasBackdrop(item.image) ? " backdrop" : ""}`} />;
+    return <img src={item.image} alt={decorative ? "" : (label ?? item.name)} className={`garment-svg garment-img${hasBackdrop(item.image) ? " backdrop" : ""}`} />;
   }
   return (
-    <svg viewBox={cropFor(item)} role="img" aria-label={label ?? item.name} className="garment-svg">
+    <svg viewBox={cropFor(item)} {...(decorative ? { "aria-hidden": true } : { role: "img", "aria-label": label ?? item.name })} className="garment-svg">
       <g className="cutout">
         <GarmentArt item={item} />
       </g>

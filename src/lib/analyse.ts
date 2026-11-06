@@ -29,6 +29,11 @@ function getWorker(): Worker | null {
   return worker;
 }
 
+/** Start the worker ahead of the first photo. */
+export function warmUp(): void {
+  getWorker();
+}
+
 /** Analyse in a worker where the browser allows, else on the main thread. */
 export function analyse(px: ImageData): Promise<Analysis> {
   const w = getWorker();

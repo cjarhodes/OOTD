@@ -1,4 +1,3 @@
-import { analyse } from "./analyse";
 import type { CutoutFailure } from "./cutout";
 import type { ColorName } from "./palette";
 import { alphaInfo, dominantColor, isCutout } from "./pixels";
@@ -108,6 +107,8 @@ export async function preparePhoto(file: File): Promise<PreparedPhoto> {
     const out = Math.min(1, MAX_SIDE / Math.max(w, h));
     const { c, ctx } = canvas(w * out, h * out);
     ctx.drawImage(source, 0, 0, c.width, c.height);
+    // Background removal is loaded only when a photo is actually being prepared.
+    const { analyse } = await import("./analyse");
     const [analysis, jpeg] = await Promise.all([analyse(pixels), toBlob(c, "image/jpeg", 0.86)]);
     const original = version(jpeg, analysis.photoColor);
     if (!analysis.alpha || !analysis.cutoutColor) {

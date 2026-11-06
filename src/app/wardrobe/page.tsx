@@ -205,16 +205,18 @@ export default function WardrobePage() {
                 </span>
               );
               return personal ? (
-                <button key={item.id} type="button" className="tile" onClick={() => setEditing(item.id)} aria-label={`${item.name}. Edit.`}>
-                  <GarmentTile item={item} />
+                <button key={item.id} type="button" className="tile" onClick={() => setEditing(item.id)}>
+                  <GarmentTile item={item} decorative />
                   <span className="tile-name">{item.name}</span>
                   {meta}
+                  <span className="sr-only">. Edit</span>
                 </button>
               ) : (
-                <Link key={item.id} href={`/?pin=${encodeURIComponent(item.id)}`} className="tile" aria-label={`${item.name}. Style a look around it.`}>
-                  <GarmentTile item={item} />
+                <Link key={item.id} href={`/?pin=${encodeURIComponent(item.id)}`} className="tile">
+                  <GarmentTile item={item} decorative />
                   <span className="tile-name">{item.name}</span>
                   {meta}
+                  <span className="sr-only">. Style a look around it</span>
                 </Link>
               );
             })}

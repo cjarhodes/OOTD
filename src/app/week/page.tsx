@@ -1,5 +1,7 @@
 "use client";
 
+import { useWeek } from "@/state/engine";
+
 import { FirstRun, missingEssentials } from "@/components/FirstRun";
 
 import Link from "next/link";
@@ -7,7 +9,7 @@ import { useMemo } from "react";
 import { FlatLay } from "@/components/FlatLay";
 import { addDays, dayOfMonth, weekday } from "@/lib/dates";
 import { OCCASION_LABEL } from "@/lib/engine/describe";
-import { planWeek, type WeekDay } from "@/lib/engine/generate";
+import { type WeekDay } from "@/lib/engine/generate";
 import { useForecast } from "@/state/forecast";
 import { defaultOccasion, useWardrobe } from "@/state/wardrobe";
 
@@ -28,10 +30,8 @@ export default function WeekPage() {
       }),
     [today, plans, forecast, tripDayFor],
   );
-  const looks = useMemo(
-    () => (ready ? planWeek(days, { items, wears, feedback, comfort }) : []),
-    [ready, days, items, wears, feedback, comfort],
-  );
+  const base = useMemo(() => ({ items, wears, feedback, comfort }), [items, wears, feedback, comfort]);
+  const looks = useWeek(ready ? days : null, base);
 
   return (
     <>
@@ -65,7 +65,7 @@ export default function WeekPage() {
                 </span>
                 <span className="week-thumb plinth">{look && <FlatLay pieces={look.pieces} label={look.name} compact />}</span>
                 <span className="week-text">
-                  <span className="week-name">{look?.name ?? "No complete look"}</span>
+                  <span className="week-name">{look?.name ?? (looks.length ? "No complete look" : "\u00a0")}</span>
                   <span className="week-sub">
                     {OCCASION_LABEL[d.occasion]} · {Math.min(...temps)}°→{Math.max(...temps)}°
                     {wet && <span className="wet"> · rain</span>}
