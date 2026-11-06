@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+import { hasBackdrop } from "@/lib/photo";
 import { fitOf } from "@/lib/kinds";
 import { PALETTE } from "@/lib/palette";
 import type { Fit, Item, Kind, Slot } from "@/lib/types";
@@ -336,6 +337,7 @@ export function GarmentArt({ item, part = "body", box }: { item: Item; part?: Ar
   if (item.image) {
     if (part === "top") return null;
     const [x, y, w, h] = box ?? SLOT_BOX[item.slot];
+    if (hasBackdrop(item.image)) return <PhotoPrint href={item.image} box={[x, y, w, h]} />;
     return <image href={item.image} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid meet" />;
   }
   const [sx, sy] = fitScale(item);
@@ -344,6 +346,27 @@ export function GarmentArt({ item, part = "body", box }: { item: Item; part?: Ar
   return (
     <g transform={`translate(130 40) scale(${sx} ${sy}) translate(-130 -40)`}>
       <GarmentShape item={item} part={part} />
+    </g>
+  );
+}
+
+/**
+ * A photo that still has its background, shown as a small framed print in its
+ * slot instead of a full-size rectangle that would cover the other layers.
+ */
+function PhotoPrint({ href, box: [x, y, w, h] }: { href: string; box: [number, number, number, number] }) {
+  const clip = useId();
+  const side = Math.min(w, h) * 0.72;
+  const px = x + (w - side) / 2;
+  const py = y + (h - side) / 2;
+  const border = Math.max(2, side * 0.04);
+  return (
+    <g>
+      <rect x={px - border} y={py - border} width={side + border * 2} height={side + border * 2} rx={3} fill="#fbfaf7" />
+      <clipPath id={clip}>
+        <rect x={px} y={py} width={side} height={side} rx={2} />
+      </clipPath>
+      <image href={href} x={px} y={py} width={side} height={side} preserveAspectRatio="xMidYMid slice" clipPath={`url(#${clip})`} />
     </g>
   );
 }
@@ -361,7 +384,7 @@ function cropFor(item: Item): string {
 export function GarmentTile({ item, label }: { item: Item; label?: string }) {
   if (item.image) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={item.image} alt={label ?? item.name} className="garment-svg garment-img" />;
+    return <img src={item.image} alt={label ?? item.name} className={`garment-svg garment-img${hasBackdrop(item.image) ? " backdrop" : ""}`} />;
   }
   return (
     <svg viewBox={cropFor(item)} role="img" aria-label={label ?? item.name} className="garment-svg">

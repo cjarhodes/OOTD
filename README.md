@@ -47,7 +47,7 @@
   - The bulkiest jacket and shoes are worn on the journey.
   - It gives you a packing checklist.
   - Trips beyond the forecast use last year's weather on the same dates.
-- **Adding pieces** from cut-out photos (Lift Subject in Photos, or a Shortcuts batch). Each photo is trimmed, resized and colour-matched on the device, then goes through a quick review step.
+- **Adding pieces** from ordinary phone photos. OOTD removes the background on the device (`src/lib/cutout.ts`): it learns the floor, bed or wall from the photo's corners and edges, grows it inwards, clears background showing through gaps (matched on colour and grain, so prints stay), and refuses rather than guesses when the background is too busy or the piece fills the frame. It runs in a Web Worker, with no model to download and nothing uploaded until you save. Cut-outs are stored as WebP. You can keep the background for any photo, and remove it later from a piece's sheet. Photos already cut out (Lift Subject) are kept as they are. Colour is read from the garment alone and matched in Lab.
 - **Gallery design:** Bodoni Moda, Hanken Grotesk and Azeret Mono, in light and dark themes. Installable to the Home Screen.
 
 ## Run your own copy

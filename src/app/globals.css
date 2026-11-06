@@ -846,10 +846,29 @@ select.input {
   display: grid;
   place-items: center;
   padding: 18px;
-  min-height: 260px;
+  min-height: 200px;
+}
+.review-wait {
+  animation: breathe 1.4s ease-in-out infinite alternate;
+}
+@keyframes breathe {
+  from {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-wait {
+    animation: none;
+  }
+}
+.cutout-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: baseline;
 }
 .review-photo img {
-  max-height: 46vh;
+  max-height: 34vh;
   max-width: 100%;
   object-fit: contain;
   filter: drop-shadow(0 3px 3px var(--shadow));
@@ -877,11 +896,17 @@ select.input {
     top: 96px;
     min-height: 420px;
   }
+  .review-photo img {
+    max-height: 62vh;
+  }
 }
 
 .garment-img {
   object-fit: contain;
   filter: drop-shadow(0 3px 3px var(--shadow));
+}
+.garment-img.backdrop {
+  border-radius: 4px;
 }
 
 /* ---------- settings ---------- */
