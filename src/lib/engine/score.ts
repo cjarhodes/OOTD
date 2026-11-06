@@ -44,7 +44,8 @@ export function colourScore(p: Pieces): number {
   else if (accentFamilies.size === 2) score -= 1;
   else score -= 2.5;
 
-  if (tonalFamily(p)) score += 1;
+  // Tonal is a good idea, not a default: creativityScore also credits it.
+  if (tonalFamily(p)) score += 0.6;
 
   // Neighbouring layers need visible separation, or the stack reads as one blob.
   for (let i = 1; i < layers.length; i++) {
@@ -96,7 +97,8 @@ export function formalityScore(p: Pieces, occasion: Occasion): number {
 export function tierScore(boldness: number, tier: Tier): number {
   if (tier === "easy") return -0.6 * Math.max(0, boldness - 1);
   if (tier === "fresh") return -0.4 * Math.abs(boldness - 2);
-  return boldness >= 3 ? 0.45 * Math.min(boldness, 6) : -1.2;
+  // The styling idea (creativityScore) now carries bold looks; boldness alone counts for less.
+  return boldness >= 3 ? 0.25 * Math.min(boldness, 6) : -1.2;
 }
 
 export interface History {

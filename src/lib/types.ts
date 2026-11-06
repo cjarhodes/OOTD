@@ -149,7 +149,9 @@ export type RecipeId =
   | "smart-soft"
   | "two-layer"
   | "three-layer"
-  | "high-low";
+  | "high-low"
+  | "open-shirt"
+  | "roll-neck";
 
 export interface Shed {
   layer: Item;
