@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FirstRun, missingEssentials } from "./FirstRun";
 import { FlatLay } from "./FlatLay";
 import { MuseumLabel } from "./MuseumLabel";
 import { isDateKey, longWeekday, shortDate } from "@/lib/dates";
@@ -175,16 +176,8 @@ export function TodayView() {
           </div>
         ) : (
           <div className="plinth empty">
-            {mode === "personal" && items.length === 0 ? (
-              <>
-                <p className="display" style={{ fontSize: 28, color: "var(--ink)" }}>
-                  Your wardrobe is empty
-                </p>
-                <p>Add a few pieces to start: a top, bottoms and shoes are enough for a first look.</p>
-                <Link href="/add" className="btn">
-                  Add pieces
-                </Link>
-              </>
+            {mode === "personal" && missingEssentials(items).length > 0 ? (
+              <FirstRun />
             ) : (
               <>
                 <p>This wardrobe can’t make a complete look for these conditions yet.</p>

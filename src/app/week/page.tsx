@@ -1,5 +1,7 @@
 "use client";
 
+import { FirstRun, missingEssentials } from "@/components/FirstRun";
+
 import Link from "next/link";
 import { useMemo } from "react";
 import { FlatLay } from "@/components/FlatLay";
@@ -10,7 +12,9 @@ import { useForecast } from "@/state/forecast";
 import { defaultOccasion, useWardrobe } from "@/state/wardrobe";
 
 export default function WeekPage() {
-  const { ready, today, items, wears, plans, feedback, comfort, tripDayFor, trips } = useWardrobe();
+  const { ready, today, items, wears, plans, feedback, comfort, tripDayFor, trips, mode } = useWardrobe();
+  // A new wardrobe can't plan a week yet: show the checklist once, not seven empty days.
+  const starting = mode === "personal" && missingEssentials(items).length > 0;
   const forecast = useForecast();
 
   const days: WeekDay[] = useMemo(
@@ -40,8 +44,14 @@ export default function WeekPage() {
           </Link>
         </div>
       </div>
+      {ready && starting && (
+        <div className="plinth empty">
+          <FirstRun />
+        </div>
+      )}
       <div className="week">
         {ready &&
+          !starting &&
           days.map((d, i) => {
             const look = looks[i];
             const trip = !plans[d.date] ? tripDayFor(d.date)?.trip : undefined;
@@ -66,7 +76,7 @@ export default function WeekPage() {
             );
           })}
       </div>
-      <p className="footer-note">Suggestions avoid repeating pieces from the day before. Open a day to change it or save it.</p>
+      {!starting && <p className="footer-note">Suggestions avoid repeating pieces from the day before. Open a day to change it or save it.</p>}
     </>
   );
 }

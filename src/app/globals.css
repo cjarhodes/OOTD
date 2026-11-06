@@ -382,6 +382,13 @@ button {
 .text-link:hover {
   color: var(--ink);
 }
+.setting-row > .text-link {
+  white-space: nowrap;
+}
+.first-run-steps .text-link {
+  font-size: inherit;
+  color: var(--ink);
+}
 
 /* ---------- art ---------- */
 
@@ -1152,4 +1159,73 @@ select.input {
   gap: 16px;
   max-width: 560px;
   padding: 24px 0;
+}
+
+/* ---------- first run ---------- */
+
+.first-run {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  text-align: left;
+  max-width: 440px;
+  margin: 0 auto;
+}
+.first-run-title {
+  font-size: 28px;
+  color: var(--ink);
+}
+.first-run-note {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.first-run-steps {
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+.first-run-steps li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.first-run-steps li[data-done] > span:last-child {
+  color: var(--ink-2);
+  text-decoration: line-through;
+  text-decoration-color: var(--line);
+}
+.first-run-tick {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--ink-2);
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  transform: translateY(3px);
+}
+li[data-done] .first-run-tick {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--wall);
+}
+.first-run-optional {
+  color: var(--label);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

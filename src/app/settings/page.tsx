@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useRef, useState } from "react";
 import { CloudBackup, SOURCE_URL, when } from "@/components/CloudBackup";
 import { SignIn } from "@/components/SignIn";
@@ -124,6 +126,11 @@ export default function SettingsPage() {
                 </button>
               </div>
               <CloudBackup onExport={() => void download()} />
+              {store.mode === "personal" && store.personalCount === 0 && (
+                <p className="setting-note">
+                  You’re in. Next, <Link href="/add" className="text-link">add your first pieces</Link>: a top, trousers and shoes make a first look.
+                </p>
+              )}
               {ai.status.configured && (
                 <p className="setting-note">
                   AI tagging is on.{" "}
@@ -152,7 +159,7 @@ export default function SettingsPage() {
           </p>
         </section>
 
-        <section className="setting">
+        <section className="setting" id="weather">
           <h2 className="setting-title">Weather</h2>
           {store.city ? (
             <div className="setting-row">
