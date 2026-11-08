@@ -51,7 +51,64 @@ function jacketLeft(hem: number) {
   return `M116 32 L92 38 L55 58 L42 150 L62 154 L72 92 L74 ${hem} L122 ${hem} L124 110 Z`;
 }
 
+const CORK = "#c8a77e";
+const RUBBER = "#f4f2ec";
+
+/** Two shoes, the back one up and to the left: `draw(dx, dy)` draws one at an offset. */
+function pair(draw: (dx: number, dy: number) => ReactNode) {
+  return (
+    <>
+      {draw(0, 0)}
+      {draw(14, -8)}
+    </>
+  );
+}
+
 function shoeShapes(color: string, kind: Kind) {
+  if (kind === "sandals")
+    // A cork footbed with two straps across it.
+    return pair((x, y) => (
+      <g key={x}>
+        <path d={`M${228 + x} ${228 + y} Q${228 + x} ${222 + y} ${236 + x} ${222 + y} L${270 + x} ${222 + y} Q${278 + x} ${222 + y} ${278 + x} ${228 + y} Z`} fill={CORK} />
+        <rect x={228 + x} y={228 + y} width="50" height="3" fill="rgba(0,0,0,.4)" />
+        <path d={`M${237 + x} ${222 + y} Q${244 + x} ${208 + y} ${251 + x} ${222 + y} Z M${255 + x} ${222 + y} Q${262 + x} ${207 + y} ${269 + x} ${222 + y} Z`} fill={color} />
+        <circle cx={248 + x} cy={214 + y} r="1.6" fill="rgba(214,190,140,.95)" />
+        <circle cx={266 + x} cy={213 + y} r="1.6" fill="rgba(214,190,140,.95)" />
+      </g>
+    ));
+  if (kind === "clogs")
+    // A rounded, closed toe with an open heel, on a cork sole.
+    return pair((x, y) => (
+      <g key={x}>
+        <path d={`M${234 + x} ${224 + y} Q${236 + x} ${210 + y} ${252 + x} ${206 + y} Q${272 + x} ${204 + y} ${278 + x} ${224 + y} Z`} fill={color} />
+        <rect x={230 + x} y={224 + y} width="50" height="4" fill={CORK} />
+        <rect x={230 + x} y={228 + y} width="50" height="2.5" fill="rgba(0,0,0,.4)" />
+        <path d={`M${246 + x} ${208 + y} L${250 + x} ${222 + y}`} stroke={LINE} strokeWidth="1.5" />
+        <circle cx={249 + x} cy={215 + y} r="1.6" fill="rgba(214,190,140,.95)" />
+      </g>
+    ));
+  if (kind === "high-tops")
+    // Canvas to the ankle, rubber toe cap and sole.
+    return pair((x, y) => (
+      <g key={x}>
+        <path d={`M${228 + x} ${224 + y} L${228 + x} ${194 + y} Q${228 + x} ${188 + y} ${236 + x} ${188 + y} L${246 + x} ${188 + y} L${250 + x} ${210 + y} Q${268 + x} ${214 + y} ${278 + x} ${222 + y} L${278 + x} ${224 + y} Z`} fill={color} />
+        <rect x={228 + x} y={224 + y} width="50" height="6" fill={RUBBER} />
+        <path d={`M${268 + x} ${224 + y} Q${276 + x} ${216 + y} ${278 + x} ${224 + y} Z`} fill={RUBBER} />
+        <path d={`M${236 + x} ${194 + y} L${244 + x} ${198 + y} M${236 + x} ${200 + y} L${245 + x} ${204 + y} M${237 + x} ${206 + y} L${247 + x} ${210 + y}`} stroke={LINE} strokeWidth="1.2" />
+        <path d={`M${228 + x} ${226 + y} L${278 + x} ${226 + y}`} stroke="rgba(0,0,0,.12)" strokeWidth="1" />
+      </g>
+    ));
+  if (kind === "trail")
+    // Low and technical: a chunky lugged sole, toe bumper and lace cage.
+    return pair((x, y) => (
+      <g key={x}>
+        <path d={`M${228 + x} ${222 + y} Q${228 + x} ${204 + y} ${238 + x} ${204 + y} L${248 + x} ${204 + y} Q${254 + x} ${212 + y} ${268 + x} ${215 + y} Q${278 + x} ${217 + y} ${278 + x} ${222 + y} Z`} fill={color} />
+        <rect x={228 + x} y={222 + y} width="50" height="8" fill="#2b2b2b" />
+        <path d={`M${232 + x} ${230 + y} l3 -3 l3 3 l3 -3 l3 3 l3 -3 l3 3 l3 -3 l3 3 l3 -3 l3 3 l3 -3 l3 3 l3 -3 l3 3`} fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" />
+        <path d={`M${266 + x} ${222 + y} Q${274 + x} ${214 + y} ${278 + x} ${222 + y} Z`} fill="rgba(0,0,0,.35)" />
+        <path d={`M${240 + x} ${206 + y} L${246 + x} ${218 + y} M${246 + x} ${206 + y} L${252 + x} ${218 + y} M${252 + x} ${209 + y} L${257 + x} ${219 + y}`} stroke="rgba(255,255,255,.35)" strokeWidth="1.3" />
+      </g>
+    ));
   const sole = kind === "runners" || kind === "canvas" ? 6 : kind === "loafers" ? 2 : 4;
   const boot = kind === "boots";
   const back = boot
@@ -380,6 +437,10 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
     case "loafers":
     case "boots":
     case "canvas":
+    case "high-tops":
+    case "trail":
+    case "sandals":
+    case "clogs":
       return shoeShapes(c, k);
     default: {
       // Every kind needs a drawing: a new kind without one fails to compile here.

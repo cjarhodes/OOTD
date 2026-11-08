@@ -69,6 +69,11 @@ const SHOE_BULK: Record<string, number> = {
   loafers: 2,
   sneakers: 2,
   runners: 1,
+  "high-tops": 2,
+  trail: 2,
+  clogs: 2,
+  canvas: 1,
+  sandals: 0.5,
 };
 
 /**

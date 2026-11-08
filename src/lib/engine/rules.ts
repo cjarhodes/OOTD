@@ -1,4 +1,4 @@
-import { fitOf } from "../kinds";
+import { fitOf, KINDS } from "../kinds";
 import type { Item, Pieces } from "../types";
 import { COLD_CEILING, COOL_SLACK, WARM_SLACK, type DayNeeds } from "./weather";
 
@@ -88,6 +88,8 @@ export function weatherFit(p: Pieces, needs: DayNeeds, rainLayerAvailable: boole
 export function lowerFitsWeather(p: Pick<Pieces, "bottom" | "shoes">, needs: DayNeeds): boolean {
   if (p.bottom.kind === "shorts" && !needs.shortsOk) return false;
   if (needs.wet && p.shoes.delicate) return false;
+  // Sandals are for warm, dry days: the same warmth as shorts.
+  if (KINDS[p.shoes.kind]?.warmOnly && !needs.shortsOk) return false;
   return true;
 }
 

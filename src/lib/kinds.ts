@@ -15,6 +15,8 @@ interface KindInfo {
   delicate?: boolean;
   /** Only for weekends and travel days: never suggested for work or dinner. */
   casualOnly?: boolean;
+  /** Open shoes: warm, dry days only. */
+  warmOnly?: boolean;
 }
 
 /**
@@ -65,6 +67,10 @@ export const KINDS: Record<Kind, KindInfo> = {
   loafers: { slot: "shoes", label: "loafers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 4, material: "suede", delicate: true, fit: "regular" },
   boots: { slot: "shoes", label: "boots", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 3, material: "leather", waterproof: true, fit: "regular" },
   canvas: { slot: "shoes", label: "canvas sneakers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 1, material: "canvas", fit: "regular" },
+  "high-tops": { slot: "shoes", label: "high-tops", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 1, material: "canvas", fit: "regular" },
+  trail: { slot: "shoes", label: "trail shoes", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 1, material: "technical", fit: "regular" },
+  sandals: { slot: "shoes", label: "sandals", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 1, material: "leather", fit: "regular", casualOnly: true, warmOnly: true, delicate: true },
+  clogs: { slot: "shoes", label: "clogs", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 2, material: "suede", fit: "regular", delicate: true },
 };
 
 export const SLOT_LABEL: Record<Slot, string> = {

@@ -46,7 +46,11 @@ export type Kind =
   | "runners"
   | "loafers"
   | "boots"
-  | "canvas";
+  | "canvas"
+  | "high-tops"
+  | "trail"
+  | "sandals"
+  | "clogs";
 
 export type Neckline = "crew" | "collar" | "v" | "mock" | "turtle" | "hood" | "lapel" | "zip";
 

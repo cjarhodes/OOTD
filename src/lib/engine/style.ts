@@ -148,6 +148,11 @@ export function accentPiece(p: Pieces): Item | null {
 const HEAVY_OUTER = new Set(["waxed", "wool", "leather", "corduroy", "canvas"]);
 const HEAVY_BOTTOM = new Set(["corduroy", "canvas"]);
 
+/** Relaxed shoes that suit a roomy weekend line. */
+const EASY_SHOES = new Set(["runners", "canvas", "high-tops", "clogs", "trail"]);
+/** Too casual for a client meeting. */
+const CASUAL_SHOES = new Set(["runners", "canvas", "high-tops", "trail", "sandals", "clogs"]);
+
 /** How the shoes finish the look: echo it, lift it, or suit its weight and occasion. */
 export type ShoeIdea = "tone" | "lift" | "tailored" | "weight" | "easy";
 
@@ -160,7 +165,11 @@ export function shoeIdea(p: Pieces, occasion: Occasion, needs?: DayNeeds): ShoeI
   const tailored = p.bottom.kind === "trousers" || p.outer?.kind === "blazer" || p.outer?.kind === "overcoat";
   if (s.kind === "loafers" && tailored && occasion !== "weekend") return "tailored";
   if (s.kind === "boots" && (needs?.wet || (needs && needs.coldest <= 3) || (p.outer && HEAVY_OUTER.has(p.outer.material)) || HEAVY_BOTTOM.has(p.bottom.material))) return "weight";
-  if ((s.kind === "runners" || s.kind === "canvas") && (occasion === "weekend" || occasion === "travel") && VOLUME[fitOf(p.bottom)] >= 2) return "easy";
+  // Trail shoes carry a wet or cold day the way boots do, and suit technical layers.
+  if (s.kind === "trail" && (needs?.wet || (needs && needs.coldest <= 6) || p.outer?.material === "technical" || p.bottom.kind === "cargos")) return "weight";
+  if (EASY_SHOES.has(s.kind) && (occasion === "weekend" || occasion === "travel") && VOLUME[fitOf(p.bottom)] >= 2) return "easy";
+  // Sandals belong with shorts or a loose, light trouser.
+  if (s.kind === "sandals" && (p.bottom.kind === "shorts" || VOLUME[fitOf(p.bottom)] >= 2)) return "easy";
   if (fam === PALETTE[p.bottom.color].family || (p.outer && fam === PALETTE[p.outer.color].family)) return "tone";
   return null;
 }
@@ -182,7 +191,9 @@ export function shoeScore(p: Pieces, occasion: Occasion, needs?: DayNeeds): numb
     if (s.kind === "runners" || s.kind === "canvas") score += 0.3;
   }
   // Runners read too casual for a client.
-  if ((s.kind === "runners" || s.kind === "canvas") && occasion === "client") score -= 0.4;
+  if (CASUAL_SHOES.has(s.kind) && occasion === "client") score -= 0.4;
+  // Sandals under layers or with tailoring look like a mistake.
+  if (s.kind === "sandals" && (p.outer || p.bottom.kind === "trousers")) score -= 1.5;
   return score;
 }
 
