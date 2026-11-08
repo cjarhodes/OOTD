@@ -106,7 +106,8 @@ function loadPrefs(): Prefs {
 
 export interface NewPiece {
   item: Item;
-  blob: Blob;
+  /** The photo. Without one, the piece is drawn as an illustration (starter pieces). */
+  blob?: Blob;
 }
 
 interface WardrobeContext {
@@ -329,12 +330,13 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         if (!personalLoaded.current) throw new Error("Your wardrobe isn’t available on this device.");
         const hashes = new Map<string, string>();
         for (const p of pieces) {
+          if (!p.blob) continue;
           await putImage(p.item.id, p.blob);
           hashes.set(p.item.id, await hashBlob(p.blob));
         }
         setImageUrls((prev) => {
           const next = new Map(prev);
-          for (const p of pieces) next.set(p.item.id, photoUrl(p.blob));
+          for (const p of pieces) if (p.blob) next.set(p.item.id, photoUrl(p.blob));
           return next;
         });
         updatePersonal((s) => ({

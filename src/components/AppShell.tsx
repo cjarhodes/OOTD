@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const cloud = useCloud();
   const auth = useAuth();
   // Your own wardrobe needs an account; the sample wardrobe never does.
-  const needsSignIn = auth.ready && !auth.user && path !== "/settings" && (mode === "personal" || path === "/add");
+  const needsSignIn = auth.ready && !auth.user && path !== "/settings" && (mode === "personal" || path === "/add" || path === "/start");
   const [unsaved, setUnsaved] = useState(false);
   const [dismissed, setDismissed] = useState(true);
   useEffect(() => {

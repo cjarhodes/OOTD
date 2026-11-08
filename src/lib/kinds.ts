@@ -104,6 +104,11 @@ export function makeItem(
   };
 }
 
+/** Pieces actually in the wardrobe: not archived, not just wanted. */
+export function isOwned(item: Pick<Item, "status">): boolean {
+  return item.status !== "archived" && item.status !== "wanted";
+}
+
 /** A piece's cut: its own, or its kind's default for pieces saved before fit existed. */
 export function fitOf(item: Pick<Item, "kind" | "fit">): Fit {
   return item.fit ?? KINDS[item.kind].fit;
