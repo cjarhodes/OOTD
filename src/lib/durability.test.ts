@@ -151,6 +151,13 @@ describe("cloud sync rules", () => {
     expect(decide({ localPieces: 4, localFingerprint: "x", mark: null, remote: { ...remote, pieces: 0 } })).toBe("push");
   });
 
+  it("agrees without asking when the cloud already holds this device's state", () => {
+    // A save landed but the page closed before its reply: no mark, or an old one.
+    expect(decide({ localPieces: 8, localFingerprint: "f9", mark: null, remote, sameAsRemote: true })).toBe("adopt");
+    expect(decide({ localPieces: 11, localFingerprint: "f2", mark, remote: { ...remote, etag: "e2" }, sameAsRemote: true })).toBe("adopt");
+    expect(decide({ localPieces: 11, localFingerprint: "f2", mark, remote: { ...remote, etag: "e2" }, sameAsRemote: false })).toBe("conflict");
+  });
+
   it("backs off between retries", () => {
     expect(retryDelay(1)).toBe(15_000);
     expect(retryDelay(2)).toBe(30_000);

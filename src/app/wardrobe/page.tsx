@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
 import { ItemFields, type Draft } from "@/components/ItemFields";
 import { NextBuys } from "@/components/NextBuys";
+import { wishToItem } from "@/lib/wishlist";
 import { isOwned, SLOT_LABEL, fitOf } from "@/lib/kinds";
 import { hasBackdrop, preparePhoto, releasePhoto } from "@/lib/photo";
 import { applyTags } from "@/lib/tagging";
@@ -13,7 +14,7 @@ import type { Item, Slot, Status } from "@/lib/types";
 import { useWardrobe } from "@/state/wardrobe";
 
 const SLOTS: Slot[] = ["base", "mid", "outer", "bottom", "shoes"];
-const STATUS_LABEL: Record<Status, string> = { available: "Available", laundry: "In the wash", archived: "Archived", wanted: "Want it" };
+const STATUS_LABEL: Record<Status, string> = { available: "Available", laundry: "In the wash", archived: "Archived" };
 
 function draftOf(item: Item): Draft {
   return {
@@ -35,7 +36,6 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
   const ref = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<Draft>(draftOf(item));
   const [status, setStatus] = useState<Status>(item.status);
-  const statusOptions: Status[] = item.status === "wanted" ? ["wanted", "available"] : ["available", "laundry", "archived"];
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cutting, setCutting] = useState<"idle" | "working" | "failed">("idle");
 
@@ -130,11 +130,10 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
         </div>
       )}
       <p className="label">{worn ? `Worn ${worn}×` : "Not worn yet"}</p>
-      {/* A wishlist piece is either still wanted or bought; an owned piece is in use, washing or archived. */}
-      <div className="segmented" role="group" aria-label="Status" style={{ ["--count" as string]: statusOptions.length }}>
-        {statusOptions.map((s) => (
+      <div className="segmented" role="group" aria-label="Status" style={{ ["--count" as string]: 3 }}>
+        {(Object.keys(STATUS_LABEL) as Status[]).map((s) => (
           <button key={s} type="button" aria-pressed={status === s} onClick={() => setStatus(s)}>
-            {item.status === "wanted" && s === "available" ? "Got it" : STATUS_LABEL[s]}
+            {STATUS_LABEL[s]}
           </button>
         ))}
       </div>
@@ -176,7 +175,7 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
 }
 
 export default function WardrobePage() {
-  const { ready, items, wears, mode } = useWardrobe();
+  const { ready, items, wears, mode, wishlist, gotWish, removeWish } = useWardrobe();
   const [filter, setFilter] = useState<Slot | "all" | "archived" | "wanted">("all");
   const [editing, setEditing] = useState<string | null>(null);
   const personal = mode === "personal";
@@ -188,10 +187,9 @@ export default function WardrobePage() {
   }, [wears]);
 
   const visible = items
-    .filter((i) => (filter === "archived" || filter === "wanted" ? i.status === filter : isOwned(i) && (filter === "all" || i.slot === filter)))
+    .filter((i) => (filter === "wanted" ? false : filter === "archived" ? i.status === "archived" : isOwned(i) && (filter === "all" || i.slot === filter)))
     .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || a.name.localeCompare(b.name));
   const active = items.filter(isOwned);
-  const wanted = items.filter((i) => i.status === "wanted");
   const unworn = active.filter((i) => !counts.get(i.id)).length;
   const editingItem = editing ? items.find((i) => i.id === editing) : undefined;
 
@@ -235,9 +233,9 @@ export default function WardrobePage() {
                 {SLOT_LABEL[s]}
               </button>
             ))}
-            {personal && wanted.length > 0 && (
+            {personal && wishlist.length > 0 && (
               <button type="button" className="chip" aria-pressed={filter === "wanted"} onClick={() => setFilter("wanted")}>
-                Wishlist · {wanted.length}
+                Wishlist · {wishlist.length}
               </button>
             )}
             {personal && items.some((i) => i.status === "archived") && (
@@ -257,14 +255,39 @@ export default function WardrobePage() {
             )}
           </div>
 
-          {personal && filter === "wanted" && <NextBuys title="Best next buys" />}
+          {personal && filter === "wanted" && (
+            <>
+              {/* Wanted pieces are tracked here only: they never join the wardrobe or its looks until bought. */}
+              <ul className="wardrobe-grid wishlist" aria-label="Wishlist">
+                {wishlist.map((w) => {
+                  const item = wishToItem(w);
+                  return (
+                    <li key={w.id} className="tile wish-tile">
+                      <GarmentTile item={item} decorative />
+                      <span className="tile-name">{w.name}</span>
+                      <span className="tile-meta">{SLOT_LABEL[item.slot]} · Wanted</span>
+                      <span className="wish-actions">
+                        <button type="button" className="text-link" onClick={() => void gotWish(w.id)}>
+                          Got it
+                        </button>
+                        <button type="button" className="text-link" onClick={() => removeWish(w.id)}>
+                          Remove
+                        </button>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <NextBuys title="Best next buys" />
+            </>
+          )}
 
-          <div className="wardrobe-grid">
+          <div className="wardrobe-grid" hidden={filter === "wanted"}>
             {visible.map((item) => {
               const worn = counts.get(item.id) ?? 0;
               const meta = (
                 <span className={`tile-meta${ready && worn === 0 ? " new" : ""}`}>
-                  {item.status === "wanted" ? `${SLOT_LABEL[item.slot]} · On your wishlist` : <>{item.status === "laundry" ? "In the wash" : SLOT_LABEL[item.slot]} · {!ready ? "" : worn ? `Worn ${worn}×` : "Not worn yet"}</>}
+                  {item.status === "laundry" ? "In the wash" : SLOT_LABEL[item.slot]} · {!ready ? "" : worn ? `Worn ${worn}×` : "Not worn yet"}
                 </span>
               );
               return personal ? (

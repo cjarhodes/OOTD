@@ -29,7 +29,7 @@ export interface StarterCard {
 export const STARTER_DECK: StarterCard[] = [
   { id: "tee", name: "Heavyweight tee", kind: "tee", colors: ["White", "Black", "Ecru", "Grey"], fit: "boxy", note: "Boxy and heavy, so it holds its shape under everything else.", tag: "Essential" },
   { id: "jeans", name: "Straight-leg jeans", kind: "jeans", colors: ["Indigo", "Denim", "Black", "Ecru"], fit: "regular", note: "Straight, not skinny. The one pair that goes with all of it.", tag: "Essential" },
-  { id: "sneakers", name: "White leather sneakers", kind: "sneakers", colors: ["White", "Black"], note: "Clean and minimal. They lift dark looks and calm loud ones.", tag: "Essential" },
+  { id: "sneakers", name: "Leather sneakers", kind: "sneakers", colors: ["White", "Black"], note: "Clean and minimal. They lift dark looks and calm loud ones.", tag: "Essential" },
   { id: "oxford", name: "Oxford shirt", kind: "oxford", colors: ["Sky", "White", "Ecru"], note: "Buttoned for the office, open over a tee at the weekend.", tag: "Essential" },
   { id: "crew", name: "Merino crewneck", kind: "crewneck", colors: ["Navy", "Oatmeal", "Grey", "Charcoal", "Forest"], note: "Fine enough to layer over a shirt with the collar out.", tag: "Essential" },
   { id: "wide-trousers", name: "Pleated wide-leg trousers", kind: "trousers", colors: ["Charcoal", "Black", "Stone", "Brown"], fit: "wide", formality: 3, note: "The modern trouser: a fitted knit on top, room below.", tag: "Now" },
@@ -65,7 +65,8 @@ export const STARTER_DECK: StarterCard[] = [
 export function starterItem(card: StarterCard, color: ColorName = card.colors[0]!): Item {
   return makeItem({
     id: `st-${card.id}-${color.toLowerCase()}`,
-    name: `${color} ${card.name.charAt(0).toLowerCase()}${card.name.slice(1)}`,
+    // "Navy merino crewneck"; never "White white …" if a name already starts with a colour.
+    name: card.name.toLowerCase().startsWith(color.toLowerCase()) ? card.name : `${color} ${card.name.charAt(0).toLowerCase()}${card.name.slice(1)}`,
     kind: card.kind,
     color,
     ...(card.fit ? { fit: card.fit } : {}),
@@ -78,5 +79,5 @@ export function starterItem(card: StarterCard, color: ColorName = card.colors[0]
 
 /** Has this wardrobe already got this card's piece (same kind, any listed colour, or same card)? */
 export function alreadyHas(card: StarterCard, items: Item[]): boolean {
-  return items.some((i) => i.id.startsWith(`st-${card.id}-`) || (i.kind === card.kind && card.colors.includes(i.color as ColorName) && i.status !== "wanted"));
+  return items.some((i) => i.id.startsWith(`st-${card.id}-`) || (i.kind === card.kind && card.colors.includes(i.color as ColorName)));
 }

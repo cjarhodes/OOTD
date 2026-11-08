@@ -3,6 +3,7 @@ import type { PersonalState } from "./db";
 import { KINDS } from "./kinds";
 import { COLOR_NAMES } from "./palette";
 import { FITS, MATERIALS, PATTERNS } from "./tagging";
+import { cleanWishlist, moveWantedToWishlist } from "./wishlist";
 import type { DayWeather, FeedbackValue, Item, Kind, Occasion, Plan, Status, Tier, Trip, TripKind, Wear } from "./types";
 
 export interface Backup {
@@ -16,7 +17,7 @@ export interface Backup {
 
 const OCCASIONS: Occasion[] = ["office", "client", "weekend", "dinner", "travel"];
 const TIERS: Tier[] = ["easy", "fresh", "bold"];
-const STATUSES: Status[] = ["available", "laundry", "archived", "wanted"];
+const STATUSES: Status[] = ["available", "laundry", "archived"];
 const IMAGE_URL = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 
 const num = (v: unknown, min: number, max: number) => typeof v === "number" && Number.isFinite(v) && v >= min && v <= max;
@@ -124,7 +125,8 @@ export function parseBackup(value: unknown): { ok: true; backup: Backup } | { ok
   if (b.app !== "ootd" || b.version !== 1 || !b.state || typeof b.state !== "object") {
     return { ok: false, error: "This isn’t an OOTD backup file, or it’s from a newer version." };
   }
-  const s = b.state as Partial<PersonalState>;
+  // Older saves kept wanted pieces among the items; they move to the wishlist.
+  const s = (Array.isArray((b.state as Partial<PersonalState>).items) ? moveWantedToWishlist(b.state as PersonalState) : b.state) as Partial<PersonalState>;
   if (!Array.isArray(s.items) || !s.items.every(validItem)) return { ok: false, error: "Some pieces in this backup are damaged." };
   const ids = new Set(s.items.map((i) => i.id));
   if (ids.size !== s.items.length) return { ok: false, error: "This backup lists the same piece twice." };
@@ -164,6 +166,7 @@ export function parseBackup(value: unknown): { ok: true; backup: Backup } | { ok
         feedback,
         comfort: s.comfort === "runs-cold" || s.comfort === "runs-warm" ? s.comfort : "neutral",
         trips: (Array.isArray(s.trips) ? s.trips : []).map((t) => cleanTrip(t, ids)).filter((t): t is Trip => t !== null),
+        wishlist: cleanWishlist(s.wishlist),
       },
       images,
     },

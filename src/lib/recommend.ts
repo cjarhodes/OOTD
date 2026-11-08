@@ -1,7 +1,8 @@
 import { generateLooks, type GenerateInput } from "./engine/generate";
 import { isOwned, KINDS } from "./kinds";
 import { alreadyHas, STARTER_DECK, starterItem } from "./starter";
-import type { DayWeather, Item, Occasion, Slot } from "./types";
+import { wishToItem } from "./wishlist";
+import type { DayWeather, Item, Occasion, Slot, WishItem } from "./types";
 
 /**
  * Best next buys: which piece would do the most for this wardrobe. Measured,
@@ -50,24 +51,24 @@ function looksFor(items: Item[]) {
 }
 
 /** Candidates worth testing: everything wanted, then starter pieces for the thinnest slots. */
-export function candidates(items: Item[], limit = 14): { item: Item; wanted: boolean }[] {
+export function candidates(items: Item[], wishlist: WishItem[] = [], limit = 14): { item: Item; wanted: boolean }[] {
   const owned = items.filter(isOwned);
-  const wanted = items.filter((i) => i.status === "wanted").map((i) => ({ item: { ...i, status: "available" as const }, wanted: true }));
+  const wanted = wishlist.map((w) => ({ item: wishToItem(w), wanted: true }));
   const perSlot = new Map<Slot, number>();
   for (const i of owned) perSlot.set(i.slot, (perSlot.get(i.slot) ?? 0) + 1);
-  const fromDeck = STARTER_DECK.filter((c) => !alreadyHas(c, items))
+  const fromDeck = STARTER_DECK.filter((c) => !alreadyHas(c, items) && !wishlist.some((w) => w.kind === c.kind && c.colors.includes(w.color)))
     .map((c) => ({ item: starterItem(c), wanted: false, thin: perSlot.get(KINDS[c.kind].slot) ?? 0 }))
     .sort((a, b) => a.thin - b.thin)
     .map(({ item, wanted }) => ({ item, wanted }));
   return [...wanted, ...fromDeck].slice(0, Math.max(limit, wanted.length));
 }
 
-export function nextBuys(items: Item[], count = 3): NextBuy[] {
+export function nextBuys(items: Item[], wishlist: WishItem[] = [], count = 3): NextBuy[] {
   const owned = items.filter(isOwned).map((i) => ({ ...i, status: i.status === "laundry" ? ("available" as const) : i.status }));
   const before = looksFor(owned);
   const total = before.length * 3;
   const results: NextBuy[] = [];
-  for (const { item, wanted } of candidates(items)) {
+  for (const { item, wanted } of candidates(items, wishlist)) {
     const after = looksFor([...owned, item]);
     let uses = 0;
     let unlocks = 0;

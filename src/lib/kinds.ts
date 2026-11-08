@@ -104,9 +104,9 @@ export function makeItem(
   };
 }
 
-/** Pieces actually in the wardrobe: not archived, not just wanted. */
+/** Pieces in use in the wardrobe: everything but the archive. */
 export function isOwned(item: Pick<Item, "status">): boolean {
-  return item.status !== "archived" && item.status !== "wanted";
+  return item.status !== "archived";
 }
 
 /** A piece's cut: its own, or its kind's default for pieces saved before fit existed. */

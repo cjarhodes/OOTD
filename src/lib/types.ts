@@ -66,8 +66,23 @@ export type Occasion = "office" | "client" | "weekend" | "dinner" | "travel";
 
 export type Tier = "easy" | "fresh" | "bold";
 
-/** "wanted": on the wishlist, not owned yet. The engine only ever dresses with "available". */
-export type Status = "available" | "laundry" | "archived" | "wanted";
+export type Status = "available" | "laundry" | "archived";
+
+/**
+ * Something to buy, tracked on the wishlist. Kept apart from the wardrobe's
+ * items, so a wanted piece can never turn up in a look or a count.
+ */
+export interface WishItem {
+  id: string;
+  name: string;
+  kind: Kind;
+  color: ColorName;
+  fit?: Fit;
+  material?: Material;
+  formality?: number;
+  boldness?: number;
+  addedAt: string;
+}
 
 export type Comfort = "neutral" | "runs-cold" | "runs-warm";
 

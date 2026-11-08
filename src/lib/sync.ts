@@ -51,13 +51,24 @@ export type SyncAction =
   /** A fresh device with nothing on it, and a backup exists: offer to restore. */
   | "offer-restore"
   /** Both changed. Ask which to keep; never pick for the athlete. */
-  | "conflict";
+  | "conflict"
+  /** Both hold the same wardrobe (a save landed but its reply never arrived): record that they agree. */
+  | "adopt";
 
-export function decide(input: { localPieces: number; localFingerprint: string; mark: SyncedMark | null; remote: Remote | null }): SyncAction {
-  const { localPieces, localFingerprint, mark, remote } = input;
+export function decide(input: {
+  localPieces: number;
+  localFingerprint: string;
+  mark: SyncedMark | null;
+  remote: Remote | null;
+  /** The cloud copy holds exactly what this device holds. */
+  sameAsRemote?: boolean;
+}): SyncAction {
+  const { localPieces, localFingerprint, mark, remote, sameAsRemote } = input;
   const localChanged = !mark || mark.fingerprint !== localFingerprint;
   if (!remote) return localPieces > 0 ? "push" : "idle";
   if (mark && mark.etag === remote.etag) return localChanged ? "push" : "idle";
+  // The page closed before a save's reply came back: the cloud already has this state.
+  if (sameAsRemote) return "adopt";
   // The cloud moved on (another device), or this device has never synced.
   if (!localChanged) return "pull";
   if (localPieces === 0 && remote.pieces > 0) return "offer-restore";

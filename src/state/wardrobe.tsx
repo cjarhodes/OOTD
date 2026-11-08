@@ -20,9 +20,10 @@ import {
 } from "@/lib/db";
 import type { City } from "@/lib/forecast";
 import { hashBlob, photoUrl } from "@/lib/photo";
+import { wishToItem } from "@/lib/wishlist";
 import { SAMPLE_ITEMS, sampleWears } from "@/lib/sample";
 import { useAuth } from "./auth";
-import type { Comfort, FeedbackValue, Item, Occasion, Plan, Tier, Trip, TripDay, Wear } from "@/lib/types";
+import type { Comfort, FeedbackValue, Item, Occasion, Plan, Tier, Trip, TripDay, Wear, WishItem } from "@/lib/types";
 
 /**
  * Two wardrobes. The sample wardrobe is fixed illustrations plus whatever you
@@ -137,6 +138,12 @@ interface WardrobeContext {
   setComfort: (comfort: Comfort) => void;
   addPieces: (pieces: NewPiece[]) => Promise<void>;
   updateItem: (item: Item) => void;
+  /** Pieces to buy. Tracked only: never part of the wardrobe, its looks or its counts. */
+  wishlist: WishItem[];
+  addWish: (wish: WishItem) => void;
+  removeWish: (id: string) => void;
+  /** Bought it: the wishlist entry becomes a piece in the wardrobe. */
+  gotWish: (id: string) => Promise<void>;
   /** Swap a piece's photo (e.g. for one with the background removed). */
   replacePhoto: (id: string, blob: Blob, patch?: Partial<Item>) => Promise<void>;
   removeItem: (id: string) => Promise<void>;
@@ -349,6 +356,20 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         const { image: _i, ...rest } = item;
         // Editing details never changes the photo, so keep its hash.
         updatePersonal((s) => ({ ...s, items: s.items.map((i) => (i.id === item.id ? ({ ...rest, photoHash: i.photoHash } as Item) : i)) }));
+      },
+      wishlist: isPersonal ? (personal.wishlist ?? []) : [],
+      addWish: (wish) =>
+        updatePersonal((s) => ((s.wishlist ?? []).some((w) => w.id === wish.id) ? s : { ...s, wishlist: [...(s.wishlist ?? []), wish] })),
+      removeWish: (id) => updatePersonal((s) => ({ ...s, wishlist: (s.wishlist ?? []).filter((w) => w.id !== id) })),
+      gotWish: async (id) => {
+        const wish = (personal.wishlist ?? []).find((w) => w.id === id);
+        if (!wish) return;
+        updatePersonal((s) => {
+          const item = wishToItem(wish);
+          // A piece with the same id (bought twice over) keeps the one already there.
+          const items = s.items.some((i) => i.id === item.id) ? s.items : [...s.items, item];
+          return { ...s, items, wishlist: (s.wishlist ?? []).filter((w) => w.id !== id) };
+        });
       },
       replacePhoto: async (id, blob, patch) => {
         if (!personalLoaded.current) throw new Error("Your wardrobe isn’t available on this device.");
