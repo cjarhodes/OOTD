@@ -20,6 +20,15 @@ describe("typed pieces", () => {
     ]);
   });
 
+  it("knows retro sneakers by model, plurals included", () => {
+    expect(parsePiece("Burgundy puma suedes")).toMatchObject({ kind: "sneakers", color: "Burgundy", material: "suede" });
+    expect(parsePiece("navy gazelles")).toMatchObject({ kind: "sneakers", color: "Navy", material: "suede" });
+    expect(parsePiece("green adidas sambas")).toMatchObject({ kind: "sneakers", color: "Olive", material: "leather" });
+    expect(parsePiece("white air force 1s")).toMatchObject({ kind: "sneakers", material: "leather" });
+    expect(parsePiece("New Balance 550s")).toMatchObject({ kind: "sneakers" });
+    expect(parsePiece("grey New Balance 990s")).toMatchObject({ kind: "runners", color: "Grey" });
+  });
+
   it("splits lines, bullets and numbering, and keeps commas inside brackets", () => {
     const got = parseList("- Navy merino crewneck\n2. Grey hoodie (cotton, heavy)\n\n• black jeans").map((p) => [p.name, p.kind, p.color]);
     expect(got).toEqual([

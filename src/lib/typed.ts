@@ -34,6 +34,9 @@ const HINTS: Hint[] = [
   { re: /\bconverse\b|\bchucks?\b|\bvans\b|\bplimsolls?\b/, kind: "canvas", material: "canvas" },
   { re: /\bloafers?\b/, kind: "loafers" },
   { re: /\bchelsea\b|\bchukkas?\b|\bboots?\b/, kind: "boots" },
+  // Retro sneakers by model, before the runner brands that also make them.
+  { re: /\bpumas?\b|\bgazelles?\b|\bspezials?\b|\bcampus\b|\bsuede sneakers?\b/, kind: "sneakers", material: "suede" },
+  { re: /\bsambas?\b|\bmexico 66s?\b|\bonitsuka\b|\bcortez\b|\bair force 1s?\b|\baf1s?\b|\b550s?\b|\bkillshots?\b/, kind: "sneakers", material: "leather" },
   { re: /\bnew balance\b|\brunners?\b|\brunning shoes?\b|\basics\b/, kind: "runners" },
   { re: /\bvejas?\b/, kind: "sneakers", material: "leather", color: "White" },
   { re: /\bc ?85s?\b|\bclub c\b|\breeboks?\b|\bstan smiths?\b|\bcommon projects\b|\bcourt\b/, kind: "sneakers", material: "leather", color: "White" },
@@ -51,7 +54,7 @@ const HINTS: Hint[] = [
 /** Materials named in the text, or implied by the maker. */
 const MATERIAL_HINTS: [RegExp, Material][] = [
   [/\brothy'?s?\b/, "knit"],
-  [/\bsuede\b/, "suede"],
+  [/\bsuedes?\b/, "suede"],
   [/\bleather\b/, "leather"],
   [/\bcanvas\b/, "canvas"],
   [/\bknit\b|\bmerino\b|\bcashmere\b|\blambswool\b/, "knit"],
