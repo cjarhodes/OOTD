@@ -11,7 +11,7 @@ import type { DayNeeds } from "./weather";
  */
 
 /** Shirts that can also be worn open over a tee, as a light layer. */
-export const OPEN_SHIRT_KINDS = new Set(["oxford", "camp-shirt"]);
+export const OPEN_SHIRT_KINDS = new Set(["oxford", "camp-shirt", "flannel"]);
 const CREW_BASES = new Set(["crew", "turtle", "mock"]);
 
 const openShirts = new WeakMap<Item, Item>();
@@ -36,7 +36,7 @@ export function openShirtFits(base: Item, shirt: Item): boolean {
   return base.id !== shirt.id && CREW_BASES.has(base.neckline);
 }
 
-const KNIT_MIDS = new Set(["crewneck", "v-neck", "cardigan", "quarter-zip", "hoodie", "sweatshirt"]);
+const KNIT_MIDS = new Set(["crewneck", "v-neck", "cardigan", "quarter-zip", "hoodie", "sweatshirt", "fleece"]);
 const KNIT_BASES = new Set(["turtleneck", "mock-neck"]);
 
 /** What suits the season. Penalties, not bans, so a thin wardrobe still gets dressed. */
@@ -160,7 +160,7 @@ export function shoeIdea(p: Pieces, occasion: Occasion, needs?: DayNeeds): ShoeI
   const tailored = p.bottom.kind === "trousers" || p.outer?.kind === "blazer" || p.outer?.kind === "overcoat";
   if (s.kind === "loafers" && tailored && occasion !== "weekend") return "tailored";
   if (s.kind === "boots" && (needs?.wet || (needs && needs.coldest <= 3) || (p.outer && HEAVY_OUTER.has(p.outer.material)) || HEAVY_BOTTOM.has(p.bottom.material))) return "weight";
-  if (s.kind === "runners" && (occasion === "weekend" || occasion === "travel") && VOLUME[fitOf(p.bottom)] >= 2) return "easy";
+  if ((s.kind === "runners" || s.kind === "canvas") && (occasion === "weekend" || occasion === "travel") && VOLUME[fitOf(p.bottom)] >= 2) return "easy";
   if (fam === PALETTE[p.bottom.color].family || (p.outer && fam === PALETTE[p.outer.color].family)) return "tone";
   return null;
 }
@@ -175,8 +175,14 @@ export function shoeScore(p: Pieces, occasion: Occasion, needs?: DayNeeds): numb
   else if (idea === "weight" || idea === "easy" || idea === "tone") score += 0.3;
   // Boots weigh down a light, dry look with nothing heavy in it.
   if (s.kind === "boots" && idea !== "weight") score -= 0.4;
+  // Sweatpants are sporty: trainers only, never boots or loafers. And they're an
+  // occasional weekend choice, not the default bottom.
+  if (p.bottom.kind === "sweatpants") {
+    score -= s.kind === "boots" || s.kind === "loafers" ? 4 : 0.3;
+    if (s.kind === "runners" || s.kind === "canvas") score += 0.3;
+  }
   // Runners read too casual for a client.
-  if (s.kind === "runners" && occasion === "client") score -= 0.4;
+  if ((s.kind === "runners" || s.kind === "canvas") && occasion === "client") score -= 0.4;
   return score;
 }
 

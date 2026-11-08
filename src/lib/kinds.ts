@@ -1,4 +1,4 @@
-import type { Fit, Item, Kind, Material, Neckline, Slot } from "./types";
+import type { Fit, Item, Kind, Material, Neckline, Occasion, Slot } from "./types";
 
 interface KindInfo {
   slot: Slot;
@@ -13,6 +13,8 @@ interface KindInfo {
   fit: Fit;
   waterproof?: boolean;
   delicate?: boolean;
+  /** Only for weekends and travel days: never suggested for work or dinner. */
+  casualOnly?: boolean;
 }
 
 /**
@@ -27,6 +29,9 @@ export const KINDS: Record<Kind, KindInfo> = {
   henley: { slot: "base", label: "henley", neckline: "crew", front: "closed", length: 3, thickness: 1, warmth: 1.5, formality: 1, material: "jersey", fit: "slim" },
   turtleneck: { slot: "base", label: "turtleneck", neckline: "turtle", front: "closed", length: 3, thickness: 2, warmth: 3, formality: 3, material: "knit", fit: "slim" },
   "mock-neck": { slot: "base", label: "mock neck", neckline: "mock", front: "closed", length: 3, thickness: 1, warmth: 2, formality: 3, material: "knit", fit: "slim" },
+  "long-sleeve": { slot: "base", label: "long-sleeve tee", neckline: "crew", front: "closed", length: 3, thickness: 1, warmth: 1.5, formality: 1, material: "jersey", fit: "regular" },
+  flannel: { slot: "base", label: "flannel shirt", neckline: "collar", front: "closed", length: 4, thickness: 2, warmth: 2.5, formality: 1, material: "cotton", fit: "relaxed" },
+  rugby: { slot: "base", label: "rugby shirt", neckline: "collar", front: "closed", length: 3, thickness: 2, warmth: 2, formality: 1, material: "cotton", fit: "relaxed" },
 
   crewneck: { slot: "mid", label: "crewneck", neckline: "crew", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 2, material: "knit", fit: "regular" },
   "v-neck": { slot: "mid", label: "v-neck", neckline: "v", front: "closed", length: 3, thickness: 2, warmth: 2.5, formality: 3, material: "knit", fit: "regular" },
@@ -36,6 +41,7 @@ export const KINDS: Record<Kind, KindInfo> = {
   sweatshirt: { slot: "mid", label: "sweatshirt", neckline: "crew", front: "closed", length: 3, thickness: 3, warmth: 3, formality: 1, material: "fleece", fit: "relaxed" },
   overshirt: { slot: "mid", label: "overshirt", neckline: "collar", front: "open", length: 4, thickness: 2, warmth: 2.5, formality: 2, material: "canvas", fit: "relaxed" },
   gilet: { slot: "mid", label: "gilet", neckline: "zip", front: "open", length: 3, thickness: 2, warmth: 2, formality: 2, material: "technical", fit: "regular" },
+  fleece: { slot: "mid", label: "zip fleece", neckline: "zip", front: "closed", length: 3, thickness: 3, warmth: 3.5, formality: 1, material: "fleece", fit: "relaxed" },
 
   "chore-coat": { slot: "outer", label: "chore coat", neckline: "lapel", front: "open", length: 4, thickness: 3, warmth: 3, formality: 2, material: "canvas", fit: "boxy" },
   "waxed-jacket": { slot: "outer", label: "waxed jacket", neckline: "collar", front: "open", length: 4, thickness: 4, warmth: 4, formality: 2, material: "waxed", waterproof: true, fit: "regular" },
@@ -44,16 +50,21 @@ export const KINDS: Record<Kind, KindInfo> = {
   "rain-shell": { slot: "outer", label: "rain shell", neckline: "zip", front: "open", length: 4, thickness: 2, warmth: 2, formality: 1, material: "technical", waterproof: true, fit: "relaxed" },
   overcoat: { slot: "outer", label: "overcoat", neckline: "lapel", front: "open", length: 5, thickness: 5, warmth: 6, formality: 4, material: "wool", fit: "relaxed" },
   puffer: { slot: "outer", label: "puffer", neckline: "zip", front: "open", length: 3, thickness: 5, warmth: 7, formality: 1, material: "technical", waterproof: true, fit: "boxy" },
+  // Cropped and thick enough to go over a hoodie.
+  "denim-jacket": { slot: "outer", label: "denim jacket", neckline: "collar", front: "open", length: 2, thickness: 3, warmth: 2.5, formality: 1, material: "denim", fit: "boxy" },
 
   jeans: { slot: "bottom", label: "jeans", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 1, material: "denim", fit: "regular" },
   chinos: { slot: "bottom", label: "chinos", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 2, material: "cotton", fit: "regular" },
   trousers: { slot: "bottom", label: "trousers", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 4, material: "wool", fit: "regular" },
   shorts: { slot: "bottom", label: "shorts", neckline: "crew", front: "closed", length: 2, thickness: 1, warmth: 0, formality: 1, material: "cotton", fit: "regular" },
+  cargos: { slot: "bottom", label: "cargo trousers", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 1, material: "cotton", fit: "relaxed" },
+  sweatpants: { slot: "bottom", label: "sweatpants", neckline: "crew", front: "closed", length: 5, thickness: 2, warmth: 0, formality: 1, material: "fleece", fit: "relaxed", casualOnly: true },
 
   sneakers: { slot: "shoes", label: "sneakers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 2, material: "leather", fit: "regular" },
   runners: { slot: "shoes", label: "runners", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 1, material: "technical", fit: "regular" },
   loafers: { slot: "shoes", label: "loafers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 4, material: "suede", delicate: true, fit: "regular" },
   boots: { slot: "shoes", label: "boots", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 3, material: "leather", waterproof: true, fit: "regular" },
+  canvas: { slot: "shoes", label: "canvas sneakers", neckline: "crew", front: "closed", length: 1, thickness: 1, warmth: 0, formality: 1, material: "canvas", fit: "regular" },
 };
 
 export const SLOT_LABEL: Record<Slot, string> = {
@@ -102,6 +113,11 @@ export function makeItem(
     status: "available",
     ...fields,
   };
+}
+
+/** Loungewear (sweatpants) is for weekends and travel days only. */
+export function suitsOccasion(item: Pick<Item, "kind">, occasion: Occasion): boolean {
+  return !KINDS[item.kind]?.casualOnly || occasion === "weekend" || occasion === "travel";
 }
 
 /** Pieces in use in the wardrobe: everything but the archive. */
