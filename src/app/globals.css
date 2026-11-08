@@ -1297,3 +1297,226 @@ li[data-done] .first-run-tick {
 .danger-link {
   color: var(--danger);
 }
+
+/* ---------- swipe your wardrobe ---------- */
+
+.swipe-help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: -4px 0 14px;
+}
+.swipe {
+  display: grid;
+  gap: 16px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.swipe-progress {
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.swipe-progress span {
+  display: block;
+  height: 100%;
+  background: var(--cobalt);
+  transition: width var(--dur, 220ms) ease;
+}
+.swipe-stack {
+  position: relative;
+}
+.swipe-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  background: var(--wall);
+  border-radius: 14px;
+  box-shadow: 0 1px 0 var(--line), 0 10px 30px var(--shadow);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  transition: transform 220ms ease;
+}
+.swipe-card.dragging {
+  transition: none;
+  cursor: grabbing;
+}
+.swipe-next {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transform: scale(0.95) translateY(10px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.swipe-art {
+  height: min(24vh, 280px);
+  display: grid;
+  place-items: center;
+  border-radius: 0;
+}
+.swipe-art .garment-svg {
+  width: 72%;
+  height: 72%;
+  margin: 0;
+}
+.swipe-text {
+  display: grid;
+  gap: 4px;
+  padding: 12px 18px 16px;
+}
+@media (max-width: 819px) {
+  .swipe-name {
+    font-size: 23px;
+  }
+  .swipe-help {
+    display: none;
+  }
+}
+.swipe-name {
+  font-family: var(--display);
+  font-size: 26px;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.swipe-note {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.swipes-colors {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+.swipes-colors .swatch {
+  width: 28px;
+  height: 28px;
+}
+.swipe-stamp {
+  position: absolute;
+  top: 18px;
+  z-index: 2;
+  padding: 4px 10px;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--wall);
+  pointer-events: none;
+}
+.stamp-have {
+  left: 18px;
+  color: var(--ink);
+  transform: rotate(-8deg);
+}
+.stamp-skip {
+  right: 18px;
+  color: var(--danger);
+  transform: rotate(8deg);
+}
+.stamp-want {
+  left: 50%;
+  color: var(--cobalt);
+  transform: translateX(-50%);
+}
+.swipe-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.swipe-btn {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 8px 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--wall);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.swipe-btn span {
+  font-size: 20px;
+  line-height: 1;
+}
+.swipe-btn.have {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--wall);
+}
+.swipe-btn.want {
+  color: var(--cobalt);
+  border-color: var(--cobalt);
+}
+.swipe-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.swipe-done {
+  display: grid;
+  gap: 28px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .swipe-card,
+  .swipe-progress span {
+    transition: none;
+  }
+}
+
+/* ---------- next buys ---------- */
+
+.next-buys {
+  display: grid;
+  gap: 10px;
+}
+.next-buys-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.next-buy {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+.next-buy-art {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.next-buy-art .garment-svg {
+  height: 80px;
+  margin: 0;
+}
+.next-buy-text {
+  display: grid;
+  gap: 2px;
+}
+.next-buy-name {
+  font-family: var(--display);
+  font-size: 19px;
+  color: var(--ink);
+}
+.next-buy-reason {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.add-swipe {
+  text-decoration: none;
+  color: inherit;
+}

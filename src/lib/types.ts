@@ -66,7 +66,8 @@ export type Occasion = "office" | "client" | "weekend" | "dinner" | "travel";
 
 export type Tier = "easy" | "fresh" | "bold";
 
-export type Status = "available" | "laundry" | "archived";
+/** "wanted": on the wishlist, not owned yet. The engine only ever dresses with "available". */
+export type Status = "available" | "laundry" | "archived" | "wanted";
 
 export type Comfort = "neutral" | "runs-cold" | "runs-warm";
 

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ItemFields, type Draft } from "@/components/ItemFields";
 import { makeItem } from "@/lib/kinds";
 import type { CutoutFailure } from "@/lib/cutout";
-import { KINDS } from "@/lib/kinds";
+import { isOwned, KINDS } from "@/lib/kinds";
 import { preparePhoto, releasePhoto, taggingImage, type PreparedPhoto, type PhotoVersion } from "@/lib/photo";
 import type { Slot } from "@/lib/types";
 import { applyTags } from "@/lib/tagging";
@@ -140,7 +140,7 @@ export default function AddPage() {
   }
 
   // What the wardrobe still needs before Today can dress someone.
-  const slotsHave = new Set(items.filter((i) => i.status !== "archived").map((i) => i.slot));
+  const slotsHave = new Set(items.filter(isOwned).map((i) => i.slot));
   const missing = SLOT_ORDER.filter((s) => (s === "base" || s === "bottom" || s === "shoes") && !slotsHave.has(s));
 
   async function tag(p: Pending) {
@@ -183,6 +183,12 @@ export default function AddPage() {
 
       {!current && (
         <section className="add-intro">
+          <Link href="/start" className="banner add-swipe">
+            <span>
+              <strong>No photos to hand?</strong> Swipe through the basics most men own and keep what you have, in a minute.
+            </span>
+            <span className="text-link">Swipe your wardrobe</span>
+          </Link>
           <div className="steps">
             <div>
               <span className="label">Lay it out, take the photo</span>

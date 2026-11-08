@@ -16,7 +16,7 @@ export interface Backup {
 
 const OCCASIONS: Occasion[] = ["office", "client", "weekend", "dinner", "travel"];
 const TIERS: Tier[] = ["easy", "fresh", "bold"];
-const STATUSES: Status[] = ["available", "laundry", "archived"];
+const STATUSES: Status[] = ["available", "laundry", "archived", "wanted"];
 const IMAGE_URL = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 
 const num = (v: unknown, min: number, max: number) => typeof v === "number" && Number.isFinite(v) && v >= min && v <= max;

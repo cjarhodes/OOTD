@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { isOwned } from "@/lib/kinds";
 import type { Item, Slot } from "@/lib/types";
 import { useWardrobe } from "@/state/wardrobe";
 
@@ -13,7 +14,7 @@ const ESSENTIALS: { slot: Slot; label: string }[] = [
 
 /** Slots a wardrobe still needs before it can make a look. */
 export function missingEssentials(items: Item[]): Slot[] {
-  const have = new Set(items.filter((i) => i.status !== "archived").map((i) => i.slot));
+  const have = new Set(items.filter(isOwned).map((i) => i.slot));
   return ESSENTIALS.map((e) => e.slot).filter((s) => !have.has(s));
 }
 
@@ -23,7 +24,7 @@ export function missingEssentials(items: Item[]): Slot[] {
  */
 export function FirstRun() {
   const { items, city, personalCount, setMode } = useWardrobe();
-  const have = new Set(items.filter((i) => i.status !== "archived").map((i) => i.slot));
+  const have = new Set(items.filter(isOwned).map((i) => i.slot));
   const steps: { done: boolean; label: string; optional?: boolean; href?: string }[] = [
     ...ESSENTIALS.map((e) => ({ done: have.has(e.slot), label: e.label })),
     { done: have.has("mid") || have.has("outer"), label: "A jumper or jacket for cooler days", optional: true },
@@ -34,7 +35,9 @@ export function FirstRun() {
   return (
     <div className="first-run">
       <p className="display first-run-title">{personalCount === 0 ? "Let’s set up your wardrobe" : `${left} more ${left === 1 ? "piece" : "pieces"} for a first look`}</p>
-      <p className="first-run-note">Photograph each piece on a plain floor, bed or wall. OOTD removes the background and reads the colour.</p>
+      <p className="first-run-note">
+        Quickest: swipe through the basics most men own and keep what you have. Or photograph your own pieces; OOTD removes the background.
+      </p>
       <ol className="first-run-steps">
         {steps.map((s) => (
           <li key={s.label} data-done={s.done || undefined}>
@@ -50,8 +53,11 @@ export function FirstRun() {
         ))}
       </ol>
       <div className="actions">
-        <Link href="/add" className="btn">
-          Add pieces
+        <Link href="/start" className="btn">
+          Swipe your wardrobe
+        </Link>
+        <Link href="/add" className="btn alt">
+          Add photos
         </Link>
         <button type="button" className="btn quiet" onClick={() => setMode("sample")}>
           Try the sample wardrobe

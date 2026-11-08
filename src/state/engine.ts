@@ -3,16 +3,22 @@
 import { useEffect, useState } from "react";
 import { generateLooks, planWeek, type GenerateInput, type Looks, type WeekDay } from "@/lib/engine/generate";
 import type { EngineRequest } from "@/lib/engine/generate.worker";
-import type { Look } from "@/lib/types";
+import { nextBuys, type NextBuy } from "@/lib/recommend";
+import type { Item, Look } from "@/lib/types";
 
-type Job = { kind: "looks"; input: GenerateInput } | { kind: "week"; days: WeekDay[]; base: Omit<GenerateInput, "weather" | "occasion" | "date"> };
+type Job =
+  | { kind: "looks"; input: GenerateInput }
+  | { kind: "week"; days: WeekDay[]; base: Omit<GenerateInput, "weather" | "occasion" | "date"> }
+  | { kind: "buys"; items: Item[] };
 
 let worker: Worker | null | undefined;
 let nextId = 1;
 const waiting = new Map<number, { done: (r: unknown) => void; job: Job }>();
 
 function runInline(job: Job): unknown {
-  return job.kind === "looks" ? generateLooks(job.input) : planWeek(job.days, job.base);
+  if (job.kind === "looks") return generateLooks(job.input);
+  if (job.kind === "week") return planWeek(job.days, job.base);
+  return nextBuys(job.items);
 }
 
 function getWorker(): Worker | null {
@@ -82,4 +88,19 @@ export function useWeek(days: WeekDay[] | null, base: Omit<GenerateInput, "weath
     };
   }, [days, base]);
   return days ? looks : [];
+}
+
+/** Best next buys for a wardrobe, worked out off the main thread. Null while working. */
+export function useNextBuys(items: Item[] | null): NextBuy[] | null {
+  const [buys, setBuys] = useState<NextBuy[] | null>(null);
+  useEffect(() => {
+    if (!items) return;
+    let live = true;
+    setBuys(null);
+    void run<NextBuy[]>({ kind: "buys", items }).then((r) => live && setBuys(r));
+    return () => {
+      live = false;
+    };
+  }, [items]);
+  return items ? buys : null;
 }
