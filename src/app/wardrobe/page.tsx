@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
 import { ItemFields, type Draft } from "@/components/ItemFields";
 import { NextBuys } from "@/components/NextBuys";
+import { TypeList } from "@/components/TypeList";
 import { wishToItem } from "@/lib/wishlist";
 import { isOwned, SLOT_LABEL, fitOf } from "@/lib/kinds";
 import { hasBackdrop, preparePhoto, releasePhoto } from "@/lib/photo";
@@ -178,6 +179,8 @@ export default function WardrobePage() {
   const { ready, items, wears, mode, wishlist, gotWish, removeWish } = useWardrobe();
   const [filter, setFilter] = useState<Slot | "all" | "archived" | "wanted">("all");
   const [editing, setEditing] = useState<string | null>(null);
+  const [typing, setTyping] = useState(false);
+  const [added, setAdded] = useState<number | null>(null);
   const personal = mode === "personal";
 
   const counts = useMemo(() => {
@@ -220,6 +223,9 @@ export default function WardrobePage() {
             <Link href="/add" className="btn alt">
               Add photos
             </Link>
+            <button type="button" className="btn alt" onClick={() => setTyping(true)}>
+              Type a list
+            </button>
           </div>
         </div>
       ) : (
@@ -249,11 +255,26 @@ export default function WardrobePage() {
               </Link>
             )}
             {personal && (
+              <button type="button" className="chip chip-add" onClick={() => setTyping(true)}>
+                Type a list
+              </button>
+            )}
+            {personal && (
               <Link href="/start" className="chip chip-add">
                 Swipe the basics
               </Link>
             )}
           </div>
+          {added !== null && (
+            <p className="banner" role="status">
+              <span>
+                Added {added} {added === 1 ? "piece" : "pieces"}. Tap one to check it or add a photo.
+              </span>
+              <button type="button" className="text-link" onClick={() => setAdded(null)}>
+                OK
+              </button>
+            </p>
+          )}
 
           {personal && filter === "wanted" && (
             <>
@@ -315,6 +336,16 @@ export default function WardrobePage() {
         </>
       )}
 
+      {typing && (
+        <TypeList
+          onClose={() => setTyping(false)}
+          onAdded={(count) => {
+            setTyping(false);
+            setFilter("all");
+            setAdded(count);
+          }}
+        />
+      )}
       {editingItem && <ItemSheet key={editingItem.id} item={editingItem} worn={counts.get(editingItem.id) ?? 0} onClose={() => setEditing(null)} />}
     </>
   );

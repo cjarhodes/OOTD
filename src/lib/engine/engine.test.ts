@@ -238,7 +238,7 @@ describe("generateLooks", () => {
 
   it("dresses the weekend in the casual pieces, and keeps sweatpants off work and dinner", () => {
     const deck = STARTER_DECK.map((c) => starterItem(c));
-    const casual = new Set(["long-sleeve", "flannel", "rugby", "fleece", "denim-jacket", "cargos", "sweatpants", "canvas"]);
+    const casual = new Set(["long-sleeve", "flannel", "rugby", "fleece", "denim-jacket", "cargos", "sweatpants", "canvas", "high-tops", "trail", "sandals", "clogs"]);
     const days = [day(18, 24, 20), day(10, 15, 12), day(1, 5, 2), day(8, 11, 9, 85)];
     let casualPieces = 0;
     for (const weather of days) {
@@ -255,6 +255,22 @@ describe("generateLooks", () => {
       }
     }
     expect(casualPieces).toBeGreaterThanOrEqual(8);
+  });
+
+  it("keeps sandals to warm, dry days off work, and suede clogs out of the rain", () => {
+    const deck = STARTER_DECK.map((c) => starterItem(c));
+    const shoesOn = (occasion: "weekend" | "office", weather: DayWeather) => {
+      const l = generateLooks({ ...base, items: deck, occasion, weather });
+      return [l.easy, l.fresh, l.bold].filter(Boolean).map((x) => x!.pieces.shoes.kind);
+    };
+    for (const weather of [day(10, 15, 12), day(1, 5, 2), day(20, 26, 22, 85)]) expect(shoesOn("weekend", weather)).not.toContain("sandals");
+    expect(shoesOn("office", day(20, 27, 23))).not.toContain("sandals");
+    expect(shoesOn("weekend", day(8, 11, 9, 85))).not.toContain("clogs");
+    // On a hot, dry weekend with only sandals and boots to choose from, the best look wears sandals.
+    const pick = ["tee", "shorts", "sandals", "chukka"].map((id) => starterItem(STARTER_DECK.find((c) => c.id === id)!));
+    const hot = generateLooks({ ...base, items: pick, occasion: "weekend", weather: day(22, 29, 24) });
+    const best = [hot.easy, hot.fresh, hot.bold].filter(Boolean).sort((a, b) => b!.score - a!.score)[0]!;
+    expect(best.pieces.shoes.kind).toBe("sandals");
   });
 
   it("returns nulls rather than inventing pieces for an incomplete wardrobe", () => {
