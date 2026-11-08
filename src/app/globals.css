@@ -323,6 +323,11 @@ button {
   font-size: 14px;
   color: var(--label);
 }
+/* No look in this tier yet: tapping it explains why. */
+.segmented button[aria-disabled="true"] {
+  text-decoration: underline dotted;
+  text-underline-offset: 4px;
+}
 .segmented button[aria-pressed="true"] {
   color: var(--ink);
   font-weight: 600;
@@ -588,10 +593,13 @@ button {
   background: var(--ink);
   color: var(--on-ink);
   padding: 10px 16px;
-  border-radius: var(--radius-pill);
+  border-radius: 14px;
   font-size: 14px;
   z-index: 40;
-  max-width: calc(100vw - 32px);
+  /* Full width when it needs it: left: 50% alone would cap it at half the screen. */
+  width: max-content;
+  max-width: min(440px, calc(100vw - 32px));
+  text-align: center;
 }
 @media (min-width: 820px) {
   .toast {

@@ -97,7 +97,8 @@ export function TodayView() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 2600);
+    // Long enough to read: about a second per dozen words.
+    const t = window.setTimeout(() => setToast(null), Math.max(2600, toast.length * 45));
     return () => window.clearTimeout(t);
   }, [toast]);
 
@@ -109,7 +110,9 @@ export function TodayView() {
   const looks = useLooks(ready ? input : null);
   const saved = useMemo(() => (plan ? lookFromIds(plan.itemIds, items, input) : null), [plan, items, input]);
 
-  const look: Look | null = override ?? (view === "saved" ? saved : (looks?.[view] ?? null));
+  // If the chosen tier has no look (a small wardrobe), show one that does.
+  const shownView: View = view === "saved" || looks?.[view] || !looks ? view : (["fresh", "easy", "bold"] as const).find((t) => looks[t]) ?? view;
+  const look: Look | null = override ?? (shownView === "saved" ? saved : (looks?.[shownView] ?? null));
   useEffect(() => {
     if (look) shown.current.add(look.signature);
   }, [look]);
@@ -186,7 +189,24 @@ export function TodayView() {
 
         <div className="segmented" role="group" aria-label="How adventurous" style={{ ["--count" as string]: tabs.length }}>
           {tabs.map((t) => (
-            <button key={t} type="button" aria-pressed={view === t} onClick={() => choose(t)} disabled={t !== "saved" && !looks?.[t]}>
+            <button
+              key={t}
+              type="button"
+              aria-pressed={shownView === t}
+              // An empty tier says why when tapped, rather than doing nothing.
+              aria-disabled={t !== "saved" && looks !== null && !looks[t] ? true : undefined}
+              onClick={() => {
+                if (t === "saved" || !looks || looks[t]) return choose(t);
+                const count = TIERS.filter((x) => looks[x]).length;
+                setToast(
+                  count === 0
+                    ? "There’s no look to show yet. Add a top, trousers and shoes."
+                    : look?.warning
+                      ? `Nothing else you own suits today’s weather, so there’s no ${TIER_LABEL[t]} look yet.`
+                      : `Your pieces make ${count === 1 ? "one look" : `${count} looks`} for today, so there’s no ${TIER_LABEL[t]} one yet. Add a few more for more choice.`,
+                );
+              }}
+            >
               {t === "saved" ? (fromTrip ? "Trip" : "Saved") : TIER_LABEL[t]}
             </button>
           ))}

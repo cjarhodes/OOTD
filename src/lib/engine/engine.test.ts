@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeItem } from "../kinds";
 import { SAMPLE_ITEMS, sampleWears } from "../sample";
+import { STARTER_DECK, starterItem } from "../starter";
 import type { DayWeather, Item, Pieces } from "../types";
 import { lookName, lookNotes, recipeOf, tonalFamily, aOrAn } from "./describe";
 import { generateLooks, lookFromIds, planWeek, swapPiece } from "./generate";
@@ -211,6 +212,28 @@ describe("generateLooks", () => {
     expect(looks.easy).toBeNull();
     expect(looks.fresh!.pieces.mid?.id).toBe("crew");
     expect(looks.fresh!.warning).toMatch(/Add a jacket or coat/);
+  });
+
+  it("fills every tier a small swiped wardrobe can, each a different look", () => {
+    const card = (id: string) => STARTER_DECK.find((c) => c.id === id)!;
+    const small = ["tee", "jeans", "sneakers", "oxford", "crew", "hoodie", "overcoat", "chinos", "chukka"].map((id) => starterItem(card(id)));
+    for (const weather of [day(18, 24, 20), day(10, 15, 12), day(1, 5, 2)]) {
+      const looks = generateLooks({ ...base, items: small, occasion: "weekend", weather });
+      const all = [looks.easy, looks.fresh, looks.bold];
+      expect(all.every(Boolean)).toBe(true);
+      expect(new Set(all.map((l) => l!.signature)).size).toBe(3);
+    }
+  });
+
+  it("keeps every fallback look as warm as the wardrobe allows", () => {
+    const card = (id: string) => STARTER_DECK.find((c) => c.id === id)!;
+    const noCoat = ["tee", "jeans", "sneakers", "oxford", "crew", "chinos"].map((id) => starterItem(card(id)));
+    const looks = generateLooks({ ...base, items: noCoat, occasion: "weekend", weather: day(1, 5, 2) });
+    const all = [looks.easy, looks.fresh, looks.bold].filter(Boolean);
+    expect(all.length).toBeGreaterThan(1);
+    const warmths = all.map((l) => upperLayers(l!.pieces).reduce((s, i) => s + i.warmth, 0));
+    expect(new Set(warmths).size).toBe(1);
+    for (const l of all) expect(l!.warning).toMatch(/Add a jacket or coat/);
   });
 
   it("returns nulls rather than inventing pieces for an incomplete wardrobe", () => {

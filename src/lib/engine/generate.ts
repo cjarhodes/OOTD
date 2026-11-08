@@ -12,7 +12,7 @@ import type {
   Wear,
 } from "../types";
 import { lookName, lookNotes, recipeOf, tonalFamily } from "./describe";
-import { layersAreValid, layersFitWeather, lowerFitsWeather, patternsWork, stackIsValid, upperLayers, weatherFit } from "./rules";
+import { layersAreValid, layersFitWeather, lowerFitsWeather, patternsWork, stackIsValid, upperLayers, warmthOf, weatherFit } from "./rules";
 import { accentScore, asOpenShirt, creativityScore, OPEN_SHIRT_KINDS, openShirtFits, seasonScore, shoeScore } from "./style";
 import {
   buildHistory,
@@ -190,7 +190,8 @@ function toLook(c: Candidate, score: number, input: GenerateInput, wet: boolean)
 /**
  * Three looks for a day: easy (familiar), fresh (new combinations of what you
  * wear), bold (more adventurous). Each differs from the others by at least
- * two pieces. A tier is null when the wardrobe cannot fill it.
+ * two pieces where the wardrobe allows, else by one. A tier is null only when
+ * the wardrobe has fewer looks than tiers.
  */
 export function generateLooks(input: GenerateInput): Looks {
   let pool = candidates(input, true);
@@ -212,26 +213,42 @@ export function generateLooks(input: GenerateInput): Looks {
 
   const result: Looks = { easy: null, fresh: null, bold: null };
   const chosen: Pieces[] = [];
-  // In the fallback, only the warmest look is worth showing; it goes in the default tier.
-  for (const tier of warning ? (["fresh"] as Tier[]) : TIERS) {
-    let best: { c: Candidate; s: number } | null = null;
-    for (const c of pool) {
-      // Each tier is a different look: never the same top half with new trousers.
-      if (chosen.some((p) => overlap(p, c.pieces) > 3 || upperShared(p, c.pieces) > 1)) continue;
-      c.recipe ??= recipeOf(c.pieces);
-      c.tonal ??= tonalFamily(c.pieces) !== null;
-      const s =
-        c.base +
-        tierScore(c.boldness, tier) +
-        creativityScore(c.pieces, c.recipe, c.tonal, tier) +
-        accentScore(c.pieces, tier) +
-        (c.hist ?? historyScores(c.pieces, history, feedback))[tier] * 0.5;
-      if (!best || s > best.s) best = { c, s };
-    }
-    if (best) {
-      const look = toLook(best.c, best.s, input, wet);
-      result[tier] = warning ? { ...look, warning } : look;
-      chosen.push(best.c.pieces);
+  let order: Tier[] = TIERS;
+  if (warning) {
+    // The closest look goes in the default tier. On a cold day every option keeps
+    // the warmest top half there is, so no tier suggests something colder.
+    order = ["fresh", "easy", "bold"];
+    const needs = dayNeeds(input.weather, input.comfort);
+    const warmth = (c: Candidate) => warmthOf(upperLayers(c.pieces));
+    const top = Math.max(...pool.map(warmth));
+    if (top < needs.needCold) pool = pool.filter((c) => warmth(c) >= top);
+  }
+  // First pass: each tier is a different look, never the same top half with new
+  // trousers. A small wardrobe can't always manage that, so a second pass fills
+  // any empty tier with any other valid look rather than leaving it blank.
+  for (const strict of [true, false]) {
+    const taken = new Set(chosen.map(signatureOf));
+    for (const tier of order) {
+      if (result[tier]) continue;
+      let best: { c: Candidate; s: number } | null = null;
+      for (const c of pool) {
+        if (strict ? chosen.some((p) => overlap(p, c.pieces) > 3 || upperShared(p, c.pieces) > 1) : taken.has(signatureOf(c.pieces))) continue;
+        c.recipe ??= recipeOf(c.pieces);
+        c.tonal ??= tonalFamily(c.pieces) !== null;
+        const s =
+          c.base +
+          tierScore(c.boldness, tier) +
+          creativityScore(c.pieces, c.recipe, c.tonal, tier) +
+          accentScore(c.pieces, tier) +
+          (c.hist ?? historyScores(c.pieces, history, feedback))[tier] * 0.5;
+        if (!best || s > best.s) best = { c, s };
+      }
+      if (best) {
+        const look = toLook(best.c, best.s, input, wet);
+        result[tier] = warning ? { ...look, warning } : look;
+        chosen.push(best.c.pieces);
+        taken.add(signatureOf(best.c.pieces));
+      }
     }
   }
   return result;
