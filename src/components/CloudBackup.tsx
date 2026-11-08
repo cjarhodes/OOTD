@@ -81,14 +81,33 @@ export function CloudBackup({ onExport }: { onExport: () => void }) {
             {status.phase === "shrink"
               ? `Your account has ${pieces(status.remotePieces)} and this device has ${pieces(personalCount)}, so nothing was overwritten.`
               : `Your account (${pieces(status.remotePieces)}) and this device (${pieces(personalCount)}) both changed.`}{" "}
-            Choose which to keep. The other stays in Earlier versions.
+            Combine them to keep every piece from both, or keep just one; the other stays in Earlier versions.
           </span>
           <span className="actions">
-            <button type="button" className="btn" onClick={() => setConfirm({ label: "the copy in your account" })}>
-              Use my account’s copy
+            <button
+              type="button"
+              className="btn"
+              onClick={async () => {
+                setNote(null);
+                const err = await cloud.combine();
+                if (!err) setMode("personal");
+                setNote(err ?? "Combined: everything from this device and your account is here and saved.");
+              }}
+            >
+              Combine both
             </button>
-            <button type="button" className="btn alt" onClick={cloud.keepThisDevice}>
+            <button
+              type="button"
+              className="btn alt"
+              onClick={() => {
+                setNote(null);
+                cloud.keepThisDevice();
+              }}
+            >
               Keep this device’s
+            </button>
+            <button type="button" className="btn alt" onClick={() => setConfirm({ label: "the copy in your account" })}>
+              Use my account’s copy
             </button>
             <button type="button" className="btn quiet" onClick={onExport}>
               Export this device first

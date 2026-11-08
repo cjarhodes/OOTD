@@ -10,6 +10,7 @@
 
 - **Your wardrobe belongs to your account.** Pieces, photos, plans, trips and wear history are saved to your account a few seconds after each change, and are on every device you sign in on. They're kept in private storage that only your signed-in session can read or change.
 - **It works offline.** Each device keeps a copy (IndexedDB, one per account), so the app is fast and keeps working without a connection; changes are saved when it's back.
+- **Two devices, both changed?** You're asked, never overwritten: **Combine both** keeps every piece, wear, plan and trip from each (`src/lib/merge.ts`), or keep just one copy; the other stays in Earlier versions.
 - **Nothing is lost by accident.**
   - Photos are stored under their own SHA-256 and are never overwritten.
   - If two devices both change your wardrobe, OOTD asks which copy to keep.

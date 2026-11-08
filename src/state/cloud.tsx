@@ -5,6 +5,7 @@ import { saveFailure } from "@/lib/account";
 import { parseBackup } from "@/lib/backup";
 import type { PersonalState } from "@/lib/db";
 import { hashBlob } from "@/lib/photo";
+import { mergeStates } from "@/lib/merge";
 import { decide, fingerprint, retryDelay, type Remote, type SyncedMark } from "@/lib/sync";
 import { useAuth } from "./auth";
 import { useWardrobe } from "./wardrobe";
@@ -57,10 +58,29 @@ interface CloudContext {
   restore: (at?: string) => Promise<string | null>;
   /** Keep this device's copy and overwrite the cloud one (the old one stays in history). */
   keepThisDevice: () => void;
+  /** Keep everything from both copies, then save the result. */
+  combine: () => Promise<string | null>;
   listSnapshots: () => Promise<Snapshot[]>;
 }
 
 const DEBOUNCE_MS = 6000;
+/** No request may hang a save: Safari can stall one when the app is switched away. */
+const REQUEST_MS = 20_000;
+const PHOTO_MS = 60_000;
+/** A save still "busy" after this long is treated as stuck, never as a reason to drop the next one. */
+const STUCK_MS = 120_000;
+
+/** fetch, given up on after `ms` (body included): resolves null on failure or timeout. */
+async function fetchWithin(url: string, init: RequestInit = {}, ms = REQUEST_MS): Promise<Response | null> {
+  const ctrl = new AbortController();
+  // Left running past the response so reading the body is covered too; aborting a finished request does nothing.
+  setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } catch {
+    return null;
+  }
+}
 
 // Per account, so two people on one device never confuse each other's copies.
 let uid = "";
@@ -126,7 +146,8 @@ type Fetched =
 async function fetchRemote(at?: string): Promise<Fetched> {
   if (!uid) return { kind: "off" };
   try {
-    const res = await fetch(at ? `/api/wardrobe/history?slot=${encodeURIComponent(at)}` : "/api/wardrobe", { cache: "no-store" });
+    const res = await fetchWithin(at ? `/api/wardrobe/history?slot=${encodeURIComponent(at)}` : "/api/wardrobe", { cache: "no-store" });
+    if (!res) return { kind: "error", message: "Couldn’t reach your account. It will retry." };
     if (res.status === 401) return { kind: "off" };
     const json = (await res.json().catch(() => ({}))) as {
       wardrobe?: { state: unknown; etag: string; savedAt: string; pieces: number } | null;
@@ -162,6 +183,22 @@ export function CloudProvider({ children }: { children: ReactNode }) {
   const phaseRef = useRef<CloudPhase>("off");
   phaseRef.current = status.phase;
   const busy = useRef(false);
+  const busySince = useRef(0);
+  // A choice made while a save is running (Keep this device's, Combine) runs as soon as it finishes.
+  const queued = useRef<(() => void) | null>(null);
+  // "Keep this device's" holds until it lands: retries and Save now stay forced.
+  const forceOwed = useRef(false);
+  const isBusy = () => busy.current && Date.now() - busySince.current < STUCK_MS;
+  const claim = () => {
+    busy.current = true;
+    busySince.current = Date.now();
+  };
+  const release = () => {
+    busy.current = false;
+    const next = queued.current;
+    queued.current = null;
+    if (next) setTimeout(next, 0);
+  };
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const attempts = useRef(0);
   const remoteRef = useRef<Remote | null>(null);
@@ -184,11 +221,11 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         if (blob && item.photoHash) {
           // Only send bytes that still match the hash the state records.
           if ((await hashBlob(blob)) !== item.photoHash) return "A photo changed while it was saving. It will retry.";
-          const res = await fetch(`/api/photos/${item.photoHash}`, {
-            method: "PUT",
-            headers: { "Content-Type": blob.type || "image/png" },
-            body: blob,
-          }).catch(() => null);
+          const res = await fetchWithin(
+            `/api/photos/${item.photoHash}`,
+            { method: "PUT", headers: { "Content-Type": blob.type || "image/png" }, body: blob },
+            PHOTO_MS,
+          );
           if (!res) return "A photo couldn’t be uploaded. It will retry.";
           if (!res.ok) {
             const json = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
@@ -208,22 +245,25 @@ export function CloudProvider({ children }: { children: ReactNode }) {
   const push = useCallback(
     async (opts: { force?: boolean; ifMatch?: string } = {}) => {
       const state = stateRef.current;
-      if (!state || busy.current) return;
-      busy.current = true;
+      if (!state || isBusy()) return;
+      claim();
+      const force = opts.force === true || forceOwed.current;
+      if (force) forceOwed.current = true;
       set({ phase: "saving", message: null });
       try {
         const copy = cloudCopy(state);
         const photoError = await uploadPhotos(copy);
         if (photoError) throw new Error(photoError);
         const ifMatch = opts.ifMatch ?? readMark()?.etag ?? remoteRef.current?.etag;
-        const res = await fetch("/api/wardrobe", {
+        const res = await fetchWithin("/api/wardrobe", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ state: copy, ifMatch: ifMatch ?? null, force: opts.force === true }),
-        }).catch(() => null);
+          body: JSON.stringify({ state: copy, ifMatch: ifMatch ?? null, force }),
+        });
         if (!res) throw new Error("Couldn’t reach your account. It will retry.");
         const data = (await res.json().catch(() => ({}))) as { etag?: string; savedAt?: string; pieces?: number; code?: string; details?: string; error?: string };
         if (res.ok && data.etag && data.savedAt) {
+          forceOwed.current = false;
           writeMark({ etag: data.etag, savedAt: data.savedAt, fingerprint: fingerprint(copy) });
           remoteRef.current = { etag: data.etag, savedAt: data.savedAt, pieces: data.pieces ?? copy.items.length };
           attempts.current = 0;
@@ -250,7 +290,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         set({ phase: "error", message: e instanceof Error ? e.message : "The cloud backup couldn’t be saved. It will retry." });
         schedule(() => void push(), retryDelay(attempts.current));
       } finally {
-        busy.current = false;
+        release();
       }
     },
     [schedule, set, uploadPhotos],
@@ -258,8 +298,9 @@ export function CloudProvider({ children }: { children: ReactNode }) {
 
   const restore = useCallback(
     async (at?: string): Promise<string | null> => {
-      if (busy.current) return "The backup is busy. Try again in a moment.";
-      busy.current = true;
+      if (isBusy()) return "The backup is busy. Try again in a moment.";
+      claim();
+      forceOwed.current = false;
       set({ phase: "restoring", message: null });
       try {
         const fetched = await fetchRemote(at);
@@ -284,7 +325,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         await Promise.all(
           Array.from({ length: 4 }, async () => {
             for (let item = queue.shift(); item; item = queue.shift()) {
-              const res = await fetch(`/api/photos/${item.photoHash}`).catch(() => null);
+              const res = await fetchWithin(`/api/photos/${item.photoHash}`, {}, PHOTO_MS);
               const blob = res && res.ok ? await res.blob() : null;
               if (blob && (await hashBlob(blob)) === item.photoHash) photos.set(item.id, blob);
               else failed += 1;
@@ -302,7 +343,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         writeUploaded(new Set(withPhotos.map((i) => i.photoHash!)));
         if (at) {
           // An earlier version becomes the current one; the newer copy stays in history.
-          busy.current = false;
+          release();
           stateRef.current = state;
           await push({ force: true });
           return null;
@@ -316,16 +357,82 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         set({ phase: "error", message });
         return message;
       } finally {
-        busy.current = false;
+        if (busy.current) release();
       }
     },
     [push, replacePersonal, set],
   );
 
+  /**
+   * Keep everything: this device's pieces and the account's, merged
+   * (lib/merge.ts), with the account's photos brought down first. The save
+   * names the account version it merged, so a third device's change in the
+   * meantime is caught as a conflict instead of being overwritten.
+   */
+  const combine = useCallback(async (): Promise<string | null> => {
+    const local = stateRef.current;
+    if (!local) return "Your wardrobe hasn’t loaded yet.";
+    if (isBusy()) {
+      queued.current = () => void combine();
+      set({ phase: "saving", message: null });
+      return null;
+    }
+    claim();
+    let handedOn = false;
+    set({ phase: "restoring", message: null });
+    try {
+      const fetched = await fetchRemote();
+      if (fetched.kind !== "ok") {
+        const message = fetched.kind === "error" ? fetched.message : "There’s no saved wardrobe in your account to combine with.";
+        set({ phase: "error", message });
+        return message;
+      }
+      const parsed = parseBackup({ app: "ootd", version: 1, exportedAt: fetched.remote.savedAt, state: fetched.state, images: {} });
+      if (!parsed.ok) {
+        set({ phase: "error", message: parsed.error });
+        return parsed.error;
+      }
+      const merged = mergeStates(cloudCopy(local), parsed.backup.state);
+      const here = new Set(local.items.map((i) => i.id));
+      // This device's photos, plus the account's for the pieces it adds.
+      const photos = await photoBlobs(merged.items.filter((i) => here.has(i.id)).map((i) => i.id));
+      const fromAccount = merged.items.filter((i) => !here.has(i.id) && i.photoHash);
+      set({ photosLeft: fromAccount.length });
+      let failed = 0;
+      for (const item of fromAccount) {
+        const res = await fetchWithin(`/api/photos/${item.photoHash}`, {}, PHOTO_MS);
+        const blob = res && res.ok ? await res.blob().catch(() => null) : null;
+        if (blob && (await hashBlob(blob)) === item.photoHash) photos.set(item.id, blob);
+        else failed += 1;
+        set({ photosLeft: fromAccount.length - photos.size });
+      }
+      if (failed) {
+        const message = `${failed} photo${failed === 1 ? "" : "s"} didn’t download, so nothing was combined. Try again.`;
+        set({ phase: "error", message });
+        return message;
+      }
+      await replacePersonal(merged, photos);
+      const uploaded = readUploaded();
+      for (const i of fromAccount) uploaded.add(i.photoHash!);
+      writeUploaded(uploaded);
+      stateRef.current = merged;
+      handedOn = true;
+      release();
+      await push({ ifMatch: fetched.remote.etag });
+      return null;
+    } catch {
+      const message = "Combining didn’t finish, so nothing on this device was changed.";
+      set({ phase: "error", message });
+      return message;
+    } finally {
+      if (!handedOn) release();
+    }
+  }, [photoBlobs, push, replacePersonal, set]);
+
   /** Compare with the cloud and act on the rules in lib/sync.ts. */
   const check = useCallback(async () => {
     const state = stateRef.current;
-    if (!state || busy.current) return;
+    if (!state || isBusy()) return;
     set({ phase: "checking" });
     const fetched = await fetchRemote();
     if (fetched.kind === "off") return set({ phase: "off" });
@@ -395,9 +502,19 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     () => ({
       status,
       available,
-      syncNow: () => void (phaseRef.current === "pending" || phaseRef.current === "error" ? push() : check()),
+      syncNow: () => {
+        if (isBusy()) queued.current = () => void push();
+        else void (phaseRef.current === "pending" || phaseRef.current === "error" ? push() : check());
+      },
       restore,
-      keepThisDevice: () => void push({ force: true }),
+      keepThisDevice: () => {
+        // Never dropped: if a save is running, this one goes straight after it.
+        if (isBusy()) {
+          queued.current = () => void push({ force: true });
+          set({ phase: "saving", message: null });
+        } else void push({ force: true });
+      },
+      combine,
       listSnapshots: async () => {
         try {
           const res = await fetch("/api/wardrobe/history", { cache: "no-store" });
@@ -409,7 +526,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         }
       },
     }),
-    [status, available, push, check, restore],
+    [status, available, push, check, restore, combine, set],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
