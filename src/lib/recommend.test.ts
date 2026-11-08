@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { candidates, nextBuys } from "./recommend";
 import { SAMPLE_ITEMS } from "./sample";
 import { alreadyHas, STARTER_DECK, starterItem } from "./starter";
+import { wishFromItem } from "./wishlist";
 import type { Item } from "./types";
 
 const card = (id: string) => STARTER_DECK.find((c) => c.id === id)!;
@@ -15,6 +16,8 @@ describe("starter deck", () => {
         const item = starterItem(c, color);
         expect(item.color).toBe(color);
         expect(item.name.startsWith(color)).toBe(true);
+        // No colour said twice ("White white …").
+        expect(item.name.toLowerCase().split(" ").filter((w) => w === color.toLowerCase())).toHaveLength(1);
         expect(ids.has(item.id)).toBe(false);
         ids.add(item.id);
       }
@@ -24,8 +27,7 @@ describe("starter deck", () => {
   it("knows what a wardrobe already has", () => {
     expect(alreadyHas(card("tee"), summer)).toBe(true);
     expect(alreadyHas(card("overcoat"), summer)).toBe(false);
-    // A wishlist piece doesn't count as owned by kind and colour.
-    expect(alreadyHas(card("overcoat"), [{ ...SAMPLE_ITEMS.find((i) => i.kind === "overcoat")!, status: "wanted" }])).toBe(false);
+    expect(alreadyHas(card("overcoat"), SAMPLE_ITEMS)).toBe(true);
   });
 });
 
@@ -40,8 +42,8 @@ describe("next buys", () => {
   });
 
   it("puts wishlist pieces first among the candidates, and never suggests what's owned", () => {
-    const want = { ...starterItem(card("loafers")), status: "wanted" as const };
-    const list = candidates([...summer, want]);
+    const want = wishFromItem(starterItem(card("loafers")));
+    const list = candidates(summer, [want]);
     expect(list[0]!.wanted).toBe(true);
     expect(list.some((c) => c.item.kind === "tee" && c.item.color === "White")).toBe(false);
   });

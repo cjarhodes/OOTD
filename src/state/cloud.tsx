@@ -103,7 +103,17 @@ function writeUploaded(set: Set<string>) {
 
 /** What gets backed up: the stored state, without runtime photo URLs. */
 function cloudCopy(state: PersonalState): PersonalState {
-  return { ...state, trips: state.trips ?? [], items: state.items.map(({ image: _i, ...rest }) => rest) };
+  return { ...state, trips: state.trips ?? [], wishlist: state.wishlist ?? [], items: state.items.map(({ image: _i, ...rest }) => rest) };
+}
+
+/** Do two states hold the same wardrobe? Compared as the server stores them. */
+function sameState(local: PersonalState, remote: unknown): boolean {
+  const norm = (state: unknown) => {
+    const parsed = parseBackup({ app: "ootd", version: 1, exportedAt: "", state, images: {} });
+    return parsed.ok ? fingerprint(parsed.backup.state) : null;
+  };
+  const a = norm(local);
+  return a !== null && a === norm(remote);
 }
 
 type Fetched =
@@ -327,8 +337,14 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     const remote = fetched.kind === "ok" ? fetched.remote : null;
     remoteRef.current = remote;
     const copy = cloudCopy(state);
-    const action = decide({ localPieces: copy.items.length, localFingerprint: fingerprint(copy), mark: readMark(), remote });
+    const localFingerprint = fingerprint(copy);
+    const sameAsRemote = fetched.kind === "ok" && sameState(copy, fetched.state);
+    const action = decide({ localPieces: copy.items.length, localFingerprint, mark: readMark(), remote, sameAsRemote });
     set({ savedAt: remote?.savedAt ?? null, remotePieces: remote?.pieces ?? null, message: null });
+    if (action === "adopt" && remote) {
+      writeMark({ etag: remote.etag, savedAt: remote.savedAt, fingerprint: localFingerprint });
+      return set({ phase: "synced" });
+    }
     if (action === "push") return void push({ ifMatch: remote?.etag });
     if (action === "pull") return void restore();
     if (action === "offer-restore") return set({ phase: "restore-available" });

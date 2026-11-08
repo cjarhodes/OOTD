@@ -5,15 +5,19 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import { GarmentTile } from "@/components/art/Garment";
 import { NextBuys } from "@/components/NextBuys";
 import { SLOT_LABEL, KINDS } from "@/lib/kinds";
-import { PALETTE, type ColorName } from "@/lib/palette";
+import { COLOR_NAMES, PALETTE, type ColorName } from "@/lib/palette";
 import { alreadyHas, STARTER_DECK, starterItem, type StarterCard } from "@/lib/starter";
+import { wishFromItem } from "@/lib/wishlist";
 import { useWardrobe } from "@/state/wardrobe";
 
 type Choice = "have" | "skip" | "want";
 interface Decision {
   card: StarterCard;
   choice: Choice;
-  itemId: string | null;
+  /** Pieces added to the wardrobe (one per colour you have). */
+  itemIds: string[];
+  /** Entries added to the wishlist. */
+  wishIds: string[];
 }
 
 const THRESHOLD = 90;
@@ -25,7 +29,7 @@ const LABEL: Record<Choice, string> = { have: "I have it", skip: "Not mine", wan
  * drawn as an illustration, so Today can dress you before you've taken a photo.
  */
 export default function StartPage() {
-  const { ready, items, mode, setMode, addPieces, removeItem } = useWardrobe();
+  const { ready, items, mode, setMode, addPieces, removeItem, addWish, removeWish } = useWardrobe();
   // Fix the deck when the page opens, so pieces added while swiping don't reshuffle it.
   const [deck, setDeck] = useState<StarterCard[] | null>(null);
   useEffect(() => {
@@ -33,19 +37,33 @@ export default function StartPage() {
   }, [ready, deck, items]);
 
   const [index, setIndex] = useState(0);
-  const [colors, setColors] = useState<Record<string, ColorName>>({});
+  // The colours ticked on each card, and the one its picture shows.
+  const [picked, setPicked] = useState<Record<string, ColorName[]>>({});
+  const [shown, setShown] = useState<Record<string, ColorName>>({});
+  const [allColours, setAllColours] = useState(false);
   const [history, setHistory] = useState<Decision[]>([]);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [leaving, setLeaving] = useState<Choice | null>(null);
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
 
   const card = deck?.[index] ?? null;
-  const color = card ? (colors[card.id] ?? card.colors[0]!) : null;
+  const color = card ? (shown[card.id] ?? card.colors[0]!) : null;
+  const ticked = card ? (picked[card.id] ?? []) : [];
+  // With nothing ticked, the colour on show is the one you mean.
+  const chosen: ColorName[] = ticked.length ? ticked : color ? [color] : [];
+  const toggle = (c: ColorName) => {
+    if (!card) return;
+    setShown((m) => ({ ...m, [card.id]: c }));
+    setPicked((m) => {
+      const now = m[card.id] ?? [];
+      return { ...m, [card.id]: now.includes(c) ? now.filter((x) => x !== c) : [...now, c] };
+    });
+  };
   const preview = useMemo(() => (card && color ? starterItem(card, color) : null), [card, color]);
   const done = deck !== null && index >= deck.length;
   const counts = {
-    have: history.filter((d) => d.choice === "have").length,
-    want: history.filter((d) => d.choice === "want").length,
+    have: history.reduce((n, d) => n + d.itemIds.length, 0),
+    want: history.reduce((n, d) => n + d.wishIds.length, 0),
   };
 
   const decide = useCallback(
@@ -53,13 +71,23 @@ export default function StartPage() {
       if (!card || !preview || leaving) return;
       if (mode !== "personal") setMode("personal");
       setLeaving(choice);
-      let itemId: string | null = null;
-      if (choice !== "skip") {
-        const item = { ...preview, status: choice === "want" ? ("wanted" as const) : ("available" as const) };
-        itemId = item.id;
-        void addPieces([{ item }]);
+      let itemIds: string[] = [];
+      let wishIds: string[] = [];
+      if (choice === "have") {
+        // One piece per colour you have, skipping any already in the wardrobe.
+        const pieces = chosen.map((c) => starterItem(card, c)).filter((p) => !items.some((i) => i.id === p.id));
+        itemIds = pieces.map((p) => p.id);
+        if (pieces.length) void addPieces(pieces.map((item) => ({ item })));
+      } else if (choice === "want") {
+        // Tracked on the wishlist only: nothing joins the wardrobe.
+        for (const c of chosen) {
+          const wish = wishFromItem(starterItem(card, c));
+          addWish(wish);
+          wishIds.push(wish.id);
+        }
       }
-      setHistory((h) => [...h, { card, choice, itemId }]);
+      setHistory((h) => [...h, { card, choice, itemIds, wishIds }]);
+      setAllColours(false);
       // Let the card fly off before the next one takes its place.
       window.setTimeout(() => {
         setLeaving(null);
@@ -67,16 +95,17 @@ export default function StartPage() {
         setIndex((i) => i + 1);
       }, 220);
     },
-    [card, preview, leaving, mode, setMode, addPieces],
+    [card, preview, leaving, mode, setMode, addPieces, addWish, chosen, items],
   );
 
   const undo = useCallback(async () => {
     const last = history[history.length - 1];
     if (!last || leaving) return;
-    if (last.itemId) await removeItem(last.itemId);
+    for (const id of last.itemIds) await removeItem(id);
+    for (const id of last.wishIds) removeWish(id);
     setHistory((h) => h.slice(0, -1));
     setIndex((i) => Math.max(0, i - 1));
-  }, [history, leaving, removeItem]);
+  }, [history, leaving, removeItem, removeWish]);
 
   // Arrow keys: left, up, right; Backspace undoes.
   useEffect(() => {
@@ -179,22 +208,22 @@ export default function StartPage() {
                 </span>
                 <p className="swipe-name">{preview.name}</p>
                 <p className="swipe-note">{card.note}</p>
-                {card.colors.length > 1 && (
-                  <div className="swipes-colors" role="group" aria-label="Colour">
-                    {card.colors.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        className="swatch small"
-                        aria-pressed={c === color}
-                        aria-label={c}
-                        title={c}
-                        style={{ background: PALETTE[c].hex }}
-                        onClick={() => setColors((m) => ({ ...m, [card.id]: c }))}
-                      />
+                <fieldset className="colour-picks">
+                  <legend className="label">{ticked.length ? `You have ${ticked.length}` : "Your colours: tap every one you own"}</legend>
+                  <div className="colour-chips">
+                    {[...card.colors, ...(allColours ? COLOR_NAMES.filter((c) => !card.colors.includes(c)) : [])].map((c) => (
+                      <button key={c} type="button" className="colour-chip" aria-pressed={ticked.includes(c)} onClick={() => toggle(c)}>
+                        <span className="colour-dot" style={{ background: PALETTE[c].hex }} aria-hidden="true" />
+                        {c}
+                      </button>
                     ))}
+                    {!allColours && (
+                      <button type="button" className="colour-chip more" onClick={() => setAllColours(true)}>
+                        + Other colour
+                      </button>
+                    )}
                   </div>
-                )}
+                </fieldset>
               </div>
             </div>
           </div>
@@ -204,10 +233,10 @@ export default function StartPage() {
               <span aria-hidden="true">✕</span> Not mine
             </button>
             <button type="button" className="swipe-btn want" onClick={() => void decide("want")} aria-keyshortcuts="ArrowUp">
-              <span aria-hidden="true">☆</span> Want it
+              <span aria-hidden="true">☆</span> {chosen.length > 1 ? `Want ${chosen.length}` : "Want it"}
             </button>
             <button type="button" className="swipe-btn have" onClick={() => void decide("have")} aria-keyshortcuts="ArrowRight">
-              <span aria-hidden="true">✓</span> I have it
+              <span aria-hidden="true">✓</span> {chosen.length > 1 ? `I have ${chosen.length}` : "I have it"}
             </button>
           </div>
           <div className="swipe-foot">

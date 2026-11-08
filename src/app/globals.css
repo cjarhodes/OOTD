@@ -1360,6 +1360,12 @@ li[data-done] .first-run-tick {
   place-items: center;
   border-radius: 0;
 }
+/* Short phones: keep the swipe buttons above the tab bar. */
+@media (max-height: 820px) {
+  .swipe-art {
+    height: 19vh;
+  }
+}
 .swipe-art .garment-svg {
   width: 72%;
   height: 72%;
@@ -1388,14 +1394,55 @@ li[data-done] .first-run-tick {
   font-size: 15px;
   color: var(--ink-2);
 }
-.swipes-colors {
-  display: flex;
-  gap: 12px;
-  margin-top: 8px;
+.colour-picks {
+  border: 0;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  gap: 8px;
 }
-.swipes-colors .swatch {
-  width: 28px;
-  height: 28px;
+.colour-picks legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+.colour-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 132px;
+  overflow-y: auto;
+}
+.colour-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 4px 12px 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--wall);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.colour-chip[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+  font-weight: 600;
+}
+.colour-chip.more {
+  padding-left: 12px;
+  color: var(--ink-2);
+}
+.colour-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+.colour-chip[aria-pressed="true"] .colour-dot {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15), 0 0 0 2px var(--wall), 0 0 0 3px var(--ink);
 }
 .swipe-stamp {
   position: absolute;
@@ -1519,4 +1566,18 @@ li[data-done] .first-run-tick {
 .add-swipe {
   text-decoration: none;
   color: inherit;
+}
+
+.wishlist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+}
+.wish-tile {
+  cursor: default;
+}
+.wish-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
 }

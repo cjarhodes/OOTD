@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { GarmentTile } from "@/components/art/Garment";
-import type { NextBuy } from "@/lib/recommend";
+import { wishFromItem } from "@/lib/wishlist";
 import { useNextBuys } from "@/state/engine";
 import { useWardrobe } from "@/state/wardrobe";
 
@@ -12,18 +12,12 @@ import { useWardrobe } from "@/state/wardrobe";
  * bought; suggestions can go on the wishlist or straight into the wardrobe.
  */
 export function NextBuys({ title = "Your best next buys" }: { title?: string }) {
-  const { items, addPieces, updateItem } = useWardrobe();
-  // Only owned and wanted pieces matter; recompute when they change.
-  const key = items.map((i) => `${i.id}:${i.status}`).join(",");
+  const { items, wishlist, addPieces, addWish, removeWish, gotWish } = useWardrobe();
+  // Recompute only when the wardrobe or wishlist really changes, not on every render.
+  const key = `${items.map((i) => `${i.id}:${i.status}`).join(",")}|${wishlist.map((w) => w.id).join(",")}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const input = useMemo(() => items, [key]);
+  const input = useMemo(() => ({ items, wishlist }), [key]);
   const buys = useNextBuys(input);
-
-  const act = async (b: NextBuy, status: "available" | "wanted") => {
-    const existing = items.find((i) => i.id === b.item.id);
-    if (existing) updateItem({ ...existing, status });
-    else await addPieces([{ item: { ...b.item, status } }]);
-  };
 
   return (
     <section className="next-buys" aria-labelledby="next-buys-title" aria-busy={buys === null}>
@@ -49,14 +43,25 @@ export function NextBuys({ title = "Your best next buys" }: { title?: string }) 
                 </p>
                 <p className="next-buy-reason">{b.reason}</p>
                 <div className="actions">
-                  {!b.wanted && (
-                    <button type="button" className="text-link" onClick={() => void act(b, "wanted")}>
-                      Want it
-                    </button>
+                  {b.wanted ? (
+                    <>
+                      <button type="button" className="text-link" onClick={() => void gotWish(b.item.id)}>
+                        Got it
+                      </button>
+                      <button type="button" className="text-link" onClick={() => removeWish(b.item.id)}>
+                        Remove
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className="text-link" onClick={() => addWish(wishFromItem(b.item))}>
+                        Want it
+                      </button>
+                      <button type="button" className="text-link" onClick={() => void addPieces([{ item: b.item }])}>
+                        I have one
+                      </button>
+                    </>
                   )}
-                  <button type="button" className="text-link" onClick={() => void act(b, "available")}>
-                    {b.wanted ? "Got it" : "I have one"}
-                  </button>
                 </div>
               </div>
             </li>

@@ -1,5 +1,6 @@
 import { deleteDB, openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { Comfort, FeedbackValue, Item, Plan, Trip, Wear } from "./types";
+import type { Comfort, FeedbackValue, Item, Plan, Trip, Wear, WishItem } from "./types";
+import { moveWantedToWishlist } from "./wishlist";
 
 /**
  * This device's copy of a signed-in person's wardrobe, in IndexedDB: one
@@ -18,6 +19,8 @@ export interface PersonalState {
   comfort: Comfort;
   /** Added after v1 shipped; older records simply have none. */
   trips?: Trip[];
+  /** Pieces to buy. Never part of the wardrobe. */
+  wishlist?: WishItem[];
 }
 
 interface Schema extends DBSchema {
@@ -95,12 +98,12 @@ export async function readLegacy(): Promise<{ state: PersonalState; images: Map<
 }
 
 export function emptyPersonal(): PersonalState {
-  return { version: 1, items: [], wears: [], plans: {}, feedback: {}, comfort: "neutral", trips: [] };
+  return { version: 1, items: [], wears: [], plans: {}, feedback: {}, comfort: "neutral", trips: [], wishlist: [] };
 }
 
 export async function loadPersonal(): Promise<PersonalState> {
   const s = await (await db()).get("state", STATE_KEY);
-  return s && s.version === 1 ? s : emptyPersonal();
+  return s && s.version === 1 ? moveWantedToWishlist(s) : emptyPersonal();
 }
 
 export async function savePersonal(state: PersonalState): Promise<void> {

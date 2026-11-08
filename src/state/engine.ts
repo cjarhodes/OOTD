@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import { generateLooks, planWeek, type GenerateInput, type Looks, type WeekDay } from "@/lib/engine/generate";
 import type { EngineRequest } from "@/lib/engine/generate.worker";
 import { nextBuys, type NextBuy } from "@/lib/recommend";
-import type { Item, Look } from "@/lib/types";
+import type { Item, Look, WishItem } from "@/lib/types";
 
 type Job =
   | { kind: "looks"; input: GenerateInput }
   | { kind: "week"; days: WeekDay[]; base: Omit<GenerateInput, "weather" | "occasion" | "date"> }
-  | { kind: "buys"; items: Item[] };
+  | { kind: "buys"; items: Item[]; wishlist: WishItem[] };
 
 let worker: Worker | null | undefined;
 let nextId = 1;
@@ -18,7 +18,7 @@ const waiting = new Map<number, { done: (r: unknown) => void; job: Job }>();
 function runInline(job: Job): unknown {
   if (job.kind === "looks") return generateLooks(job.input);
   if (job.kind === "week") return planWeek(job.days, job.base);
-  return nextBuys(job.items);
+  return nextBuys(job.items, job.wishlist);
 }
 
 function getWorker(): Worker | null {
@@ -91,16 +91,16 @@ export function useWeek(days: WeekDay[] | null, base: Omit<GenerateInput, "weath
 }
 
 /** Best next buys for a wardrobe, worked out off the main thread. Null while working. */
-export function useNextBuys(items: Item[] | null): NextBuy[] | null {
+export function useNextBuys(input: { items: Item[]; wishlist: WishItem[] } | null): NextBuy[] | null {
   const [buys, setBuys] = useState<NextBuy[] | null>(null);
   useEffect(() => {
-    if (!items) return;
+    if (!input) return;
     let live = true;
     setBuys(null);
-    void run<NextBuy[]>({ kind: "buys", items }).then((r) => live && setBuys(r));
+    void run<NextBuy[]>({ kind: "buys", items: input.items, wishlist: input.wishlist }).then((r) => live && setBuys(r));
     return () => {
       live = false;
     };
-  }, [items]);
-  return items ? buys : null;
+  }, [input]);
+  return input ? buys : null;
 }
