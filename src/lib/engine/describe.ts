@@ -49,7 +49,8 @@ export const RECIPE_BOLDNESS: Record<RecipeId, number> = {
   "roll-neck": 1,
 };
 
-const SPORTY_OUTERS = new Set(["bomber", "puffer", "rain-shell"]);
+// A hood under these is streetwear, not high-low.
+const SPORTY_OUTERS = new Set(["bomber", "puffer", "rain-shell", "denim-jacket"]);
 
 export function recipeOf(p: Pieces): RecipeId {
   const { base, mid, outer } = p;

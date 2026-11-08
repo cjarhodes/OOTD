@@ -19,7 +19,7 @@ const SUPPORTS_FALLBACK = /^claude-(opus|sonnet|fable)-/.test(MODEL);
 const SYSTEM = `You tag garments for a personal wardrobe app that builds layered outfits.
 You get one photo of a single garment, usually cut out on a transparent or plain background.
 Identify it precisely:
-- kind: the closest garment type. Shirts with a collar and buttons are "oxford" unless clearly a camp collar. Knit pullovers are "crewneck" or "v-neck"; zip-collar knits are "quarter-zip". Open-front knits are "cardigan". Shirt-weight jackets are "overshirt". Waxed cotton field jackets are "waxed-jacket". Tailored jackets are "blazer".
+- kind: the closest garment type. Shirts with a collar and buttons are "oxford" unless clearly a camp collar. Knit pullovers are "crewneck" or "v-neck"; zip-collar knits are "quarter-zip". Open-front knits are "cardigan". Shirt-weight jackets are "overshirt". Waxed cotton field jackets are "waxed-jacket". Tailored jackets are "blazer". Brushed, usually checked, shirts are "flannel"; heavy collared shirts with a contrast collar are "rugby"; plain long-sleeved tees are "long-sleeve". Zip-neck fleece pullovers are "fleece". Trucker-style denim jackets are "denim-jacket". Trousers with pockets on the thigh are "cargos"; joggers and sweatpants are "sweatpants". Canvas lace-up sneakers are "canvas".
 - color: the main colour, chosen from the list. Ignore the background.
 - material, pattern, formality and boldness as defined in the schema.
 - fit: judge the cut from the silhouette. Boxy means wide and short through the body; wide means wide-legged trousers.

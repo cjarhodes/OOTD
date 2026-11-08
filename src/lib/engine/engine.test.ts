@@ -236,6 +236,27 @@ describe("generateLooks", () => {
     for (const l of all) expect(l!.warning).toMatch(/Add a jacket or coat/);
   });
 
+  it("dresses the weekend in the casual pieces, and keeps sweatpants off work and dinner", () => {
+    const deck = STARTER_DECK.map((c) => starterItem(c));
+    const casual = new Set(["long-sleeve", "flannel", "rugby", "fleece", "denim-jacket", "cargos", "sweatpants", "canvas"]);
+    const days = [day(18, 24, 20), day(10, 15, 12), day(1, 5, 2), day(8, 11, 9, 85)];
+    let casualPieces = 0;
+    for (const weather of days) {
+      const weekend = generateLooks({ ...base, items: deck, occasion: "weekend", weather });
+      for (const l of [weekend.easy, weekend.fresh, weekend.bold]) {
+        const ps = [...upperLayers(l!.pieces), l!.pieces.bottom, l!.pieces.shoes];
+        casualPieces += ps.filter((i) => casual.has(i.kind)).length;
+        // Sweatpants go with trainers, never boots or loafers.
+        if (l!.pieces.bottom.kind === "sweatpants") expect(["sneakers", "runners", "canvas"]).toContain(l!.pieces.shoes.kind);
+      }
+      for (const occasion of ["office", "client", "dinner"] as const) {
+        const looks = generateLooks({ ...base, items: deck, occasion, weather });
+        for (const l of [looks.easy, looks.fresh, looks.bold]) if (l) expect(l.pieces.bottom.kind).not.toBe("sweatpants");
+      }
+    }
+    expect(casualPieces).toBeGreaterThanOrEqual(8);
+  });
+
   it("returns nulls rather than inventing pieces for an incomplete wardrobe", () => {
     const looks = generateLooks({ ...base, items: [tee, jeans] });
     expect(looks.easy).toBeNull();

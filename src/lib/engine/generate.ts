@@ -11,6 +11,7 @@ import type {
   Tier,
   Wear,
 } from "../types";
+import { suitsOccasion } from "../kinds";
 import { lookName, lookNotes, recipeOf, tonalFamily } from "./describe";
 import { layersAreValid, layersFitWeather, lowerFitsWeather, patternsWork, stackIsValid, upperLayers, warmthOf, weatherFit } from "./rules";
 import { accentScore, asOpenShirt, creativityScore, OPEN_SHIRT_KINDS, openShirtFits, seasonScore, shoeScore } from "./style";
@@ -78,7 +79,7 @@ function rng(seed: number) {
 
 function pools(input: GenerateInput, random: () => number): Record<Slot, Item[]> {
   const target = OCCASION_FORMALITY[input.occasion];
-  const available = input.items.filter((i) => i.status === "available");
+  const available = input.items.filter((i) => i.status === "available" && suitsOccasion(i, input.occasion));
   const bySlot: Record<Slot, Item[]> = { base: [], mid: [], outer: [], bottom: [], shoes: [] };
   for (const i of available) bySlot[i.slot].push(i);
   for (const slot of Object.keys(bySlot) as Slot[]) {
@@ -286,7 +287,7 @@ export function swapPiece(
   exclude: Set<string> = new Set(),
 ): Look | null {
   const needs = dayNeeds(input.weather, input.comfort);
-  const available = input.items.filter((i) => i.status === "available");
+  const available = input.items.filter((i) => i.status === "available" && suitsOccasion(i, input.occasion));
   const rainLayerAvailable = available.some((i) => i.slot === "outer" && i.waterproof);
   const history = buildHistory(input.wears ?? [], input.date);
   const feedback = input.feedback ?? {};

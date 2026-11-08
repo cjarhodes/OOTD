@@ -52,7 +52,7 @@ function jacketLeft(hem: number) {
 }
 
 function shoeShapes(color: string, kind: Kind) {
-  const sole = kind === "runners" ? 6 : kind === "loafers" ? 2 : 4;
+  const sole = kind === "runners" || kind === "canvas" ? 6 : kind === "loafers" ? 2 : 4;
   const boot = kind === "boots";
   const back = boot
     ? "M228 230 L228 200 L246 200 L250 214 Q268 218 278 222 L278 230 Z"
@@ -68,7 +68,13 @@ function shoeShapes(color: string, kind: Kind) {
       <path d={front} fill={color} />
       <rect x="244" y={222 - sole} width="46" height={sole} fill={soleColor} />
       {kind === "loafers" && <path d="M252 202 L262 204" stroke={LINE} strokeWidth="2" />}
-      {(kind === "sneakers" || kind === "runners") && <path d="M252 201 L260 210 M256 199 L264 208" stroke={LINE} strokeWidth="1.2" />}
+      {(kind === "sneakers" || kind === "runners" || kind === "canvas") && <path d="M252 201 L260 210 M256 199 L264 208" stroke={LINE} strokeWidth="1.2" />}
+      {kind === "canvas" && (
+        <>
+          <path d="M268 230 Q278 222 278 230 Z M280 222 Q290 213 290 222 Z" fill="#f4f2ec" />
+          <path d="M232 224 L276 224 M247 216 L289 216" stroke="rgba(0,0,0,.12)" strokeWidth="1" />
+        </>
+      )}
     </>
   );
 }
@@ -96,6 +102,15 @@ function bottomShape(color: string, kind: Kind, fit: Fit) {
           strokeWidth="1"
         />
       )}
+      {kind === "cargos" && (
+        <path d={`M${229 - f * 0.6} 104 L250 104 L250 132 L${229 - f * 0.7} 132 Z M270 104 L${291 + f * 0.6} 104 L${291 + f * 0.7} 132 L270 132 Z`} fill="rgba(0,0,0,.12)" />
+      )}
+      {kind === "sweatpants" && (
+        <>
+          <path d={`M${229 - f} ${hem - 10} L${254 + inner} ${hem - 10} L${254 + inner} ${hem} L${229 - f} ${hem} Z M${266 - inner} ${hem - 10} L${291 + f} ${hem - 10} L${291 + f} ${hem} L${266 - inner} ${hem} Z`} fill="rgba(0,0,0,.14)" />
+          <path d="M256 44 L254 62 M264 44 L266 62" stroke="rgba(255,255,255,.5)" strokeWidth="1.5" />
+        </>
+      )}
       {kind === "trousers" && (
         <path d={`M243 50 L242 ${hem} M277 50 L278 ${hem}`} stroke="rgba(255,255,255,.14)" strokeWidth="1.2" />
       )}
@@ -112,12 +127,23 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
   const stripe = item.pattern === "stripe";
 
   if (part === "top") {
-    if (k === "oxford") return <path d={SHIRT_COLLAR} fill={c} stroke={LINE} strokeWidth="1" />;
+    if (k === "oxford" || k === "flannel") return <path d={SHIRT_COLLAR} fill={c} stroke={LINE} strokeWidth="1" />;
+    if (k === "rugby") return <path d={SHIRT_COLLAR} fill="#f4f2ec" stroke={LINE} strokeWidth="1" />;
     if (k === "polo") return <path d="M116 46 L128 58 L130 50 L132 58 L144 46 L140 42 L130 50 L120 42 Z" fill={c} stroke={LINE} strokeWidth="1" />;
     if (k === "camp-shirt") return <path d={CAMP_COLLAR} fill={c} stroke={LINE} strokeWidth="1" />;
     return null;
   }
 
+  // Check lines show up on any colour: light on dark cloth, dark on light.
+  const checkInk = PALETTE[item.color].lightness < 0.4 ? "rgba(255,255,255,.16)" : "rgba(0,0,0,.18)";
+  const checks =
+    item.pattern === "check" ? (
+      <path
+        d="M90 76 L170 76 M88 106 L172 106 M88 136 L172 136 M88 166 L172 166 M88 196 L172 196 M104 52 L104 204 M130 54 L130 204 M156 52 L156 204"
+        stroke={checkInk}
+        strokeWidth="6"
+      />
+    ) : null;
   const stripes = stripe ? (
     <path
       d="M100 70 L160 70 M96 90 L164 90 M94 110 L166 110 M94 130 L166 130 M94 150 L166 150 M94 170 L166 170 M94 190 L166 190"
@@ -135,6 +161,24 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
           <path d="M104 48 Q130 60 156 48" fill="none" stroke={LINE} strokeWidth="3" />
           {k === "henley" && <path d="M130 56 L130 84" stroke={LINE} strokeWidth="1.5" />}
           {stripes}
+        </>
+      );
+    case "long-sleeve":
+      return (
+        <>
+          <path d={FINE_KNIT} fill={c} />
+          <path d="M104 48 Q130 60 156 48" fill="none" stroke={LINE} strokeWidth="3" />
+          {stripes}
+        </>
+      );
+    case "rugby":
+      return (
+        <>
+          <path d={FINE_KNIT} fill={c} />
+          {stripes}
+          <path d="M122 50 L138 50 L138 84 L122 84 Z" fill="#f4f2ec" />
+          <path d="M130 54 L130 80" stroke={LINE} strokeWidth="1.2" />
+          <path d={SHIRT_COLLAR} fill="#f4f2ec" stroke={LINE} strokeWidth="1" />
         </>
       );
     case "polo":
@@ -158,11 +202,18 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
     }
     case "oxford":
     case "camp-shirt":
+    case "flannel":
       // Worn open over a tee: two fronts with the tee showing between them.
       if (item.front === "open")
         return (
           <>
             {halves(OPEN_SHIRT_LEFT, c)}
+            {item.pattern === "check" && (
+              <>
+                <path d="M78 100 L112 100 M76 140 L112 140 M78 180 L112 180 M96 60 L98 204" stroke={checkInk} strokeWidth="6" />
+                <path d="M78 100 L112 100 M76 140 L112 140 M78 180 L112 180 M96 60 L98 204" stroke={checkInk} strokeWidth="6" transform={MIRROR} />
+              </>
+            )}
             {stripe && (
               <>
                 <path d="M100 66 L102 204 M84 96 L86 204" stroke="rgba(255,255,255,.45)" strokeWidth="5" />
@@ -176,6 +227,7 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
         <>
           <path d={SHIRT} fill={c} />
           <path d="M130 52 L130 204" stroke="rgba(0,0,0,.14)" strokeWidth="1.2" />
+          {checks}
           {stripe && (
             <path d="M110 60 L110 204 M150 60 L150 204 M96 80 L96 204 M164 80 L164 204" stroke="rgba(255,255,255,.45)" strokeWidth="5" />
           )}
@@ -200,6 +252,18 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
           <path d="M112 34 L148 34 L146 52 L114 52 Z" fill={c} />
           <path d="M112 34 L148 34 L146 52 L114 52 Z" fill={SHADE} opacity=".7" />
           <path d="M130 34 L130 84" stroke="rgba(0,0,0,.35)" strokeWidth="1.6" />
+        </>
+      );
+    case "fleece":
+      return (
+        <>
+          <path d={KNIT_CREW} fill={c} />
+          <path d="M88 182 L172 182 L172 190 L88 190 Z" fill={SHADE} />
+          <path d="M110 28 L150 28 L148 52 L112 52 Z" fill={c} />
+          <path d="M110 28 L150 28 L148 52 L112 52 Z" fill={SHADE} opacity=".5" />
+          <path d="M130 28 L130 96" stroke="rgba(0,0,0,.35)" strokeWidth="1.8" />
+          <path d="M142 72 L166 72 L166 96 L142 96 Z" fill="rgba(0,0,0,.18)" />
+          <path d="M70 66 Q130 80 190 66" stroke="rgba(255,255,255,.1)" strokeWidth="8" fill="none" />
         </>
       );
     case "hoodie":
@@ -279,6 +343,18 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
           <path d="M74 188 L122 188 L122 196 L74 196 Z M138 188 L186 188 L186 196 L138 196 Z" fill="rgba(0,0,0,.22)" />
         </>,
       );
+    case "denim-jacket":
+      return halves(
+        jacketLeft(186),
+        c,
+        <>
+          <path d="M116 32 L100 40 L112 62 Z M144 32 L160 40 L148 62 Z" fill={SHADE} />
+          <path d="M88 84 L112 84 L112 100 L88 100 Z M148 84 L172 84 L172 100 L148 100 Z" fill="rgba(0,0,0,.16)" />
+          <path d="M72 112 L124 112 M136 112 L188 112 M74 176 L122 176 M138 176 L186 176" stroke="rgba(214,170,110,.6)" strokeWidth="1.2" />
+          <circle cx="124" cy="130" r="2.5" fill="rgba(214,170,110,.9)" />
+          <circle cx="124" cy="156" r="2.5" fill="rgba(214,170,110,.9)" />
+        </>,
+      );
     case "rain-shell":
       return (
         <>
@@ -296,12 +372,20 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
     case "chinos":
     case "trousers":
     case "shorts":
+    case "cargos":
+    case "sweatpants":
       return bottomShape(c, k, fitOf(item));
     case "sneakers":
     case "runners":
     case "loafers":
     case "boots":
+    case "canvas":
       return shoeShapes(c, k);
+    default: {
+      // Every kind needs a drawing: a new kind without one fails to compile here.
+      const missing: never = k;
+      return missing;
+    }
   }
 }
 

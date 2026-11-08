@@ -12,6 +12,9 @@ export type Kind =
   | "henley"
   | "turtleneck"
   | "mock-neck"
+  | "long-sleeve"
+  | "flannel"
+  | "rugby"
   // mid
   | "crewneck"
   | "v-neck"
@@ -21,6 +24,7 @@ export type Kind =
   | "sweatshirt"
   | "overshirt"
   | "gilet"
+  | "fleece"
   // outer
   | "chore-coat"
   | "waxed-jacket"
@@ -29,16 +33,20 @@ export type Kind =
   | "rain-shell"
   | "overcoat"
   | "puffer"
+  | "denim-jacket"
   // bottom
   | "jeans"
   | "chinos"
   | "trousers"
   | "shorts"
+  | "cargos"
+  | "sweatpants"
   // shoes
   | "sneakers"
   | "runners"
   | "loafers"
-  | "boots";
+  | "boots"
+  | "canvas";
 
 export type Neckline = "crew" | "collar" | "v" | "mock" | "turtle" | "hood" | "lapel" | "zip";
 
