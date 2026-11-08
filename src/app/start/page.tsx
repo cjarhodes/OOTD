@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { GarmentTile } from "@/components/art/Garment";
+import { ColourSheet } from "@/components/ColourSheet";
 import { NextBuys } from "@/components/NextBuys";
 import { SLOT_LABEL, KINDS } from "@/lib/kinds";
-import { COLOR_NAMES, PALETTE, type ColorName } from "@/lib/palette";
+import { PALETTE, type ColorName } from "@/lib/palette";
 import { alreadyHas, STARTER_DECK, starterItem, type StarterCard } from "@/lib/starter";
 import { wishFromItem } from "@/lib/wishlist";
 import { useWardrobe } from "@/state/wardrobe";
@@ -40,7 +41,8 @@ export default function StartPage() {
   // The colours ticked on each card, and the one its picture shows.
   const [picked, setPicked] = useState<Record<string, ColorName[]>>({});
   const [shown, setShown] = useState<Record<string, ColorName>>({});
-  const [allColours, setAllColours] = useState(false);
+  // Every other colour opens in a sheet, so the card never holds a long list.
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [history, setHistory] = useState<Decision[]>([]);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [leaving, setLeaving] = useState<Choice | null>(null);
@@ -87,7 +89,6 @@ export default function StartPage() {
         }
       }
       setHistory((h) => [...h, { card, choice, itemIds, wishIds }]);
-      setAllColours(false);
       // Let the card fly off before the next one takes its place.
       window.setTimeout(() => {
         setLeaving(null);
@@ -110,7 +111,7 @@ export default function StartPage() {
   // Arrow keys: left, up, right; Backspace undoes.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return;
+      if (sheetOpen || e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return;
       if (e.key === "ArrowRight") void decide("have");
       else if (e.key === "ArrowLeft") void decide("skip");
       else if (e.key === "ArrowUp") {
@@ -120,10 +121,11 @@ export default function StartPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [decide, undo]);
+  }, [decide, undo, sheetOpen]);
 
   const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest("button")) return;
+    // Colours are tapped, never dragged: only the picture and text start a swipe.
+    if ((e.target as HTMLElement).closest("button, .colour-picks")) return;
     start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
     e.currentTarget.setPointerCapture(e.pointerId);
     setDrag({ x: 0, y: 0 });
@@ -211,17 +213,16 @@ export default function StartPage() {
                 <fieldset className="colour-picks">
                   <legend className="label">{ticked.length ? `You have ${ticked.length}` : "Your colours: tap every one you own"}</legend>
                   <div className="colour-chips">
-                    {[...card.colors, ...(allColours ? COLOR_NAMES.filter((c) => !card.colors.includes(c)) : [])].map((c) => (
+                    {/* The card's own colours, then any others picked from the sheet. */}
+                    {[...card.colors, ...ticked.filter((c) => !card.colors.includes(c))].map((c) => (
                       <button key={c} type="button" className="colour-chip" aria-pressed={ticked.includes(c)} onClick={() => toggle(c)}>
                         <span className="colour-dot" style={{ background: PALETTE[c].hex }} aria-hidden="true" />
                         {c}
                       </button>
                     ))}
-                    {!allColours && (
-                      <button type="button" className="colour-chip more" onClick={() => setAllColours(true)}>
-                        + Other colour
-                      </button>
-                    )}
+                    <button type="button" className="colour-chip more" onClick={() => setSheetOpen(true)} aria-haspopup="dialog">
+                      + Other colour
+                    </button>
                   </div>
                 </fieldset>
               </div>
@@ -250,6 +251,10 @@ export default function StartPage() {
             )}
           </div>
         </div>
+      )}
+
+      {sheetOpen && card && (
+        <ColourSheet title={`${card.name}: your colours`} picked={ticked} onToggle={toggle} onClose={() => setSheetOpen(false)} />
       )}
 
       {done && (

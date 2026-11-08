@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import { ColourSheet } from "@/components/ColourSheet";
 import { FIT_LABEL, fitsFor, KINDS, MATERIAL_LABEL, SLOT_LABEL } from "@/lib/kinds";
-import { COLOR_NAMES, PALETTE, type ColorName } from "@/lib/palette";
+import { PALETTE, type ColorName } from "@/lib/palette";
 import { KIND_LIST, MATERIALS, PATTERNS, type Tags } from "@/lib/tagging";
 import type { Kind, Slot } from "@/lib/types";
 
@@ -16,10 +18,14 @@ export interface Draft extends Omit<Tags, "kind"> {
 }
 
 export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChange: (d: Draft) => void; idPrefix: string }) {
+  const [picking, setPicking] = useState(false);
   const set = (patch: Partial<Draft>) => {
     const next = { ...value, ...patch };
     // Keep the suggested name in step until it has been typed over.
     if (!next.nameEdited && next.kind) next.name = `${next.color} ${KINDS[next.kind].label}`;
+    // A typed name that starts with the old colour ("Navy heavyweight tee") follows the new one.
+    else if (patch.color && patch.color !== value.color && next.name.toLowerCase().startsWith(`${value.color.toLowerCase()} `))
+      next.name = `${patch.color}${next.name.slice(value.color.length)}`;
     onChange(next);
   };
 
@@ -54,24 +60,19 @@ export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChan
         ))}
       </fieldset>
 
-      <fieldset className="field">
-        <legend className="label">Colour</legend>
-        <div className="swatches">
-          {COLOR_NAMES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className="swatch"
-              aria-pressed={value.color === c}
-              aria-label={c}
-              title={c}
-              style={{ background: PALETTE[c].hex }}
-              onClick={() => set({ color: c as ColorName })}
-            />
-          ))}
-        </div>
-        <span className="swatch-name">{value.color}</span>
-      </fieldset>
+      <div className="field">
+        <span className="label" id={`${idPrefix}-colour`}>
+          Colour
+        </span>
+        <button type="button" className="colour-chip colour-current" aria-labelledby={`${idPrefix}-colour ${idPrefix}-colour-name`} aria-haspopup="dialog" onClick={() => setPicking(true)}>
+          <span className="colour-dot" style={{ background: PALETTE[value.color].hex }} aria-hidden="true" />
+          <span id={`${idPrefix}-colour-name`}>{value.color}</span>
+          <span className="colour-change">Change</span>
+        </button>
+        {picking && (
+          <ColourSheet title="Colour" single picked={[value.color]} onToggle={(c) => set({ color: c })} onClose={() => setPicking(false)} />
+        )}
+      </div>
 
       <label className="field" htmlFor={`${idPrefix}-name`}>
         <span className="label">Name</span>
