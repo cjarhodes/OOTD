@@ -68,7 +68,8 @@ const MATERIAL_HINTS: [RegExp, Material][] = [
 /** Everyday colour words, mapped to the nearest swatch. */
 const COLOUR_WORDS: [RegExp, ColorName][] = [
   [/\boff[- ]?white\b|\bcream\b|\bivory\b|\bnatural\b/, "Ecru"],
-  [/\blight blue\b|\bpale blue\b/, "Sky"],
+  // "light blue", "baby blue", "light/baby blue", "powder blue".
+  [/\b(?:light|pale|baby|powder|ice)(?:[\s/-]+(?:light|pale|baby|powder|ice))?[\s/-]+blue\b/, "Sky"],
   [/\bdark blue\b|\bmidnight\b/, "Navy"],
   [/\bgr[ae]y\b|\bheather\b/, "Grey"],
   [/\btaupe\b|\bbeige\b/, "Stone"],
@@ -89,7 +90,11 @@ const KIND_WORDS: [RegExp, Kind][] = (Object.keys(KINDS) as Kind[])
 
 /** The first colour in the text, ignoring asides like "(with grey accents)". */
 function colourIn(text: string): ColorName | null {
-  const plain = text.replace(/\([^)]*\b(?:accents?|trim|details?|sole|laces|stripes?|logo)\b[^)]*\)/g, " ");
+  // Accent colours aren't the piece's colour: "(with grey accents)", "brown accented", "with gum soles".
+  const plain = text
+    .replace(/\([^)]*\b(?:accents?|accented|trim|details?|soles?|laces|stripes?|logos?)\b[^)]*\)/g, " ")
+    .replace(/\b[\w/-]+[\s-]+(?:accented|accents?|trimmed)\b/g, " ")
+    .replace(/\bwith [\w\s/-]+? (?:accents?|trim|details?|soles?|laces|stripes?|logos?)\b/g, " ");
   let best: { at: number; color: ColorName } | null = null;
   const consider = (re: RegExp, color: ColorName) => {
     const m = re.exec(plain);

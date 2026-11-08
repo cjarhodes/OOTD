@@ -27,6 +27,15 @@ describe("typed pieces", () => {
     expect(parsePiece("white air force 1s")).toMatchObject({ kind: "sneakers", material: "leather" });
     expect(parsePiece("New Balance 550s")).toMatchObject({ kind: "sneakers" });
     expect(parsePiece("grey New Balance 990s")).toMatchObject({ kind: "runners", color: "Grey" });
+    // Shades of light blue, and accent colours written outside brackets.
+    const pair = parseList("Light/baby blue adidas gazelles, white/cream and brown accented adidas sambas (sporty and rich collab)");
+    expect(pair.map((p) => [p.kind, p.color, p.material])).toEqual([
+      ["sneakers", "Sky", "suede"],
+      ["sneakers", "White", "leather"],
+    ]);
+    expect(parsePiece("brown accented sambas")).toMatchObject({ colorGuessed: true });
+    expect(parsePiece("navy sambas with gum soles")).toMatchObject({ color: "Navy" });
+    expect(parsePiece("Navy striped rugby shirt")).toMatchObject({ kind: "rugby", color: "Navy" });
   });
 
   it("splits lines, bullets and numbering, and keeps commas inside brackets", () => {
