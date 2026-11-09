@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { Conflict, countUnder, exists, readBytes, readJson, writeBytes, writeJson } from "./store";
+import { Conflict, countUnder, exists, readBytes, readJson, readValue, sameEtag, writeBytes, writeJson } from "./store";
 
 /**
  * One wardrobe per account, in the private store:
@@ -39,7 +39,8 @@ export function judgeSave(
   force: boolean,
 ): { ok: true } | { ok: false; code: "OD409" | "OD410" } {
   if (!current) return { ok: true };
-  if (!force && ifMatch !== current.etag) return { ok: false, code: "OD409" };
+  // Versions are compared in one form: a device may hold one quoted, or one a CDN weakened.
+  if (!force && !sameEtag(ifMatch, current.etag)) return { ok: false, code: "OD409" };
   const stored = current.value.pieces;
   if (!force && stored > 0 && (incomingPieces === 0 || incomingPieces * 2 < stored)) return { ok: false, code: "OD410" };
   return { ok: true };
@@ -68,11 +69,18 @@ export async function saveWardrobe(
     snapshots += 1;
   }
   const next: StoredWardrobe = { savedAt: now.toISOString(), pieces, snapshots, state };
+  const path = `${base(uid)}/wardrobe.json`;
   try {
-    const etag = await writeJson(`${base(uid)}/wardrobe.json`, next, current ? { ifMatch: current.etag } : { create: true });
+    const etag = await writeJson(path, next, current ? { ifMatch: current.etag } : { create: true });
     return { ok: true, etag, savedAt: next.savedAt, pieces };
   } catch (e) {
     if (!(e instanceof Conflict)) throw e;
+    if (force) {
+      // "Keep this device's" means overwrite: it lands even if someone saved a moment ago.
+      // The version it replaces was put in history above.
+      const etag = await writeJson(path, next);
+      return { ok: true, etag, savedAt: next.savedAt, pieces };
+    }
     const latest = await readWardrobe(uid);
     return { ok: false, code: "OD409", remotePieces: latest?.value.pieces ?? 0, savedAt: latest?.value.savedAt };
   }
@@ -81,15 +89,15 @@ export async function saveWardrobe(
 export async function listHistory(uid: string): Promise<{ slot: number; savedAt: string; pieces: number }[]> {
   const out: { slot: number; savedAt: string; pieces: number }[] = [];
   const reads = await Promise.all(
-    Array.from({ length: HISTORY_SLOTS }, (_, slot) => readJson<StoredWardrobe>(`${base(uid)}/history/${slot}.json`).then((r) => ({ slot, r }))),
+    Array.from({ length: HISTORY_SLOTS }, (_, slot) => readValue<StoredWardrobe>(`${base(uid)}/history/${slot}.json`).then((r) => ({ slot, r }))),
   );
-  for (const { slot, r } of reads) if (r) out.push({ slot, savedAt: r.value.savedAt, pieces: r.value.pieces });
+  for (const { slot, r } of reads) if (r) out.push({ slot, savedAt: r.savedAt, pieces: r.pieces });
   return out.sort((a, b) => b.savedAt.localeCompare(a.savedAt));
 }
 
 export async function readHistory(uid: string, slot: number) {
   if (!Number.isInteger(slot) || slot < 0 || slot >= HISTORY_SLOTS) return null;
-  return readJson<StoredWardrobe>(`${base(uid)}/history/${slot}.json`);
+  return readValue<StoredWardrobe>(`${base(uid)}/history/${slot}.json`);
 }
 
 export function sha256Hex(bytes: Uint8Array): string {

@@ -1,4 +1,4 @@
-import { BlobPreconditionFailedError, del, get, head, list, put } from "@vercel/blob";
+import { BlobNotFoundError, BlobPreconditionFailedError, del, get, head, list, put } from "@vercel/blob";
 import { fakeCount, fakeDir, fakeRead, fakeRemove, fakeWrite } from "./fake-store";
 
 /**
@@ -12,15 +12,66 @@ export function storeConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
 
 export class Conflict extends Error {}
 
+/**
+ * One form for an etag however it arrived: no weak prefix, no quotes. A CDN
+ * that compresses a download (anything over about 1 KB, so any real
+ * wardrobe) weakens its ETag to W/"…", which never matches a write's ifMatch.
+ */
+export function bareEtag(etag: string): string {
+  return etag
+    .trim()
+    .replace(/^W\//i, "")
+    .replace(/^"(.*)"$/, "$1");
+}
+
+export function sameEtag(a: string | null | undefined, b: string | null | undefined): boolean {
+  return Boolean(a && b && bareEtag(a) === bareEtag(b));
+}
+
+/** The version as the Blob API states it (what put returns and ifMatch expects), or null if missing. */
+async function apiEtag(path: string): Promise<string | null> {
+  try {
+    return (await head(path)).etag;
+  } catch (e) {
+    if (e instanceof BlobNotFoundError || /not.?found|does not exist/i.test(String((e as Error).message))) return null;
+    throw e;
+  }
+}
+
+/** Read JSON that will never be written back conditionally (history copies): one download. */
+export async function readValue<T>(path: string): Promise<T | null> {
+  if (fakeDir()) {
+    const f = fakeRead(path);
+    return f ? (JSON.parse(f.bytes.toString()) as T) : null;
+  }
+  const result = await get(path, { access: "private", useCache: false });
+  if (!result || result.statusCode !== 200) return null;
+  return JSON.parse(await new Response(result.stream).text()) as T;
+}
+
+/**
+ * Read JSON with the version a conditional write can name. The content comes
+ * from a download, the version from the API, checked either side of it so the
+ * two always belong together.
+ */
 export async function readJson<T>(path: string): Promise<{ value: T; etag: string } | null> {
   if (fakeDir()) {
     const f = fakeRead(path);
     return f ? { value: JSON.parse(f.bytes.toString()) as T, etag: f.etag } : null;
   }
-  const result = await get(path, { access: "private", useCache: false });
-  if (!result || result.statusCode !== 200) return null;
-  const text = await new Response(result.stream).text();
-  return { value: JSON.parse(text) as T, etag: result.blob.etag };
+  for (let attempt = 0; ; attempt++) {
+    const before = await apiEtag(path);
+    if (!before) return null;
+    const result = await get(path, { access: "private", useCache: false });
+    if (!result || result.statusCode !== 200) return null;
+    const text = await new Response(result.stream).text();
+    const after = await apiEtag(path);
+    // Nobody wrote while it downloaded (the download's own ETag agrees too, weak or not).
+    if (after && sameEtag(before, after) && (!result.blob.etag || sameEtag(result.blob.etag, before) || attempt >= 2)) {
+      return { value: JSON.parse(text) as T, etag: before };
+    }
+    if (attempt >= 4) throw new Error(`${path} kept changing while it was read`);
+  }
 }
 
 /**
