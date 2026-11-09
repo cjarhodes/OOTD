@@ -13,5 +13,5 @@ export async function GET(request: Request) {
   if (slot === null) return json({ snapshots: await listHistory(caller.id) });
   const snap = await readHistory(caller.id, Number(slot));
   if (!snap) return problem("That earlier version isn’t there any more.", 404);
-  return json({ state: snap.value.state, savedAt: snap.value.savedAt, pieces: snap.value.pieces });
+  return json({ state: snap.state, savedAt: snap.savedAt, pieces: snap.pieces });
 }
