@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
+import { ColourSheet } from "@/components/ColourSheet";
 import { AddRoutes } from "@/components/AddRoutes";
 import { AddSheet } from "@/components/AddSheet";
 import { ItemFields, type Draft } from "@/components/ItemFields";
@@ -12,10 +13,13 @@ import { QuickAdd } from "@/components/QuickAdd";
 import { TypeList } from "@/components/TypeList";
 import { wishToItem } from "@/lib/wishlist";
 import { isOwned, SLOT_LABEL, fitOf } from "@/lib/kinds";
+import { addedNote } from "@/lib/quickadd";
+import { copiesInColours, takenColours } from "@/lib/recolour";
+import type { ColorName } from "@/lib/palette";
 import { hasBackdrop, preparePhoto, releasePhoto } from "@/lib/photo";
 import { applyTags } from "@/lib/tagging";
 import type { Item, Slot, Status } from "@/lib/types";
-import { useWardrobe } from "@/state/wardrobe";
+import { newId, useWardrobe } from "@/state/wardrobe";
 
 const SLOTS: Slot[] = ["base", "mid", "outer", "bottom", "shoes"];
 const STATUS_LABEL: Record<Status, string> = { available: "Available", laundry: "In the wash", archived: "Archived" };
@@ -35,13 +39,31 @@ function draftOf(item: Item): Draft {
 }
 
 function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose: () => void }) {
-  const { updateItem, removeItem, replacePhoto, photoBlobs } = useWardrobe();
+  const { items, addPieces, updateItem, removeItem, replacePhoto, photoBlobs } = useWardrobe();
   const router = useRouter();
   const ref = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<Draft>(draftOf(item));
   const [status, setStatus] = useState<Status>(item.status);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cutting, setCutting] = useState<"idle" | "working" | "failed">("idle");
+  // "Add another colour": the colours being picked, and what the last add said.
+  const [recolouring, setRecolouring] = useState(false);
+  const [moreColours, setMoreColours] = useState<ColorName[]>([]);
+  const [recolourNote, setRecolourNote] = useState<string | null>(null);
+  const taken = takenColours(item, items);
+
+  async function addColours() {
+    const copies = copiesInColours(item, moreColours, items, newId);
+    setRecolouring(false);
+    setMoreColours([]);
+    if (!copies.length) return;
+    try {
+      await addPieces(copies.map((c) => ({ item: c })));
+      setRecolourNote(addedNote(copies.map((c) => c.name)));
+    } catch {
+      setRecolourNote("Couldn’t add that. Try again.");
+    }
+  }
 
   // Illustrated pieces (from the starter deck) can get a real photo, background removed.
   const photoInput = useRef<HTMLInputElement>(null);
@@ -111,6 +133,14 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
           <span className="setting-note">
             {cutting === "failed" ? "That photo couldn’t be read. Try a JPEG or PNG." : "Drawn for now. A photo of your own piece makes your looks yours."}
           </span>
+          <button type="button" className="btn alt" aria-haspopup="dialog" onClick={() => setRecolouring(true)}>
+            Add another colour
+          </button>
+          {recolourNote && (
+            <span className="setting-note" role="status">
+              {recolourNote}
+            </span>
+          )}
           <input
             ref={photoInput}
             type="file"
@@ -173,6 +203,15 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
         <button type="button" className="text-link" onClick={() => setConfirmDelete(true)}>
           Delete piece
         </button>
+      )}
+      {recolouring && (
+        <ColourSheet
+          title="Add another colour"
+          picked={moreColours}
+          hide={taken}
+          onToggle={(c) => setMoreColours((p) => (p.includes(c) ? p.filter((x) => x !== c) : [...p, c]))}
+          onClose={() => void addColours()}
+        />
       )}
     </dialog>
   );

@@ -23,6 +23,7 @@ export function ColourSheet({
   onToggle,
   onClose,
   single = false,
+  hide = [],
 }: {
   title: string;
   picked: ColorName[];
@@ -30,6 +31,8 @@ export function ColourSheet({
   onClose: () => void;
   /** Pick one colour: choosing it closes the sheet. */
   single?: boolean;
+  /** Colours not to offer at all (the ones already taken). */
+  hide?: ColorName[];
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -59,7 +62,8 @@ export function ColourSheet({
       </div>
       {!single && <p className="setting-note">{picked.length ? `${picked.length} picked. Tap a colour again to remove it.` : "Tap every colour you own."}</p>}
       {GROUPS.map((g) => {
-        const colours = COLOR_NAMES.filter((c) => g.families.includes(PALETTE[c].family));
+        const colours = COLOR_NAMES.filter((c) => g.families.includes(PALETTE[c].family) && !hide.includes(c));
+        if (colours.length === 0) return null;
         return (
           <fieldset key={g.label} className="colour-group">
             <legend className="label">{g.label}</legend>
