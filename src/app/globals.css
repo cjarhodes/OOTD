@@ -782,22 +782,6 @@ select.input {
   gap: 12px;
   margin-top: 12px;
 }
-.kind-group {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  gap: 8px;
-  align-items: start;
-}
-.kind-slot {
-  font-size: 12.5px;
-  color: var(--label);
-  padding-top: 6px;
-}
-.kind-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
 .chip.small {
   padding: 5px 10px;
   font-size: 13px;
@@ -1492,6 +1476,64 @@ li[data-done] .first-run-tick {
   content: "✓";
   margin-left: auto;
 }
+/* Every type, grouped and drawn. */
+.kind-sheet {
+  align-content: start;
+}
+.kind-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.kind-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+.kind-option {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 6px 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--wall);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+}
+.kind-art {
+  width: 100%;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--label);
+}
+.kind-art .garment-svg {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.kind-label {
+  overflow-wrap: anywhere;
+}
+.kind-option[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+  font-weight: 600;
+}
+.kind-chip {
+  padding-left: 12px;
+}
+.kind-chip[aria-invalid="true"] {
+  border-color: var(--cobalt);
+}
 .colour-done {
   position: sticky;
   bottom: 0;
@@ -1696,15 +1738,6 @@ li[data-done] .first-run-tick {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-}
-.typed-kind {
-  width: auto;
-  min-height: 44px;
-  padding: 4px 10px;
-  font-size: 14px;
-}
-.typed-kind[aria-invalid="true"] {
-  border-color: var(--cobalt);
 }
 .typed-guess {
   margin-left: 4px;

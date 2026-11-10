@@ -3,15 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
 import { ColourSheet } from "@/components/ColourSheet";
-import { KINDS, SLOT_LABEL } from "@/lib/kinds";
+import { KindSheet, kindName } from "@/components/KindSheet";
 import { PALETTE } from "@/lib/palette";
-import { KIND_LIST } from "@/lib/tagging";
 import { typedItem } from "@/lib/typed";
 import { addLabel, afterAdding, leftNote, readyRows, rowsOf, withoutRow, type Fix, type Fixes } from "@/lib/typelist";
-import type { Kind, Slot } from "@/lib/types";
 import { newId, useWardrobe } from "@/state/wardrobe";
-
-const SLOTS: Slot[] = ["base", "mid", "outer", "bottom", "shoes"];
 
 /**
  * Add pieces by typing them, one per line or comma: "White Converse high
@@ -31,6 +27,7 @@ export function TypeList({ onClose, onAdded }: { onClose: () => void; onAdded: (
   // Corrections, by line, place in the line and name together, so identical lines don't share one.
   const [fixes, setFixes] = useState<Fixes>({});
   const [picking, setPicking] = useState<string | null>(null);
+  const [pickingKind, setPickingKind] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // Pieces added so far, and whether some lines were left behind for the person to sort out.
   const [addedCount, setAddedCount] = useState(0);
@@ -68,6 +65,7 @@ export function TypeList({ onClose, onAdded }: { onClose: () => void; onAdded: (
   }
 
   const pickingRow = picking ? rows.find((r) => r.key === picking) : undefined;
+  const pickingKindRow = pickingKind ? rows.find((r) => r.key === pickingKind) : undefined;
 
   return (
     <dialog
@@ -116,24 +114,16 @@ export function TypeList({ onClose, onAdded }: { onClose: () => void; onAdded: (
                   <span className="typed-reason">{r.unsupported}</span>
                 ) : (
                   <span className="typed-controls">
-                    <select
-                      className="input typed-kind"
-                      aria-label={`Type of ${r.name}`}
-                      value={r.kind ?? ""}
+                    <button
+                      type="button"
+                      className="colour-chip kind-chip"
+                      aria-label={r.kind ? `Type of ${r.name}: ${kindName(r.kind)}. Change` : `Type of ${r.name}: not picked. Pick one`}
+                      aria-haspopup="dialog"
                       aria-invalid={!r.kind}
-                      onChange={(e) => fix(r.key, { kind: e.target.value as Kind })}
+                      onClick={() => setPickingKind(r.key)}
                     >
-                      {!r.kind && <option value="">Pick a type</option>}
-                      {SLOTS.map((slot) => (
-                        <optgroup key={slot} label={SLOT_LABEL[slot]}>
-                          {KIND_LIST.filter((k) => KINDS[k].slot === slot).map((k) => (
-                            <option key={k} value={k}>
-                              {KINDS[k].label.charAt(0).toUpperCase() + KINDS[k].label.slice(1)}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
+                      {r.kind ? kindName(r.kind) : "Pick a type"}
+                    </button>
                     <button
                       type="button"
                       className="colour-chip"
@@ -162,6 +152,7 @@ export function TypeList({ onClose, onAdded }: { onClose: () => void; onAdded: (
       </button>
       <p className="setting-note">They’re drawn for now. Add a photo of any of them later from its sheet.</p>
 
+      {pickingKindRow && <KindSheet title={pickingKindRow.name} picked={pickingKindRow.kind} onPick={(k) => fix(pickingKindRow.key, { kind: k })} onClose={() => setPickingKind(null)} />}
       {pickingRow && (
         <ColourSheet title={pickingRow.name} single picked={[pickingRow.color]} onToggle={(c) => fix(pickingRow.key, { color: c })} onClose={() => setPicking(null)} />
       )}
