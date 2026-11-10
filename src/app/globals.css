@@ -1630,6 +1630,10 @@ li[data-done] .first-run-tick {
   justify-content: space-between;
   align-items: baseline;
 }
+.swipe-undo {
+  min-height: 44px;
+  padding: 0 8px;
+}
 .swipe-done {
   display: grid;
   gap: 28px;

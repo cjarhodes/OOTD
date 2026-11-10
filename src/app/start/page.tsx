@@ -92,6 +92,7 @@ export default function StartPage() {
   const preview = useMemo(() => (card && color ? starterItem(card, color) : null), [card, color]);
   const done = dk !== null && isDone(dk);
   const counts = countsOf(history);
+  const last = history[history.length - 1] ?? null;
   const place = dk ? placeOf(dk, STARTER_DECK.length) : null;
 
   const decide = useCallback(
@@ -268,8 +269,8 @@ export default function StartPage() {
             <span className="label">
               {counts.have} in your wardrobe · {counts.want} on your wishlist
             </span>
-            {history.length > 0 && (
-              <button type="button" className="text-link" onClick={() => void undo()}>
+            {last && (
+              <button type="button" className="text-link swipe-undo" onClick={() => void undo()} aria-label={`Undo: ${last.name}`}>
                 Undo
               </button>
             )}
@@ -298,6 +299,11 @@ export default function StartPage() {
               <Link href="/add" className="btn quiet">
                 Add photos of your own
               </Link>
+              {last && (
+                <button type="button" className="btn quiet" onClick={() => void undo()} aria-label={`Undo: ${last.name}`}>
+                  Undo
+                </button>
+              )}
               {skipped > 0 && (
                 <button type="button" className="btn quiet" onClick={revisit}>
                   Go through the ones you skipped ({skipped})

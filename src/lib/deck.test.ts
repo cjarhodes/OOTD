@@ -204,3 +204,22 @@ describe("remembered choices", () => {
     expect(placeOf(initialDeck([]), 44)).toEqual({ at: 44, total: 44 });
   });
 });
+
+describe("undo from the finish screen", () => {
+  it("brings the last card back and names the piece to undo", () => {
+    let s = initialDeck([tee]);
+    s = run(s, { type: "decide", choice: "have", ownedIds: [] }, { type: "advance" });
+    expect(isDone(s)).toBe(true);
+    expect(s.history[s.history.length - 1]!.name).toBe("White heavyweight tee");
+    s = run(s, { type: "undo" });
+    expect(isDone(s)).toBe(false);
+    expect(currentCard(s)).toBe(tee);
+    expect(s.history).toEqual([]);
+  });
+
+  it("names a skipped card by the colour on show", () => {
+    const { state } = deckReducer(initialDeck([tee]), { type: "toggleColour", colour: tee.colors[1]! });
+    const decided = deckReducer(state, { type: "decide", choice: "skip", ownedIds: [] }).state;
+    expect(decided.history[0]!.name).toBe("Black heavyweight tee");
+  });
+});

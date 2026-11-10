@@ -17,6 +17,8 @@ export interface Decision {
   itemIds: string[];
   /** Entries added to the wishlist (a wish takes the id of the piece it describes). */
   wishIds: string[];
+  /** The name of the piece the card showed, for "Undo: <name>". */
+  name: string;
 }
 
 export interface DeckState {
@@ -172,6 +174,7 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckResult {
         choice: action.choice,
         itemIds: addPieces.map((p) => p.id),
         wishIds: addWishes.map((p) => p.id),
+        name: starterItem(card, chosen[0] ?? card.colors[0]!).name,
       };
       return {
         state: { ...state, history: [...state.history, decision] },

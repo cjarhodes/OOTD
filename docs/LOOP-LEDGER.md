@@ -26,7 +26,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | Q3 | done | loop/wardrobe-entry | 2026-11-10 |
 | S1 | done | loop/wardrobe-entry | 2026-11-10 |
 | S2 | done | loop/wardrobe-entry | 2026-11-10 |
-| S3 | todo | | |
+| S3 | done | loop/wardrobe-entry | 2026-11-10 |
 | S4 | todo | | |
 | G1 | todo | | |
 | G2 | todo | | |
@@ -147,6 +147,11 @@ For the next agent: `initialDeck`'s second argument is optional so old callers a
 What changed: the swipe remembers each card's choice on this device. New `src/lib/deck-store.ts` (8 tests in `deck-store.test.ts`, using a fake storage object, including missing, corrupt, wrong-version and partly invalid data, and storage that throws) stores `{ v: 1, choices: { [cardId]: "have" | "skip" | "want" } }` under `ootd.swipe.v1.u-<account id>`, or `ootd.swipe.v1.sample` with no account. Storage is passed in; `browserStorage()` returns `localStorage` or null, every read and write is in try/catch, and the page works with storage blocked (it just doesn't resume). The reducer's effects gained `saveChoice` and `clearChoiceId`, and `choicesAfter` turns them into the new stored choices, so Undo also removes the stored choice. `cardsToShow(all, items, choices)` leaves out cards with a stored choice. The eyebrow counts all 44 (`placeOf`: "Quick start · 21 of 44"). The finish screen has "Go through the ones you skipped (N)", which clears the stored "skip" choices and restarts with those cards. Nothing touches `PersonalState`, sync or the account code (`useAuth` is only read). Owner decision 3 default applied: this device only.
 Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, tests 262
 For the next agent: a stored "have" leaves the card out even if the piece was later deleted from the wardrobe; Quick add is the way to put it back. Choices for a signed-out visitor use the sample key and are not moved to an account on sign-in. `placeOf` assumes the deck is a suffix of the 44 cards less those set aside, so it counts set-aside cards as passed.
+
+### S3 · 2026-11-10
+What changed: Undo is on the finish screen as well as under the card, so the last swipe can be taken back. Each history entry now carries `name` (the piece the card showed, in the colour chosen or on show), and both Undo buttons have the accessible name "Undo: <piece name>" (the visible word stays "Undo", which the name starts with). The reducer already stepped back one card on undo, so from the finish screen the last card comes back; two new tests cover that and the naming. Undo also removes the remembered choice (S2). The Undo under the card now has a 44 px minimum height.
+Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, tests 264
+For the next agent: Undo only reaches decisions made in this visit; after resuming a deck there is nothing to undo until a new choice is made. For a choice with several colours the name is the first colour's piece.
 
 ## For Alex to try on his phone
 
