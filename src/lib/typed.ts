@@ -41,14 +41,50 @@ const HINTS: Hint[] = [
   { re: /\bvejas?\b/, kind: "sneakers", material: "leather", color: "White" },
   { re: /\bc ?85s?\b|\bclub c\b|\breeboks?\b|\bstan smiths?\b|\bcommon projects\b|\bcourt\b/, kind: "sneakers", material: "leather", color: "White" },
   { re: /\bsneakers?\b|\btrainers?\b/, kind: "sneakers" },
-  // Garments, in words people use.
+  // Shoes by their everyday names.
+  { re: /\boxfords(?!\s+shirts?)\b|\boxford shoes?\b|\bderbys?\b|\bderbies\b|\bbrogues?\b|\bdress shoes?\b|\bsmart shoes?\b|\bmonk[- ]?straps?\b/, kind: "loafers", material: "leather" },
+  { re: /\bslip[- ]?ons?\b|\bdeck shoes?\b|\bboat shoes?\b|\bespadrilles?\b/, kind: "canvas" },
+  { re: /\bsliders?\b/, kind: "sandals", material: "leather" },
+  // Garments, in words people use. Longer phrases come before the words inside them.
   { re: /\bdenim jackets?\b|\btrucker\b/, kind: "denim-jacket" },
-  { re: /\bt-?shirts?\b|\btees?\b/, kind: "tee" },
-  { re: /\bjumpers?\b|\bsweaters?\b/, kind: "crewneck" },
-  { re: /\bjoggers?\b|\bsweatpants\b|\bsweats\b|\btrack ?pants\b/, kind: "sweatpants" },
-  { re: /\bpants\b|\bslacks\b/, kind: "trousers" },
-  { re: /\bsuit jackets?\b|\bsport coats?\b/, kind: "blazer" },
+  { re: /\bsweat ?pants\b|\bjoggers?\b|\bsweats\b|\btrack ?pants\b|\btracksuit bottoms?\b|\bjogging bottoms?\b/, kind: "sweatpants" },
+  { re: /\bcargo(?:s| pants| trousers)\b/, kind: "cargos" },
+  { re: /\bkhakis\b/, kind: "chinos", color: "Khaki" },
+  { re: /\bcords\b|\bcorduroys\b/, kind: "chinos", material: "corduroy" },
+  { re: /\bdress (?:pants|trousers)\b|\bsuit trousers\b|\bslacks\b/, kind: "trousers" },
+  { re: /\bsuit jackets?\b|\bsport coats?\b|\bsports jackets?\b/, kind: "blazer" },
+  // Layers over a shirt, most specific first.
+  { re: /\bshackets?\b|\bshirt jackets?\b|\bfield jackets?\b/, kind: "overshirt" },
+  { re: /\bwork(?:er)? jackets?\b|\bchore jackets?\b/, kind: "chore-coat" },
+  { re: /\brain ?jackets?\b|\brain ?coats?\b|\bwindbreakers?\b|\banoraks?\b|\bcagoules?\b|\bwaterproofs?\b|\bhard ?shells?\b/, kind: "rain-shell" },
+  { re: /\bvests?\b|\bbody ?warmers?\b/, kind: "gilet" },
+  { re: /\bparkas?\b|\bdown jackets?\b|\bpuffas?\b|\bquilted jackets?\b/, kind: "puffer" },
+  { re: /\bpea ?coats?\b|\btrench(?: coats?)?\b|\btop ?coats?\b|\bmacs?\b|\bduff[el]e coats?\b/, kind: "overcoat" },
+  { re: /\bleather jackets?\b|\bharringtons?\b|\bvarsity jackets?\b|\bcoach(?:es)? jackets?\b|\bflight jackets?\b/, kind: "bomber" },
+  // Tops. Neck and sleeve words come before "tee" and "sweater" so they win.
+  { re: /\bchambray\b/, kind: "oxford", color: "Sky" },
+  { re: /\bflannels?\b|\b(?:plaid|check|checked|lumberjack) shirts?\b/, kind: "flannel" },
+  { re: /\b(?:hawaiian|cuban|resort|bowling|camp) shirts?\b/, kind: "camp-shirt" },
+  { re: /\broll[- ]?necks?\b|\bpolo[- ]?necks?\b/, kind: "turtleneck" },
+  { re: /\bhalf[- ]?zips?\b|\b1\/4[- ]?zips?\b|\bquarter[- ]?zips?\b/, kind: "quarter-zip" },
+  { re: /\bzip[- ]?up\b|\bzip hoodies?\b/, kind: "hoodie" },
+  { re: /\blong[- ]?sleeve(?:d)?\b(?!\s+(?:oxford|polo|shirt|flannel|henley))/, kind: "long-sleeve" },
+  { re: /\bt[- ]?shirts?\b|\btees?\b/, kind: "tee" },
+  { re: /\bv[- ]?necks?\b/, kind: "v-neck" },
+  { re: /\bsweatshirts?\b|\bsweat\b(?! ?pants)/, kind: "sweatshirt" },
+  { re: /\bcrew[- ]?necks?\b/, kind: "crewneck" },
+  { re: /\bdress shirts?\b|\bbutton[- ]?(?:down|up)s?\b|\bocbd\b/, kind: "oxford" },
+];
+
+/**
+ * Generic words, tried only after the garment's own name (KIND_WORDS) has
+ * failed, so "quarter-zip sweater" is a quarter-zip and "polo shirt" a polo.
+ */
+const WEAK_HINTS: Hint[] = [
+  { re: /\bjumpers?\b|\bsweaters?\b|\bpullovers?\b/, kind: "crewneck" },
   { re: /\bcoats?\b/, kind: "overcoat" },
+  { re: /\boxfords?\b|\bshirts?\b/, kind: "oxford" },
+  { re: /\bpants\b/, kind: "trousers" },
 ];
 
 /** Materials named in the text, or implied by the maker. */
@@ -113,8 +149,10 @@ export function parsePiece(line: string): TypedPiece | null {
     .slice(0, 80);
   if (!name) return null;
   const text = name.toLowerCase();
-  const hint = HINTS.find((h) => h.re.test(text));
-  const kind = hint?.kind ?? KIND_WORDS.find(([re]) => re.test(text))?.[1] ?? null;
+  const strong = HINTS.find((h) => h.re.test(text));
+  const named = strong ? undefined : KIND_WORDS.find(([re]) => re.test(text))?.[1];
+  const hint = strong ?? (named ? undefined : WEAK_HINTS.find((h) => h.re.test(text)));
+  const kind = hint?.kind ?? named ?? null;
   const material = MATERIAL_HINTS.find(([re]) => re.test(text))?.[1] ?? hint?.material;
   const said = colourIn(text);
   return {

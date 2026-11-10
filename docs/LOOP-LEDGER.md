@@ -11,7 +11,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | F2 | done | loop/wardrobe-entry | 2026-11-10 |
 | F3 | done | loop/wardrobe-entry | 2026-11-10 |
 | F4 | blocked | loop/wardrobe-entry (workflow change not pushed) | 2026-11-10 |
-| T1 | todo | | |
+| T1 | done | loop/wardrobe-entry | 2026-11-10 |
 | T2 | todo | | |
 | T3 | todo | | |
 | T4 | todo | | |
@@ -69,6 +69,11 @@ What changed: `repository.url` in `package.json` and both `cjarhodes/Clothing` r
 Blocked: the workflow change was not pushed. GitHub refused the push with "refusing to allow an OAuth App to create or update workflow `.github/workflows/checks.yml` without `workflow` scope", and the credentials in this session cannot be given that scope. Retrying with the same credentials would fail the same way, so I reverted the workflow edit and pushed the rest. The change still to make, by hand or by an agent with a token that has the `workflow` scope: in `.github/workflows/checks.yml` rename `name: Verify FORM` to `name: Checks`, and change the last step from `npm run build` to `npm run check`. Until then CI runs only `npm run build` (tests and build, no separate type check; the Next build does type check, but `npm run check` is the plan's gate).
 Scorecard: types 59/132, colours 63/92, white guesses 57/132, tests 147
 For the next agent: `SOURCE_URL` in `src/components/CloudBackup.tsx` still points at `https://github.com/cjarhodes/Clothing`. It is outside F4's listed files, so I left it (see Ideas). The workflow names Node 24 while `package.json` engines say `>=22`; left as is.
+
+### T1 · 2026-11-10
+What changed: every Appendix B table 1 word now maps to its type in `src/lib/typed.ts`. The parser now tries, in order: `HINTS` (shoe models and the longer garment phrases), then the type's own name (`KIND_WORDS`), then a new `WEAK_HINTS` list of generic words (jumper, sweater, pullover, coat, shirt, oxford, pants). The generic words were moved out of `HINTS` so that a more specific name in the same line wins ("quarter zip sweater" is a quarter-zip, "polo shirt" a polo, "chore coat" a chore coat rather than an overcoat). Cargo pants are cargos, a puffer vest is a gilet, and "oxfords" (plural, no "shirt") are leather loafers per owner decision 5. `khakis` carries usual colour Khaki; `chambray` carries Sky. New `src/lib/typed.vocab.test.ts` has a row for every table 1 word. Existing tests are unchanged.
+Scorecard: types 97/132, colours 65/92, white guesses 55/132, tests 152. Floors raised to types 97, colours 65.
+For the next agent: the remaining type misses are brands and models (T2), the unsupported lines (T6), the colour-list and count lines (T4), "breton top" (T5 pattern word, not in table 1, so I left it) and four lines where a colour trails after a comma ("Quarter zip, navy", "rugby shirt, green", "Adidas Sambas, black", "North Face puffer jacket, black"): `parseList` splits on commas, so these become two pieces. T4's rule for colour-only segments should cover them (attach to the previous segment when the segment before has a garment and no colour). Singular "chino pants" is not matched by the chinos label (`chinoss?`), which I left alone.
 
 ## For Alex to try on his phone
 
