@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addLabel, afterAdding, applyFix, isReady, leftNote, rowsOf, withoutRow } from "./typelist";
+import { addLabel, afterAdding, applyFix, isReady, leftNote, missingOf, rowsOf, withoutRow } from "./typelist";
 import { usualColour } from "./starter";
 
 describe("rows ready to add", () => {
@@ -80,6 +80,29 @@ describe("what is left after adding", () => {
 
   it("counts several lines left", () => {
     expect(leftNote(rowsOf("foo bar\nbaz qux\nwhite tee", {}))).toBe("2 lines left. Pick a type for each, or delete them.");
+  });
+
+  it("says a colour is missing when that is all that is", () => {
+    const rows = rowsOf("purple hoodie\nlilac tee", {});
+    expect(rows.every((r) => r.kind !== null && r.colorMissing)).toBe(true);
+    expect(leftNote(rows)).toBe("2 lines left. Pick a colour for each, or delete them.");
+    expect(leftNote(rowsOf("purple hoodie", {}))).toBe("1 line left. Pick a colour for each, or delete it.");
+  });
+
+  it("says type or colour when both kinds of line are waiting", () => {
+    const rows = rowsOf("purple hoodie\nmystery thing", {});
+    expect(missingOf(rows)).toEqual({ type: true, colour: true });
+    expect(leftNote(rows)).toBe("2 lines left. Pick a type or colour for each, or delete them.");
+  });
+
+  it("stops asking for a colour once it is picked, or a type once it is picked", () => {
+    const text = "purple hoodie\nmystery thing";
+    expect(leftNote(rowsOf(text, { "0:0:Purple hoodie": { color: "Olive" } }))).toBe("1 line left. Pick a type for each, or delete it.");
+    expect(leftNote(rowsOf(text, { "1:0:Mystery thing": { kind: "tee" } }))).toBe("1 line left. Pick a colour for each, or delete it.");
+  });
+
+  it("says nothing is missing when nothing is waiting", () => {
+    expect(missingOf(rowsOf("white tee\nblack belt", {}))).toEqual({ type: false, colour: false });
   });
 
   it("moves a waiting line's correction to where the line now sits", () => {

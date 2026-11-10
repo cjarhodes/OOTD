@@ -68,11 +68,19 @@ export function addLabel(rows: Row[]): string {
   return n === 0 ? "Add pieces" : `Add ${n} ${n === 1 ? "piece" : "pieces"}`;
 }
 
-/** The note above the box once some pieces have been added and others are still waiting. */
+/** What the lines still waiting are missing: a type, a colour, or both (on one line or across lines). */
+export function missingOf(rows: Row[]): { type: boolean; colour: boolean } {
+  const stuck = rows.filter(isStuck);
+  return { type: stuck.some((r) => r.kind === null), colour: stuck.some((r) => r.colorMissing) };
+}
+
+/** The note above the box once some pieces have been added and others are still waiting. It says what is actually missing. */
 export function leftNote(rows: Row[]): string | null {
   const n = rows.filter(isStuck).length;
   if (n === 0) return null;
-  return `${n} ${n === 1 ? "line" : "lines"} left. Pick a type for each, or delete ${n === 1 ? "it" : "them"}.`;
+  const { type, colour } = missingOf(rows);
+  const what = type && colour ? "a type or colour" : colour ? "a colour" : "a type";
+  return `${n} ${n === 1 ? "line" : "lines"} left. Pick ${what} for each, or delete ${n === 1 ? "it" : "them"}.`;
 }
 
 /**

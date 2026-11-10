@@ -2,6 +2,28 @@
 
 The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite old ones.
 
+## Run summary
+
+The one-off run of 10 November 2026: every task in `docs/LOOP.md` section 7, committed straight to `loop/wardrobe-entry`, one commit per task, plus one commit of small fixes after P2. Section 8 (maintenance turns) was not part of this run, so this is not "Loop complete".
+
+**Scorecard against section 5** (numbers from the last `npm run check` of the run)
+
+| # | Measure | Target | Now | Met? |
+| --- | --- | --- | --- | --- |
+| 1 | Corpus lines given the right type | 90% of at least 200 lines, then 95% of at least 400 | 136 of 136 | Not demonstrated. The percentage is there, but the corpus has 136 lines, not 200, and the parser was built against it, so 100% says the vocabulary is covered, not that new lines will work. The maintenance turns (grow the corpus with lines written before looking at the parser) are the honest test and did not happen. |
+| 2 | Corpus lines given the right colour | 90%, then 95% | 96 of 96 (lines that state a colour) | Not demonstrated, for the same reason. |
+| 3 | Pieces that come out White when the text didn't say white | 0 | 0 of 136 | Met. A bare "tee" or "sneakers" is White because that is the type's usual colour; it is tagged "guessed". |
+| 4 | Taps to add one common piece with no photo, from Wardrobe | 3 or fewer | 4 from Wardrobe (+ Add, Quick add, the tee, Add); 3 once Quick add is open | Not met from Wardrobe. Q2's single "+ Add" sheet put one tap between Wardrobe and Quick add. Met from Quick add, and by the Quick add test. Putting Quick add back on the page as its own chip would make it 3 (see Questions). |
+| 5 | Cards before the deck offers a first look | 12 or fewer | 3 if the first three are "I have it"; never more than 12 (the end of round 1) | Met, by deck tests. |
+| 6 | Cards wrongly hidden by pieces you own | 0 | 0 | Met, by the fault 11 test. |
+| 7 | Choices dropped when tapping 10 times in 1.5 seconds | 0 | 0 | Met in the reducer (10 `decide` actions give 10 history entries). Not tried with real taps on a phone. |
+| 8 | React renders per `pointermove` while dragging | 0 | 0 | Met by code review (no `setState` in the handler). Not measured in a browser. |
+| 9 | Passing tests | never lower than 125 | 323 | Met. |
+
+**Done:** F0, F1, F2, F3, T1, T2, T3, T4, T5, T6, U1, U2, U3, U4, Q1, Q2, Q3, S1, S2, S3, S4, G1, G2, G3, G4, G5, D1, D2, D3, D4, P1, P2, and the small fixes (X1).
+**Blocked:** F4, one half only. The `package.json` and README repository links are fixed; the change to `.github/workflows/checks.yml` (rename to "Checks", run `npm run check`) could not be pushed because the session's credentials have no `workflow` scope. The Playwright half was skipped on purpose (owner decision 2 is "No"), which also means G5 has no automated check.
+**Not verified anywhere:** nothing in this run was seen running in a browser, on a phone or with VoiceOver. Tests cover the logic (parser, deck reducer, swipe maths, storage, announcements, Quick add and Type a list rules); `npm run check` covers types and the production build. Gestures, animation, layout at 375 x 667, the sheets and focus are covered only by reading the code. That is what "For Alex to try on his phone" is for.
+
 ## Status
 
 | Task | State | Branch / PR | Date |
@@ -39,6 +61,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | D4 | done | loop/wardrobe-entry | 2026-11-10 |
 | P1 | done | loop/wardrobe-entry | 2026-11-10 |
 | P2 | done | loop/wardrobe-entry | 2026-11-10 |
+| X1 (small fixes) | done | loop/wardrobe-entry | 2026-11-10 |
 
 States: todo, done, blocked.
 
@@ -217,21 +240,39 @@ Correction to the P1 entry above: its scorecard line should read corpus types 13
 Scorecard: types 136/136, colours 96/96, white guesses 0/136, wrongly hidden cards 0, choices dropped in 10 taps 0, renders per pointermove 0, taps to add one common piece 4 from Wardrobe (3 from Quick add), tests 319
 For the next agent: pages not touched by this run still say "Add pieces" as headings (`/add`'s title and the "+ Add" sheet's title); they name a place, not a route, so I left them. "One garment per photo" on `/add` is older copy and uses "garment". Not run in a browser: Today's empty state now holds the four route cards (check it at 375 px).
 
+### X1 (small fixes) · 2026-11-10
+What changed: three things, one commit. (1) Type a list's note after a partial add says what is actually missing. `missingOf(rows)` in `src/lib/typelist.ts` reports whether a waiting line needs a type, a colour, or either; `leftNote` reads "2 lines left. Pick a type for each, or delete them." when only types are missing, "Pick a colour for each" when only colours are ("purple hoodie"), and "Pick a type or colour for each" when both kinds of line are waiting. The note follows the person's corrections (picking the colour changes it to a type note). 4 new tests; the two existing `leftNote` assertions are unchanged. (2) `KindSheet` scrolls the current type's chip to the middle when it opens (`scrollIntoView({ block: "center", behavior: "auto" })` in the opening effect; "auto" is an instant jump, so reduced motion has nothing to switch off). Nothing is scrolled when no type is picked. (3) `SOURCE_URL` in `src/components/CloudBackup.tsx` is `https://github.com/cjarhodes/OOTD`; nothing else in that file changed. The Run summary and the tidied try-on and questions lists at the top and bottom of this file are part of this commit.
+Scorecard: types 136/136, colours 96/96, white guesses 0/136, tests 323
+For the next agent: the note's wording for one line is still "Pick a colour for each, or delete it" (the existing singular test fixes it). Not seen in a browser: the sheet landing on the current type in the middle of the screen at 375 px, inside the piece editor and inside Type a list.
+
 ## For Alex to try on his phone
-- S4 (swipe feel): tap the three buttons quickly, ten times in a row, and swipe a card by hand. Look for: the next card already underneath as the old one flies off, no choice lost, the exit carrying on from where your finger let go, and no flicker or jump when the next card takes over. With Reduce Motion on, cards should simply disappear.
-- G1 (a flick counts): flick a card sideways or up with a short, quick movement of the thumb. Look for: it goes even though your finger travelled only a little; a slow short drag still springs back; a fast flick back towards the middle cancels instead of choosing.
-- G2 (no renders while dragging): drag a card slowly in a circle and up and down. Look for: smooth following with no stutter, the right stamp fading in as you pass about 40 px (Have on the right, Not mine on the left, Want up), springing back when you let go short, and tapping a colour chip never starting a drag.
-- G3 (next card rises): drag the top card slowly sideways and watch the one behind it. Look for: it grows and brightens as you near the line, settles back if you let go short (the top card springs back with a small bounce), and the card that was behind is the right size the moment the old one flies off. Check in light and dark themes.
-- G4 (show how, once): clear this site's data (or use a private tab), open Swipe your wardrobe and wait. Look for: after about half a second the first card leans right with the I have it stamp, then left with Not mine, then settles, and it never plays again on later visits. With Reduce Motion on you should see the text line instead.
-- G5 (fits a small phone): on the smallest phone you have (or a browser window at 375 x 667 with the toolbars showing), open Swipe your wardrobe and look at a card with several colours (Heavyweight tee, Flannel shirt, Straight-leg jeans). Look for: the drawing quite small, the name, note, every colour chip and + Other colour all visible, the counts line and Undo under the card, the three buttons below them with nothing underneath and the tab bar below that, and no scrolling. Colour chips should be easy to hit with a thumb.
-- D1 (rounds): on a new account, swipe "I have it" through the first twelve cards. Look for: the eyebrow reading "The basics · 4 of 12" and counting up; once you have a top, trousers and shoes the counts line turning into "You can get dressed now. See today’s look" with no extra row and nothing pushed off the screen; after card 12 a panel replacing the card and buttons, with your pieces drawn, "See today’s look" and "Keep going: layers and jackets (11)". Leave halfway through a round and come back: you should land on the next undecided card of the same round. Check the panel at 375 x 667 and in both themes.
-- D2 (a finish screen you can check): swipe a few cards right, then finish the deck or reach the end of round 1. Look for: your pieces as tiles; tapping one opens a sheet with Change colour and Remove; changing the colour swaps the tile and Wardrobe shows the new colour (and not the old one); Remove drops it; a piece you wanted shows under the tiles with Remove. On the round-end panel at 375 x 667 the buttons must still be on screen, with the tiles scrolling inside their box when there are many.
-- D3 (swipe one part): on Wardrobe pick Shoes. Look for "Swipe more shoes (N)" under the grid; it opens the swipe with only shoe cards and the eyebrow "Shoes · 1 of N", with no end-of-round panel; going back to Wardrobe, the number has dropped by what you decided.
-- P1 (say what happened): turn VoiceOver on (Settings, Accessibility) and use Quick add, Type a list and the swipe. Listen for: one short message after each action ("Added white tee", "Skipped", "On your wishlist: suede loafers", "Undone"), said once and not twice, including two skips in a row; the swipe card read as a group with its name and note.
+
+None of this was seen running. Do these on an iPhone in Safari, signed in with an empty wardrobe, in light and dark, and again with Reduce Motion on where it says so.
+
+**Swipe the basics** (`/start`)
+- Feel (S4, G1, G2, G3): tap the three buttons quickly ten times in a row, then swipe by hand. Look for the next card already underneath as the old one flies off, no choice lost, and no flicker. A short quick flick should decide the card; a slow short drag should spring back with a small bounce; a fast pull back towards the middle should cancel. Drag slowly in a circle: smooth, the stamp fading in at about 40 px, and the card behind growing and brightening as you near the line. Tapping a colour chip must never start a drag. With Reduce Motion on, cards simply disappear.
+- The hint (G4): clear the site's data (or use a private tab), open the swipe and wait half a second. The first card should lean right ("I have it"), then left ("Not mine"), once, and never again. With Reduce Motion on you should see a line of text instead.
+- Fit (G5): at 375 x 667 (or your smallest phone) open a card with many colours (Heavyweight tee, Flannel shirt, Straight-leg jeans). The drawing small; name, note, every colour chip and "+ Other colour", the counts line and Undo, and the three buttons below them with nothing underneath and the tab bar below that; no scrolling. Colour chips should be easy to hit. If a third row of chips pushes the buttons down, set `max` to 3 in `visibleColours`.
+- Rounds (D1): on a new account swipe "I have it" through the first twelve cards. The eyebrow should read "The basics · 4 of 12" and count up; once you have a top, trousers and shoes the counts line should become "You can get dressed now. See today's look"; after card 12 a panel should replace the card and buttons ("Keep going: layers and jackets (15)"). Leave halfway and come back: you should land on the next undecided card.
+- Fixing (D2): on the round-end panel and the finish screen, tap a piece: a sheet with Change colour and Remove. Changing the colour should swap the tile and Wardrobe should show the new colour only. A wished piece shows below with Remove. At 375 x 667 the buttons must stay on screen, with the tiles scrolling inside their box.
+- One part (D3): on Wardrobe pick Shoes. "Swipe more in Shoes (N)" should sit under the grid and open the swipe with only shoe cards ("Shoes · 1 of N", no round-end panel); the number should drop as you decide.
+- VoiceOver (P1): turn it on and use the swipe, Quick add and Type a list. Listen for one short message after each action ("Added white tee", "Skipped", "On your wishlist: suede loafers", "Undone"), said once and not twice, including two skips in a row; the swipe card read as a group.
+
+**Adding without photos**
+- + Add (Q2, U4): Wardrobe's single "+ Add" chip, the empty Wardrobe, the first-run card on Today and the banner on `/add` should all offer Quick add, Type a list, Swipe the basics and Photos in that order and those words. Quick add and Type a list from Today or `/add` should land on Wardrobe with the sheet open and the address back to `/wardrobe`. Today's "can't make a look" box should now show the same four cards; check it at 375 px.
+- Quick add (Q1): the grid and the swatches at 375 px; the search keyboard not hiding the "Add" offer for a typed name ("sambas"); Close/Done and Esc returning to Wardrobe. In the "Other colour" sheet a colour you already own can't be ticked, so it may look un-tickable.
+- Type a list (U1, U2, U3): type "navy crewneck, mystery thing, black belt": the button reads "Add 1 piece", adding leaves "Mystery thing" with a note, and the belt explains itself. Paste a note with headings. The type sheet should scroll, its drawings should not be clipped at 375 px, it should open from inside the piece editor, and it should open scrolled to the current type (X1). Add "purple hoodie" and "mystery thing" and check the note says "type or colour".
+- Add another colour (Q3): open a drawn piece, tap Add another colour, pick Grey, Done. The new tile should appear when the piece sheet is closed, and the button should sit sensibly at 375 px.
 
 ## Questions for Alex
-- T3: two existing assertions in `src/lib/typed.test.ts` had to change from White to the type's usual colour (see the T3 log entry). OK to keep?
-- F4: the agent token can't change `.github/workflows/**` (no `workflow` scope). Please apply the two-line workflow change described in the F4 log entry, or give the agent a token with that scope.
+- Four taps from Wardrobe, or three? Quick add is 3 taps from itself but 4 from Wardrobe now that "+ Add" has a sheet (Q2). Putting a "Quick add" chip back on the page beside "+ Add" would make it 3. The plan asked for both one button and three taps; which matters more?
+- How should the swipe name a part of the wardrobe? The link reads "Swipe more in Outer (6)" and the eyebrow "Outer · 3 of 10", using the filter chips' own words (Base, Mid, Outer, Bottoms, Shoes), because "Swipe more outer layers" read badly and tops/layers/jackets didn't match the chips. If you would rather the chips and the link both said Tops, Layers, Jackets, Bottoms, Shoes, that is a change to `SLOT_LABEL`, which also names parts in the museum labels and the swap toast.
+- T3: two existing assertions in `src/lib/typed.test.ts` changed from White to the type's usual colour (`Rothy's slip on sandals` now Brown, `parsePiece("hoodie")` now Grey). OK to keep?
+- F4: the agent's token cannot change `.github/workflows/**`. Please apply the two-line change (rename `Verify FORM` to `Checks`, last step `npm run check` instead of `npm run build`), or give an agent a token with the `workflow` scope.
+- Round 4 ("What's current") has 20 cards after D4. Split it, or leave it?
+- Owner decision 7 (sign-in before `/start`) is still the biggest friction for someone arriving cold. Worth its own piece of work, since it touches how wardrobes are stored?
+- Maintenance: the parser has only been measured on lines written while building it. Should the maintenance turns (section 8) go ahead to grow the corpus past 200 lines with fresh ones?
 
 ## Ideas (not for now)
 - Fix `SOURCE_URL` in `src/components/CloudBackup.tsx` (still `cjarhodes/Clothing`). Found in F4.
+- Done in X1: `SOURCE_URL` in `CloudBackup.tsx` now points at `cjarhodes/OOTD`.

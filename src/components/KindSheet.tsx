@@ -24,6 +24,8 @@ export function KindSheet({ title, picked, onPick, onClose }: { title: string; p
   useEffect(() => {
     const d = ref.current;
     if (d && !d.open) d.showModal();
+    // Open with the current type in view, not at the top of a long list. The jump is instant ("auto"), so there is no motion to turn off.
+    d?.querySelector<HTMLElement>('[aria-pressed="true"]')?.scrollIntoView({ block: "center", behavior: "auto" });
   }, []);
 
   return (
