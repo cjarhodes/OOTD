@@ -26,7 +26,6 @@ import {
   placeOf,
   roundEnd,
   roundPlace,
-  SLOT_WORD,
   shownColour,
   slotFromParam,
   tickedColours,
@@ -209,7 +208,7 @@ export default function StartPage() {
   };
   // Once the wardrobe has a top, trousers and shoes, the counts line says so. Not for the sample wardrobe, which isn't yours.
   const canDress = mode === "personal" && missingEssentials(items).length === 0;
-  const eyebrow = done ? "Quick start · done" : end ? `${end.name} · done` : inRound ? `${inRound.name} · ${inRound.at} of ${inRound.total}` : "…";
+  const eyebrow = done ? "Swipe the basics · done" : end ? `${end.name} · done` : inRound ? `${inRound.name} · ${inRound.at} of ${inRound.total}` : "…";
 
   const dropLeaving = useCallback((key: string) => setGone((list) => list.filter((g) => g.key !== key)), []);
 
@@ -543,7 +542,7 @@ export default function StartPage() {
                 See today’s look
               </Link>
               <Link href="/add" className="btn quiet">
-                Add photos of your own
+                Photos
               </Link>
               {last && (
                 <button type="button" className="btn quiet" onClick={() => void undo()} aria-label={`Undo: ${last.name}`}>
@@ -563,7 +562,7 @@ export default function StartPage() {
 
       {deck && deck.length === 0 && skipped === 0 && (
         <p className="footer-note">
-          {dk?.slot ? `You’ve already been through every card for ${SLOT_WORD[dk.slot]}.` : "You’ve already got every piece in the starter deck. Your best next buys are below."}
+          {dk?.slot ? `You’ve already been through every card in ${SLOT_LABEL[dk.slot]}.` : "You’ve already got every piece in the starter deck. Your best next buys are below."}
         </p>
       )}
     </>

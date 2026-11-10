@@ -45,7 +45,7 @@ export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChan
           onClick={() => setPickingKind(true)}
         >
           <span id={`${idPrefix}-kind-name`}>{value.kind ? kindName(value.kind) : "Pick a type"}</span>
-          <span className="colour-change">{value.kind ? "Change" : "Choose"}</span>
+          <span className="colour-change">{value.kind ? "Change" : "Pick"}</span>
         </button>
         {pickingKind && (
           <KindSheet

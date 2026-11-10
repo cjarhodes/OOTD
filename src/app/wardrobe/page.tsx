@@ -13,7 +13,7 @@ import { QuickAdd } from "@/components/QuickAdd";
 import { TypeList } from "@/components/TypeList";
 import { wishToItem } from "@/lib/wishlist";
 import { isOwned, SLOT_LABEL, fitOf } from "@/lib/kinds";
-import { SLOT_WORD, slotCardsLeft } from "@/lib/deck";
+import { slotCardsLeft, swipeMoreLabel } from "@/lib/deck";
 import { browserStorage, loadChoices, storeKey } from "@/lib/deck-store";
 import { addedNote } from "@/lib/quickadd";
 import { copiesInColours, takenColours } from "@/lib/recolour";
@@ -284,7 +284,7 @@ export default function WardrobePage() {
           <p className="display" style={{ fontSize: 28, color: "var(--ink)" }}>
             Nothing here yet
           </p>
-          <p>Add what you own. Most ways need no photo.</p>
+          <p>Add what you own. The first three ways need no photo.</p>
           <AddRoutes onPick={{ quick: () => setQuick(true), list: () => setTyping(true) }} />
         </div>
       ) : (
@@ -380,7 +380,7 @@ export default function WardrobePage() {
           {slotFilter && swipeLeft > 0 && (
             <p className="footer-note" style={{ marginTop: 16 }}>
               <Link href={`/start?slot=${slotFilter}`} className="text-link swipe-more">
-                Swipe more {SLOT_WORD[slotFilter]} ({swipeLeft})
+                {swipeMoreLabel(slotFilter, swipeLeft)}
               </Link>
             </p>
           )}

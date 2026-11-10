@@ -19,12 +19,13 @@ import {
   shownColour,
   slotCardsLeft,
   slotFromParam,
+  swipeMoreLabel,
   tickedColours,
   visibleColours,
   type DeckAction,
   type DeckState,
 } from "./deck";
-import { KINDS } from "./kinds";
+import { KINDS, SLOT_LABEL } from "./kinds";
 import type { ColorName } from "./palette";
 import { missingEssentials } from "./essentials";
 import { ROUNDS, ROUND_NAME, STARTER_DECK, type StarterCard } from "./starter";
@@ -507,9 +508,12 @@ describe("swiping one part of the wardrobe", () => {
     expect(isDone(run(s, have))).toBe(true);
   });
 
-  it("names the part in plain words", () => {
+  it("names the part as Wardrobe's filter chips do, so the swipe and the link use one vocabulary", () => {
     const s = initialDeck(cardsToShow(STARTER_DECK, [], {}, "outer"), [], "outer");
-    expect(roundPlace(s)!.name).toBe("Jackets");
-    expect(roundPlace(initialDeck(cardsToShow(STARTER_DECK, [], {}, "base"), [], "base"))!.name).toBe("Tops");
+    expect(roundPlace(s)!.name).toBe(SLOT_LABEL.outer);
+    expect(roundPlace(initialDeck(cardsToShow(STARTER_DECK, [], {}, "base"), [], "base"))!.name).toBe(SLOT_LABEL.base);
+    expect(swipeMoreLabel("shoes", 6)).toBe("Swipe more in Shoes (6)");
+    expect(swipeMoreLabel("bottom", 3)).toBe("Swipe more in Bottoms (3)");
+    expect(swipeMoreLabel("outer", 1)).toBe("Swipe more in Outer (1)");
   });
 });

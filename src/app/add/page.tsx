@@ -292,7 +292,7 @@ export default function AddPage() {
             <div className="actions">
               {current.state !== "failed" && (
                 <button type="button" className="btn" disabled={!current.draft.kind || current.state !== "review"} onClick={() => void save(current)}>
-                  {current.state === "saving" ? "Saving…" : current.state === "preparing" ? "Preparing…" : current.draft.kind ? "Save piece" : "Choose what it is"}
+                  {current.state === "saving" ? "Saving…" : current.state === "preparing" ? "Preparing…" : current.draft.kind ? "Save piece" : "Pick a type"}
                 </button>
               )}
               <button type="button" className="btn quiet" onClick={() => update(current.id, { state: "skipped" })}>

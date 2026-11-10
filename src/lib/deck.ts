@@ -1,4 +1,4 @@
-import { KINDS } from "./kinds";
+import { KINDS, SLOT_LABEL } from "./kinds";
 import type { ColorName } from "./palette";
 import { ownedColours } from "./quickadd";
 import { ROUND_NAME, STARTER_DECK, starterItem, type Round, type StarterCard } from "./starter";
@@ -154,12 +154,14 @@ export function placeOf(s: DeckState, total: number): { at: number; total: numbe
   return { at: Math.min(Math.max(total - s.deck.length, 0) + s.index + 1, total), total };
 }
 
-/** The plain word for a part of the wardrobe, for "Swipe more shoes (6)". */
-export const SLOT_WORD: Record<Slot, string> = { base: "tops", mid: "layers", outer: "jackets", bottom: "trousers", shoes: "shoes" };
+/** The link under Wardrobe's grid. It uses the filter chips' own words (`SLOT_LABEL`): "Swipe more in Outer (6)". */
+export function swipeMoreLabel(slot: Slot, left: number): string {
+  return `Swipe more in ${SLOT_LABEL[slot]} (${left})`;
+}
 
 /** The part of the wardrobe a `?slot=` value names, or null for anything else. */
 export function slotFromParam(value: string | null | undefined): Slot | null {
-  return value && Object.hasOwn(SLOT_WORD, value) ? (value as Slot) : null;
+  return value && Object.hasOwn(SLOT_LABEL, value) ? (value as Slot) : null;
 }
 
 /** How many cards are left to swipe for one part of the wardrobe. */
@@ -174,7 +176,7 @@ export function slotCardsLeft(
 
 /**
  * Where the current card sits in its round: "The basics · 4 of 12". Cards set aside or already decided count as
- * passed. When one part of the wardrobe is being swiped it is counted within that part instead: "Shoes · 3 of 10".
+ * passed. When one part of the wardrobe is being swiped it is counted within that part instead: "Shoes · 3 of 10". The part is named as the Wardrobe filter chips name it.
  */
 export function roundPlace(s: DeckState, all: readonly StarterCard[] = STARTER_DECK): { round: Round; name: string; at: number; total: number } | null {
   const card = currentCard(s);
@@ -182,7 +184,7 @@ export function roundPlace(s: DeckState, all: readonly StarterCard[] = STARTER_D
   const same = (c: StarterCard) => (s.slot ? KINDS[c.kind].slot === s.slot : c.round === card.round);
   const total = all.filter(same).length;
   const left = s.deck.slice(s.index).filter(same).length;
-  const name = s.slot ? SLOT_WORD[s.slot].charAt(0).toUpperCase() + SLOT_WORD[s.slot].slice(1) : ROUND_NAME[card.round];
+  const name = s.slot ? SLOT_LABEL[s.slot] : ROUND_NAME[card.round];
   return { round: card.round, name, at: Math.min(Math.max(total - left, 0) + 1, total), total };
 }
 
