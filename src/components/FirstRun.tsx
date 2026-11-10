@@ -1,22 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { AddRoutes } from "@/components/AddRoutes";
+import { ESSENTIALS, missingEssentials } from "@/lib/essentials";
 import { isOwned } from "@/lib/kinds";
-import type { Item, Slot } from "@/lib/types";
 import { useWardrobe } from "@/state/wardrobe";
-
-/** The pieces a first look can't do without. */
-const ESSENTIALS: { slot: Slot; label: string }[] = [
-  { slot: "base", label: "A top: a tee, shirt or knit polo" },
-  { slot: "bottom", label: "Trousers, jeans or chinos" },
-  { slot: "shoes", label: "A pair of shoes" },
-];
-
-/** Slots a wardrobe still needs before it can make a look. */
-export function missingEssentials(items: Item[]): Slot[] {
-  const have = new Set(items.filter(isOwned).map((i) => i.slot));
-  return ESSENTIALS.map((e) => e.slot).filter((s) => !have.has(s));
-}
 
 /**
  * The first-run checklist for a new account: what to add for a first look,
@@ -30,13 +18,13 @@ export function FirstRun() {
     { done: have.has("mid") || have.has("outer"), label: "A jumper or jacket for cooler days", optional: true },
     { done: Boolean(city), label: "Your city, for real weather", optional: true, href: "/settings#weather" },
   ];
-  const left = steps.filter((s) => !s.done && !s.optional).length;
+  const left = missingEssentials(items).length;
 
   return (
     <div className="first-run">
       <p className="display first-run-title">{personalCount === 0 ? "Let’s set up your wardrobe" : `${left} more ${left === 1 ? "piece" : "pieces"} for a first look`}</p>
       <p className="first-run-note">
-        Quickest: swipe through the basics most men own and keep what you have. Or photograph your own pieces; OOTD removes the background.
+        Start any way you like. The first three need no photo; if you do take photos, OOTD removes the background.
       </p>
       <ol className="first-run-steps">
         {steps.map((s) => (
@@ -52,13 +40,8 @@ export function FirstRun() {
           </li>
         ))}
       </ol>
+      <AddRoutes />
       <div className="actions">
-        <Link href="/start" className="btn">
-          Swipe your wardrobe
-        </Link>
-        <Link href="/add" className="btn alt">
-          Add photos
-        </Link>
         <button type="button" className="btn quiet" onClick={() => setMode("sample")}>
           Try the sample wardrobe
         </button>

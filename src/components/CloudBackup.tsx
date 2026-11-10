@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useCloud, type Snapshot } from "@/state/cloud";
 import { useWardrobe } from "@/state/wardrobe";
 
-export const SOURCE_URL = "https://github.com/cjarhodes/Clothing";
+export const SOURCE_URL = "https://github.com/cjarhodes/OOTD";
 
 export function when(iso: string | null): string {
   if (!iso) return "";

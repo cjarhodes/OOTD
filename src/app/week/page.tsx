@@ -2,7 +2,8 @@
 
 import { useWeek } from "@/state/engine";
 
-import { FirstRun, missingEssentials } from "@/components/FirstRun";
+import { FirstRun } from "@/components/FirstRun";
+import { missingEssentials } from "@/lib/essentials";
 
 import Link from "next/link";
 import { useMemo } from "react";

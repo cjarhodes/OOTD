@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FirstRun, missingEssentials } from "./FirstRun";
+import { AddRoutes } from "./AddRoutes";
+import { FirstRun } from "./FirstRun";
+import { missingEssentials } from "@/lib/essentials";
 import { FlatLay } from "./FlatLay";
 import { MuseumLabel } from "./MuseumLabel";
 import { isDateKey, longWeekday, shortDate } from "@/lib/dates";
@@ -235,11 +237,7 @@ export function TodayView() {
               <>
                 <p>This wardrobe can’t make a complete look for these conditions yet.</p>
                 <p>It needs at least a top, bottoms and shoes, plus a warm layer for cold days.</p>
-                {mode === "personal" && (
-                  <Link href="/add" className="btn alt">
-                    Add pieces
-                  </Link>
-                )}
+                {mode === "personal" && <AddRoutes />}
               </>
             )}
           </div>

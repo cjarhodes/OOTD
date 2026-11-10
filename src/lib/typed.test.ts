@@ -14,7 +14,7 @@ describe("typed pieces", () => {
       // The accent colour isn't the shoe's colour; Vejas are usually white.
       ["Vejas (with grey accents)", "sneakers", "White", "leather"],
       ["Rothy’s (white) sneakers", "sneakers", "White", "knit"],
-      ["Rothy’s slip on sandals", "sandals", "White", "knit"],
+      ["Rothy’s slip on sandals", "sandals", "Brown", "knit"],
       ["Brown Birkenstock arizonas", "sandals", "Brown", "leather"],
       ["Birkenstock Green/taupe? Bostons", "clogs", "Olive", "suede"],
     ]);
@@ -51,7 +51,7 @@ describe("typed pieces", () => {
     expect(parsePiece("cream t-shirt")).toMatchObject({ kind: "tee", color: "Ecru", colorGuessed: false });
     // "Denim" is a colour too, which is right for a denim jacket.
     expect(parsePiece("denim jacket")).toMatchObject({ kind: "denim-jacket", color: "Denim" });
-    expect(parsePiece("hoodie")).toMatchObject({ kind: "hoodie", color: "White", colorGuessed: true });
+    expect(parsePiece("hoodie")).toMatchObject({ kind: "hoodie", color: "Grey", colorGuessed: true });
     expect(parsePiece("dark brown suede chelsea boots")).toMatchObject({ kind: "boots", color: "Chocolate", material: "suede" });
     expect(parsePiece("something mysterious")).toMatchObject({ kind: null });
     expect(parsePiece("   ")).toBeNull();

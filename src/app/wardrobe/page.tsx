@@ -4,15 +4,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
+import { ColourSheet } from "@/components/ColourSheet";
+import { AddRoutes } from "@/components/AddRoutes";
+import { AddSheet } from "@/components/AddSheet";
 import { ItemFields, type Draft } from "@/components/ItemFields";
 import { NextBuys } from "@/components/NextBuys";
+import { QuickAdd } from "@/components/QuickAdd";
 import { TypeList } from "@/components/TypeList";
 import { wishToItem } from "@/lib/wishlist";
 import { isOwned, SLOT_LABEL, fitOf } from "@/lib/kinds";
+import { slotCardsLeft, swipeMoreLabel } from "@/lib/deck";
+import { browserStorage, loadChoices, storeKey } from "@/lib/deck-store";
+import { addedNote } from "@/lib/quickadd";
+import { copiesInColours, takenColours } from "@/lib/recolour";
+import type { ColorName } from "@/lib/palette";
 import { hasBackdrop, preparePhoto, releasePhoto } from "@/lib/photo";
 import { applyTags } from "@/lib/tagging";
 import type { Item, Slot, Status } from "@/lib/types";
-import { useWardrobe } from "@/state/wardrobe";
+import { useAuth } from "@/state/auth";
+import { newId, useWardrobe } from "@/state/wardrobe";
 
 const SLOTS: Slot[] = ["base", "mid", "outer", "bottom", "shoes"];
 const STATUS_LABEL: Record<Status, string> = { available: "Available", laundry: "In the wash", archived: "Archived" };
@@ -32,13 +42,31 @@ function draftOf(item: Item): Draft {
 }
 
 function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose: () => void }) {
-  const { updateItem, removeItem, replacePhoto, photoBlobs } = useWardrobe();
+  const { items, addPieces, updateItem, removeItem, replacePhoto, photoBlobs } = useWardrobe();
   const router = useRouter();
   const ref = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<Draft>(draftOf(item));
   const [status, setStatus] = useState<Status>(item.status);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cutting, setCutting] = useState<"idle" | "working" | "failed">("idle");
+  // "Add another colour": the colours being picked, and what the last add said.
+  const [recolouring, setRecolouring] = useState(false);
+  const [moreColours, setMoreColours] = useState<ColorName[]>([]);
+  const [recolourNote, setRecolourNote] = useState<string | null>(null);
+  const taken = takenColours(item, items);
+
+  async function addColours() {
+    const copies = copiesInColours(item, moreColours, items, newId);
+    setRecolouring(false);
+    setMoreColours([]);
+    if (!copies.length) return;
+    try {
+      await addPieces(copies.map((c) => ({ item: c })));
+      setRecolourNote(addedNote(copies.map((c) => c.name)));
+    } catch {
+      setRecolourNote("Couldn’t add that. Try again.");
+    }
+  }
 
   // Illustrated pieces (from the starter deck) can get a real photo, background removed.
   const photoInput = useRef<HTMLInputElement>(null);
@@ -108,6 +136,14 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
           <span className="setting-note">
             {cutting === "failed" ? "That photo couldn’t be read. Try a JPEG or PNG." : "Drawn for now. A photo of your own piece makes your looks yours."}
           </span>
+          <button type="button" className="btn alt" aria-haspopup="dialog" onClick={() => setRecolouring(true)}>
+            Add another colour
+          </button>
+          {recolourNote && (
+            <span className="setting-note" role="status">
+              {recolourNote}
+            </span>
+          )}
           <input
             ref={photoInput}
             type="file"
@@ -171,6 +207,15 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
           Delete piece
         </button>
       )}
+      {recolouring && (
+        <ColourSheet
+          title="Add another colour"
+          picked={moreColours}
+          hide={taken}
+          onToggle={(c) => setMoreColours((p) => (p.includes(c) ? p.filter((x) => x !== c) : [...p, c]))}
+          onClose={() => void addColours()}
+        />
+      )}
     </dialog>
   );
 }
@@ -180,8 +225,32 @@ export default function WardrobePage() {
   const [filter, setFilter] = useState<Slot | "all" | "archived" | "wanted">("all");
   const [editing, setEditing] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
+  const [quick, setQuick] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<number | null>(null);
   const personal = mode === "personal";
+  // With a layer chosen, the swipe deck may still have cards for it: offer them under the grid.
+  const { user } = useAuth();
+  const slotFilter = (SLOTS as string[]).includes(filter) ? (filter as Slot) : null;
+  const swipeLeft = useMemo(
+    () => (personal && ready && slotFilter ? slotCardsLeft(slotFilter, items, loadChoices(browserStorage(), storeKey(user?.id))) : 0),
+    [personal, ready, slotFilter, items, user?.id],
+  );
+
+  // /wardrobe?add=list opens Type a list, and ?add=quick opens Quick add. Read it once the wardrobe has loaded, then take it out of the address.
+  const router = useRouter();
+  const openedFromLink = useRef(false);
+  useEffect(() => {
+    if (!ready || openedFromLink.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const add = params.get("add");
+    if (add !== "list" && add !== "quick") return;
+    openedFromLink.current = true;
+    params.delete("add");
+    const rest = params.toString();
+    router.replace(rest ? `/wardrobe?${rest}` : "/wardrobe", { scroll: false });
+    if (personal) (add === "quick" ? setQuick : setTyping)(true);
+  }, [ready, personal, router]);
 
   const counts = useMemo(() => {
     const m = new Map<string, number>();
@@ -215,18 +284,8 @@ export default function WardrobePage() {
           <p className="display" style={{ fontSize: 28, color: "var(--ink)" }}>
             Nothing here yet
           </p>
-          <p>Swipe through the basics most men own and keep what you have, or photograph your own pieces.</p>
-          <div className="actions">
-            <Link href="/start" className="btn">
-              Swipe your wardrobe
-            </Link>
-            <Link href="/add" className="btn alt">
-              Add photos
-            </Link>
-            <button type="button" className="btn alt" onClick={() => setTyping(true)}>
-              Type a list
-            </button>
-          </div>
+          <p>Add what you own. The first three ways need no photo.</p>
+          <AddRoutes onPick={{ quick: () => setQuick(true), list: () => setTyping(true) }} />
         </div>
       ) : (
         <>
@@ -250,19 +309,9 @@ export default function WardrobePage() {
               </button>
             )}
             {personal && (
-              <Link href="/add" className="chip chip-add">
-                + Add pieces
-              </Link>
-            )}
-            {personal && (
-              <button type="button" className="chip chip-add" onClick={() => setTyping(true)}>
-                Type a list
+              <button type="button" className="chip chip-add" aria-haspopup="dialog" onClick={() => setAdding(true)}>
+                + Add
               </button>
-            )}
-            {personal && (
-              <Link href="/start" className="chip chip-add">
-                Swipe the basics
-              </Link>
             )}
           </div>
           {added !== null && (
@@ -328,6 +377,13 @@ export default function WardrobePage() {
               );
             })}
           </div>
+          {slotFilter && swipeLeft > 0 && (
+            <p className="footer-note" style={{ marginTop: 16 }}>
+              <Link href={`/start?slot=${slotFilter}`} className="text-link swipe-more">
+                {swipeMoreLabel(slotFilter, swipeLeft)}
+              </Link>
+            </p>
+          )}
           <p className="footer-note">
             {personal
               ? "Tap a piece to edit it, mark it as in the wash, or style a look around it."
@@ -343,6 +399,29 @@ export default function WardrobePage() {
             setTyping(false);
             setFilter("all");
             setAdded(count);
+          }}
+        />
+      )}
+      {adding && (
+        <AddSheet
+          onClose={() => setAdding(false)}
+          onPick={{
+            quick: () => {
+              setAdding(false);
+              setQuick(true);
+            },
+            list: () => {
+              setAdding(false);
+              setTyping(true);
+            },
+          }}
+        />
+      )}
+      {quick && (
+        <QuickAdd
+          onClose={(count) => {
+            setQuick(false);
+            if (count > 0) setFilter("all");
           }}
         />
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AddRoutes } from "@/components/AddRoutes";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ItemFields, type Draft } from "@/components/ItemFields";
@@ -183,12 +184,12 @@ export default function AddPage() {
 
       {!current && (
         <section className="add-intro">
-          <Link href="/start" className="banner add-swipe">
+          <div className="banner add-swipe">
             <span>
-              <strong>No photos to hand?</strong> Swipe through the basics most men own and keep what you have, in a minute.
+              <strong>No photos to hand?</strong> Four ways to add pieces. The first three need none.
             </span>
-            <span className="text-link">Swipe your wardrobe</span>
-          </Link>
+            <AddRoutes />
+          </div>
           <div className="steps">
             <div>
               <span className="label">Lay it out, take the photo</span>
@@ -291,7 +292,7 @@ export default function AddPage() {
             <div className="actions">
               {current.state !== "failed" && (
                 <button type="button" className="btn" disabled={!current.draft.kind || current.state !== "review"} onClick={() => void save(current)}>
-                  {current.state === "saving" ? "Saving…" : current.state === "preparing" ? "Preparing…" : current.draft.kind ? "Save piece" : "Choose what it is"}
+                  {current.state === "saving" ? "Saving…" : current.state === "preparing" ? "Preparing…" : current.draft.kind ? "Save piece" : "Pick a type"}
                 </button>
               )}
               <button type="button" className="btn quiet" onClick={() => update(current.id, { state: "skipped" })}>

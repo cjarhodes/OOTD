@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { ColourSheet } from "@/components/ColourSheet";
-import { FIT_LABEL, fitsFor, KINDS, MATERIAL_LABEL, SLOT_LABEL } from "@/lib/kinds";
+import { KindSheet, kindName } from "@/components/KindSheet";
+import { FIT_LABEL, fitsFor, KINDS, MATERIAL_LABEL } from "@/lib/kinds";
 import { PALETTE, type ColorName } from "@/lib/palette";
-import { KIND_LIST, MATERIALS, PATTERNS, type Tags } from "@/lib/tagging";
-import type { Kind, Slot } from "@/lib/types";
+import { MATERIALS, PATTERNS, type Tags } from "@/lib/tagging";
+import type { Kind } from "@/lib/types";
 
-const SLOTS: Slot[] = ["base", "mid", "outer", "bottom", "shoes"];
 const FORMALITY = ["Very casual", "Casual", "Smart casual", "Smart", "Formal"];
 const BOLDNESS = ["Classic", "A little interesting", "Statement"];
 
@@ -19,6 +19,7 @@ export interface Draft extends Omit<Tags, "kind"> {
 
 export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChange: (d: Draft) => void; idPrefix: string }) {
   const [picking, setPicking] = useState(false);
+  const [pickingKind, setPickingKind] = useState(false);
   const set = (patch: Partial<Draft>) => {
     const next = { ...value, ...patch };
     // Keep the suggested name in step until it has been typed over.
@@ -31,34 +32,37 @@ export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChan
 
   return (
     <div className="fields">
-      <fieldset className="field">
-        <legend className="label">What is it?</legend>
-        {SLOTS.map((slot) => (
-          <div key={slot} className="kind-group">
-            <span className="kind-slot">{SLOT_LABEL[slot]}</span>
-            <div className="kind-chips">
-              {KIND_LIST.filter((k) => KINDS[k].slot === slot).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  className="chip small"
-                  aria-pressed={value.kind === k}
-                  onClick={() =>
-                    set({
-                      kind: k,
-                      material: value.kind === k ? value.material : KINDS[k].material,
-                      fit: value.kind === k ? value.fit : KINDS[k].fit,
-                      formality: value.kind === k ? value.formality : KINDS[k].formality,
-                    })
-                  }
-                >
-                  {KINDS[k].label}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </fieldset>
+      <div className="field">
+        <span className="label" id={`${idPrefix}-kind`}>
+          Type
+        </span>
+        <button
+          type="button"
+          className="colour-chip colour-current kind-chip"
+          aria-labelledby={`${idPrefix}-kind ${idPrefix}-kind-name`}
+          aria-haspopup="dialog"
+          aria-invalid={!value.kind}
+          onClick={() => setPickingKind(true)}
+        >
+          <span id={`${idPrefix}-kind-name`}>{value.kind ? kindName(value.kind) : "Pick a type"}</span>
+          <span className="colour-change">{value.kind ? "Change" : "Pick"}</span>
+        </button>
+        {pickingKind && (
+          <KindSheet
+            title="Type"
+            picked={value.kind}
+            onPick={(k) =>
+              set({
+                kind: k,
+                material: value.kind === k ? value.material : KINDS[k].material,
+                fit: value.kind === k ? value.fit : KINDS[k].fit,
+                formality: value.kind === k ? value.formality : KINDS[k].formality,
+              })
+            }
+            onClose={() => setPickingKind(false)}
+          />
+        )}
+      </div>
 
       <div className="field">
         <span className="label" id={`${idPrefix}-colour`}>

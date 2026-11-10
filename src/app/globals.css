@@ -782,22 +782,6 @@ select.input {
   gap: 12px;
   margin-top: 12px;
 }
-.kind-group {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  gap: 8px;
-  align-items: start;
-}
-.kind-slot {
-  font-size: 12.5px;
-  color: var(--label);
-  padding-top: 6px;
-}
-.kind-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
 .chip.small {
   padding: 5px 10px;
   font-size: 13px;
@@ -1300,7 +1284,7 @@ li[data-done] .first-run-tick {
 }
 .swipe {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   max-width: 420px;
   margin: 0 auto;
 }
@@ -1329,31 +1313,81 @@ li[data-done] .first-run-tick {
   overflow: hidden;
   user-select: none;
   cursor: grab;
-  transition: transform 220ms ease;
+  /* Where the card is comes from --dx and --dy (pixels, no unit), which the page writes while it is dragged. */
+  transform: translate(calc(var(--dx, 0) * 1px), calc(var(--dy, 0) * 1px)) rotate(calc(var(--dx, 0) * 0.06deg));
+  /* Let go short of the line and it springs back with a slight overshoot. */
+  transition: transform 180ms cubic-bezier(0.2, 1.4, 0.4, 1);
 }
-.swipe-card.dragging {
+.swipe-card[data-dragging] {
   transition: none;
   cursor: grabbing;
+}
+/* A decided card flying away over the live one. It starts where it was let go. */
+.swipe-leaving {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  pointer-events: none;
+  cursor: default;
+  transition: none;
+  animation: 160ms ease-in forwards;
+}
+.swipe-leaving.leave-have {
+  animation-name: swipe-out-have;
+}
+.swipe-leaving.leave-skip {
+  animation-name: swipe-out-skip;
+}
+.swipe-leaving.leave-want {
+  animation-name: swipe-out-want;
+}
+@keyframes swipe-out-have {
+  from {
+    transform: translate(var(--fx, 0), var(--fy, 0)) rotate(var(--fr, 0deg));
+  }
+  to {
+    transform: translate(120vw, 0) rotate(18deg);
+  }
+}
+@keyframes swipe-out-skip {
+  from {
+    transform: translate(var(--fx, 0), var(--fy, 0)) rotate(var(--fr, 0deg));
+  }
+  to {
+    transform: translate(-120vw, 0) rotate(-18deg);
+  }
+}
+@keyframes swipe-out-want {
+  from {
+    transform: translate(var(--fx, 0), var(--fy, 0)) rotate(var(--fr, 0deg));
+  }
+  to {
+    transform: translate(0, -120vh);
+  }
 }
 .swipe-next {
   position: absolute;
   inset: 0;
   z-index: 0;
-  transform: scale(0.95) translateY(10px);
-  opacity: 0.55;
+  /* The card behind rises to meet the top card as it is dragged: --strength is 0 at rest and 1 at the line. */
+  transform: scale(calc(0.95 + 0.05 * var(--strength, 0))) translateY(calc(10px * (1 - var(--strength, 0))));
+  opacity: calc(0.55 + 0.45 * var(--strength, 0));
+  transition: transform 180ms ease, opacity 180ms ease;
   pointer-events: none;
 }
+.swipe-stack[data-dragging] .swipe-next {
+  transition: none;
+}
+/* The drawing gives way first: the card, the counts line and the three buttons have to fit the screen
+   (about 572 px of everything else on a phone), so it takes what is left, between 56 and 280 px. */
 .swipe-art {
-  height: min(24vh, 280px);
+  height: clamp(56px, calc(100vh - 572px), 280px);
+  height: clamp(56px, calc(100dvh - 572px), 280px);
   display: grid;
   place-items: center;
   border-radius: 0;
-}
-/* Short phones: keep the swipe buttons above the tab bar. */
-@media (max-height: 820px) {
-  .swipe-art {
-    height: 19vh;
-  }
 }
 .swipe-art .garment-svg {
   width: 72%;
@@ -1365,23 +1399,26 @@ li[data-done] .first-run-tick {
   gap: 4px;
   padding: 12px 18px 16px;
 }
-@media (max-width: 819px) {
-  .swipe-name {
-    font-size: 23px;
-  }
-  .swipe-help {
-    display: none;
-  }
-}
 .swipe-name {
   font-family: var(--display);
   font-size: 26px;
   line-height: 1.15;
   color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
+/* Two lines at most, so a long note can't push the colours off the card. */
 .swipe-note {
   font-size: 15px;
   color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 .colour-picks {
   border: 0;
@@ -1428,6 +1465,16 @@ li[data-done] .first-run-tick {
 }
 .colour-chip.more {
   padding-left: 12px;
+  color: var(--ink-2);
+}
+/* A colour already in the wardrobe: shown ticked, and not tappable. */
+.colour-chip:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+.colour-owned {
+  font-size: 12px;
+  font-weight: 400;
   color: var(--ink-2);
 }
 .colour-dot {
@@ -1492,6 +1539,64 @@ li[data-done] .first-run-tick {
   content: "✓";
   margin-left: auto;
 }
+/* Every type, grouped and drawn. */
+.kind-sheet {
+  align-content: start;
+}
+.kind-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.kind-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+.kind-option {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 6px 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--wall);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+}
+.kind-art {
+  width: 100%;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--label);
+}
+.kind-art .garment-svg {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.kind-label {
+  overflow-wrap: anywhere;
+}
+.kind-option[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+  font-weight: 600;
+}
+.kind-chip {
+  padding-left: 12px;
+}
+.kind-chip[aria-invalid="true"] {
+  border-color: var(--cobalt);
+}
 .colour-done {
   position: sticky;
   bottom: 0;
@@ -1514,6 +1619,62 @@ li[data-done] .first-run-tick {
   text-transform: uppercase;
   background: var(--wall);
   pointer-events: none;
+}
+/* The stamp for the way the card leans, as strong as the drag is far. */
+.swipe-stamp {
+  opacity: 0;
+}
+.swipe-card[data-lean="have"] .stamp-have,
+.swipe-card[data-lean="skip"] .stamp-skip,
+.swipe-card[data-lean="want"] .stamp-want {
+  opacity: var(--strength, 0);
+}
+.swipe-leaving .swipe-stamp {
+  opacity: 1;
+}
+/* The one-time hint: lean 12 px right, then left, with each stamp showing as it goes. */
+.swipe-card[data-hint] {
+  animation: swipe-hint 900ms ease-in-out 1 both;
+}
+.swipe-card[data-hint] .stamp-have {
+  animation: swipe-hint-have 900ms ease-in-out 1 both;
+}
+.swipe-card[data-hint] .stamp-skip {
+  animation: swipe-hint-skip 900ms ease-in-out 1 both;
+}
+@keyframes swipe-hint {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  28% {
+    transform: translateX(12px) rotate(0.72deg);
+  }
+  72% {
+    transform: translateX(-12px) rotate(-0.72deg);
+  }
+}
+@keyframes swipe-hint-have {
+  0%,
+  10%,
+  45%,
+  100% {
+    opacity: 0;
+  }
+  28% {
+    opacity: 0.7;
+  }
+}
+@keyframes swipe-hint-skip {
+  0%,
+  55%,
+  90%,
+  100% {
+    opacity: 0;
+  }
+  72% {
+    opacity: 0.7;
+  }
 }
 .stamp-have {
   left: 18px;
@@ -1576,16 +1737,188 @@ li[data-done] .first-run-tick {
 .swipe-foot {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  min-height: 44px;
+}
+.swipe-undo {
+  min-height: 44px;
+  padding: 0 8px;
 }
 .swipe-done {
   display: grid;
   gap: 28px;
 }
+/* The end of a round: it replaces the card and the buttons, and is shorter than both together. */
+.swipe-round-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px 14px;
+}
+.swipe-round-title {
+  font-size: 24px;
+  color: var(--ink);
+}
+.swipe-round-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.swipe-round-added {
+  /* Two rows of pieces show; a longer list scrolls inside, so the buttons never move off the screen. */
+  max-height: 148px;
+  overflow-y: auto;
+  padding: 2px;
+}
+/* The pieces just added, as tiles: on the end-of-round panel and on the finish screen. */
+.added {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+.added-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (min-width: 640px) {
+  .added-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.added-tile {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 12px 12px 11px;
+  background: var(--wall);
+  border-radius: var(--radius-tile);
+  text-align: left;
+  transition: background 160ms var(--ease);
+}
+.added-tile:hover {
+  background: var(--plinth-2);
+}
+.added-compact .added-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.added-compact .added-tile {
+  padding: 8px;
+}
+.added-compact .garment-svg {
+  height: 52px;
+  margin: 0;
+}
+.added-wishes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  text-align: left;
+}
+.added-wishes li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  font-size: 14px;
+}
+.added-wishes .text-link {
+  min-height: 44px;
+  padding: 0 8px;
+}
+.swipe-round-card .actions {
+  display: grid;
+  gap: 8px;
+}
+/* "Swipe more shoes (6)" under the Wardrobe grid. */
+.swipe-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+/* The counts line becomes the way to a first look once there is one. */
+.swipe-look {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  min-height: 44px;
+}
+/* The swipe's colour chips are 44 px tall (the shared chip stays 36 px for Type a list), and tighter around them. */
+.swipe .colour-chips {
+  gap: 6px;
+}
+.swipe .colour-chip {
+  min-height: 44px;
+  padding: 3px 10px 3px 5px;
+  gap: 5px;
+  font-size: 13px;
+}
+.swipe .colour-chip.more {
+  padding-left: 12px;
+}
+.swipe .colour-dot {
+  width: 20px;
+  height: 20px;
+}
+/* Phones: the tab bar is fixed, so the whole page is tightened to fit the card and the buttons above it. */
+@media (max-width: 819px) {
+  .swipe-head {
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .swipe-head .page-title {
+    font-size: 28px;
+  }
+  .swipe {
+    gap: 8px;
+    /* The page's bottom padding is taller than the tab bar; take that spare back so the page doesn't scroll. */
+    margin-bottom: -34px;
+  }
+  .swipe-text {
+    padding: 10px 14px 12px;
+  }
+  .swipe-name {
+    font-size: 21px;
+  }
+  .swipe-note {
+    font-size: 14px;
+    line-height: 1.35;
+  }
+  .colour-picks {
+    margin-top: 6px;
+    gap: 4px;
+  }
+  .colour-picks legend {
+    margin-bottom: 4px;
+  }
+  .swipe-actions {
+    padding: 6px 0;
+  }
+  .swipe-btn {
+    min-height: 52px;
+    padding: 6px 4px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .swipe-card,
+  .swipe-next,
   .swipe-progress span {
     transition: none;
+  }
+  .swipe-leaving {
+    display: none;
+  }
+  .swipe-card[data-hint],
+  .swipe-card[data-hint] .swipe-stamp {
+    animation: none;
   }
 }
 
@@ -1632,8 +1965,11 @@ li[data-done] .first-run-tick {
 }
 
 .add-swipe {
-  text-decoration: none;
-  color: inherit;
+  flex-wrap: wrap;
+}
+.add-swipe {
+  display: grid;
+  gap: 12px;
 }
 
 .wishlist {
@@ -1665,7 +2001,7 @@ li[data-done] .first-run-tick {
 }
 .typed-row {
   display: grid;
-  grid-template-columns: 64px 1fr;
+  grid-template-columns: 64px 1fr 44px;
   gap: 12px;
   align-items: center;
 }
@@ -1697,17 +2033,110 @@ li[data-done] .first-run-tick {
   gap: 8px;
   align-items: center;
 }
-.typed-kind {
-  width: auto;
-  min-height: 36px;
-  padding: 4px 10px;
-  font-size: 14px;
-}
-.typed-kind[aria-invalid="true"] {
-  border-color: var(--cobalt);
-}
 .typed-guess {
   margin-left: 4px;
   font-size: 12px;
+  color: var(--label);
+}
+.typed-controls .colour-chip {
+  min-height: 44px;
+}
+.typed-controls .colour-chip[aria-invalid="true"] {
+  padding-left: 12px;
+  border-color: var(--cobalt);
+}
+.typed-reason {
+  font-size: 13px;
+  color: var(--label);
+}
+.typed-remove {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.typed-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* ---------- quick add ---------- */
+
+.quick-add {
+  align-content: start;
+}
+.quick-offer {
+  justify-self: start;
+  height: auto;
+  min-height: 44px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  text-align: left;
+}
+.quick-colours .colour-option {
+  min-height: 56px;
+}
+.quick-colours .colour-option .colour-dot {
+  width: 34px;
+  height: 34px;
+}
+.quick-colours .colour-option:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.quick-colour-text {
+  display: grid;
+  gap: 2px;
+}
+.quick-have {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--label);
+}
+
+/* ---------- the four ways to add ---------- */
+
+.add-routes {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+.add-route {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--wall);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.add-route:hover {
+  border-color: var(--ink);
+}
+.add-route-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+.add-route-note {
+  font-size: 13px;
   color: var(--label);
 }

@@ -8,7 +8,7 @@
   "homepage": "https://ootd.cjarhodes.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cjarhodes/Clothing.git"
+    "url": "git+https://github.com/cjarhodes/OOTD.git"
   },
   "type": "module",
   "scripts": {
