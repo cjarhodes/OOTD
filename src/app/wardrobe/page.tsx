@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
 import { ItemFields, type Draft } from "@/components/ItemFields";
 import { NextBuys } from "@/components/NextBuys";
+import { QuickAdd } from "@/components/QuickAdd";
 import { TypeList } from "@/components/TypeList";
 import { wishToItem } from "@/lib/wishlist";
 import { isOwned, SLOT_LABEL, fitOf } from "@/lib/kinds";
@@ -180,21 +181,23 @@ export default function WardrobePage() {
   const [filter, setFilter] = useState<Slot | "all" | "archived" | "wanted">("all");
   const [editing, setEditing] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
+  const [quick, setQuick] = useState(false);
   const [added, setAdded] = useState<number | null>(null);
   const personal = mode === "personal";
 
-  // /wardrobe?add=list opens Type a list. Read it once the wardrobe has loaded, then take it out of the address.
+  // /wardrobe?add=list opens Type a list, and ?add=quick opens Quick add. Read it once the wardrobe has loaded, then take it out of the address.
   const router = useRouter();
   const openedFromLink = useRef(false);
   useEffect(() => {
     if (!ready || openedFromLink.current) return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("add") !== "list") return;
+    const add = params.get("add");
+    if (add !== "list" && add !== "quick") return;
     openedFromLink.current = true;
     params.delete("add");
     const rest = params.toString();
     router.replace(rest ? `/wardrobe?${rest}` : "/wardrobe", { scroll: false });
-    if (personal) setTyping(true);
+    if (personal) (add === "quick" ? setQuick : setTyping)(true);
   }, [ready, personal, router]);
 
   const counts = useMemo(() => {
@@ -261,6 +264,11 @@ export default function WardrobePage() {
             {personal && items.some((i) => i.status === "archived") && (
               <button type="button" className="chip" aria-pressed={filter === "archived"} onClick={() => setFilter("archived")}>
                 Archived
+              </button>
+            )}
+            {personal && (
+              <button type="button" className="chip chip-add" onClick={() => setQuick(true)}>
+                Quick add
               </button>
             )}
             {personal && (
@@ -357,6 +365,14 @@ export default function WardrobePage() {
             setTyping(false);
             setFilter("all");
             setAdded(count);
+          }}
+        />
+      )}
+      {quick && (
+        <QuickAdd
+          onClose={(count) => {
+            setQuick(false);
+            if (count > 0) setFilter("all");
           }}
         />
       )}

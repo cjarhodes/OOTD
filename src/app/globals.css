@@ -1783,3 +1783,37 @@ li[data-done] .first-run-tick {
   font-size: 14px;
   color: var(--ink-2);
 }
+
+/* ---------- quick add ---------- */
+
+.quick-add {
+  align-content: start;
+}
+.quick-offer {
+  justify-self: start;
+  height: auto;
+  min-height: 44px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  text-align: left;
+}
+.quick-colours .colour-option {
+  min-height: 56px;
+}
+.quick-colours .colour-option .colour-dot {
+  width: 34px;
+  height: 34px;
+}
+.quick-colours .colour-option:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.quick-colour-text {
+  display: grid;
+  gap: 2px;
+}
+.quick-have {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--label);
+}
