@@ -19,6 +19,8 @@ The loop is finished when every target in section 5 is met and the backlog in se
 
 Each turn does exactly one task.
 
+> **One-off run (started 10 November 2026).** The owner asked for the backlog to be run once, straight through, not on a schedule. For this run: commit each task directly to `loop/wardrobe-entry` (one commit per task, pushed as soon as `npm run check` passes) instead of a branch and pull request per task; skip steps 3, 9 and 10 and the phase pull requests. Pull request #26 carries the whole run into `main`. Section 8 (maintenance turns) is not part of this run.
+
 1. **Sync.** `git fetch`, check out `loop/wardrobe-entry` (create it from `main` if it doesn't exist) and pull.
 2. **Read** `docs/LOOP-LEDGER.md`. Pick the first task in section 7 that is not marked done or blocked, and whose "needs" are all done.
 3. **Branch** from `loop/wardrobe-entry` as `loop/<task-id>-<short-name>`, for example `loop/t1-garment-words`.
