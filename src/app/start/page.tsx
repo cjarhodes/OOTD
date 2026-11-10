@@ -23,7 +23,7 @@ import {
   type DeckAction,
   type DeckState,
 } from "@/lib/deck";
-import { browserStorage, choicesAfter, loadChoices, saveChoices, skippedCount, storeKey, withoutSkipped, type Choices } from "@/lib/deck-store";
+import { browserStorage, choicesAfter, hintSeen, loadChoices, markHintSeen, saveChoices, skippedCount, storeKey, withoutSkipped, type Choices } from "@/lib/deck-store";
 import { colourOptions } from "@/lib/quickadd";
 import { STARTER_DECK, starterItem, type StarterCard } from "@/lib/starter";
 import { choiceOf, leanOf, strengthOf, velocityOf, type Sample } from "@/lib/swipe";
@@ -79,6 +79,9 @@ export default function StartPage() {
     setSkipped(skippedCount(saved));
     setDeckNow(initialDeck(cardsToShow(STARTER_DECK, items, saved), items));
   }, [ready, dk, items, storageKey]);
+  // The one-time hint: the first card ever shown leans right then left, once. With reduced motion a line of text says it instead.
+  const [hintText, setHintText] = useState(false);
+  const hintTried = useRef(false);
   /** Bring back the cards marked "not mine". */
   const revisit = () => {
     const left = withoutSkipped(stored.current);
@@ -199,6 +202,25 @@ export default function StartPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- remember only reads refs and the storage key
   }, [removeItem, removeWish, storageKey]);
 
+  const hintReady = dk !== null && !isDone(dk);
+  useEffect(() => {
+    if (!hintReady || hintTried.current) return;
+    const timer = window.setTimeout(() => {
+      const el = cardEl.current;
+      const cur = dkRef.current;
+      // Not while a finger is on the card, and not for anyone who has already swiped.
+      if (!el || !cur || start.current) return;
+      hintTried.current = true;
+      const storage = browserStorage();
+      if (hintSeen(storage)) return;
+      markHintSeen(storage);
+      if (cur.history.length || Object.keys(stored.current).length) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setHintText(true);
+      else el.dataset.hint = "true";
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [hintReady]);
+
   // Arrow keys: left, up, right; Backspace undoes.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -221,6 +243,7 @@ export default function StartPage() {
     samples.current = [{ t: performance.now(), x: e.clientX, y: e.clientY }];
     dragAt.current = { x: 0, y: 0 };
     e.currentTarget.dataset.dragging = "true";
+    delete e.currentTarget.dataset.hint;
     if (stackEl.current) stackEl.current.dataset.dragging = "true";
     e.currentTarget.setPointerCapture(e.pointerId);
   };
@@ -247,7 +270,7 @@ export default function StartPage() {
         <h1 className="display page-title">Swipe your wardrobe</h1>
       </div>
 
-      {!done && (
+      {!done && hintText && (
         <p className="swipe-help">
           <span>Right: I have it</span>
           <span>Up: want it</span>
@@ -301,6 +324,9 @@ export default function StartPage() {
               onPointerMove={onMove}
               onPointerUp={onUp}
               onPointerCancel={stopDrag}
+              onAnimationEnd={(e) => {
+                if (e.target === e.currentTarget) delete e.currentTarget.dataset.hint;
+              }}
               aria-roledescription="card"
               aria-label={`${preview.name}. ${card.note}`}
             >

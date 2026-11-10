@@ -31,7 +31,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | G1 | done | loop/wardrobe-entry | 2026-11-10 |
 | G2 | done | loop/wardrobe-entry | 2026-11-10 |
 | G3 | done | loop/wardrobe-entry | 2026-11-10 |
-| G4 | todo | | |
+| G4 | done | loop/wardrobe-entry | 2026-11-10 |
 | G5 | todo | | |
 | D1 | todo | | |
 | D2 | todo | | |
@@ -173,11 +173,18 @@ What changed: the card behind rises as the top card is dragged. `--strength` is 
 Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0, renders per pointermove 0, tests 275
 For the next agent: the G2 entry says `--strength` is on the card; it moved to the stack here. The overshoot curve also applies to the rotation on spring-back, so the card may tilt slightly past level for a moment, which was intended as part of the feel. Not run in a browser.
 
+### G4 · 2026-11-10
+What changed: the three-item help line is replaced by a one-time hint. 600 ms after the first card is on screen, the card leans 12 px right then 12 px left and settles (900 ms CSS keyframes on `[data-hint]`), with the "I have it" stamp showing at the right lean and "Not mine" at the left. It plays once per device: `hintSeen` and `markHintSeen` in `src/lib/deck-store.ts` keep `ootd.swipe.v1.hint` beside the deck choices, through the same guarded storage (missing, odd or throwing storage means "not seen", never an error). 2 new tests with the fake storage object. The hint never fires a decision (it only sets an attribute on the card), is skipped when a finger is on the card at the 600 ms mark, and is cancelled if the person touches the card while it plays (pointer down removes the attribute). With reduced motion the keyframes are off and the old help line ("Right: I have it, Up: want it, Left: not mine") is shown instead, once; that line was hidden under 820 px before and now shows on phones too, because it is only rendered for that one visit.
+Judgement call: the plan says "the first card ever shown", so someone who already has swiped cards (stored choices, or a decision made within the 600 ms) is marked as having seen the hint and doesn't get it.
+Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0, renders per pointermove 0, tests 277
+For the next agent: with storage blocked the hint can't be remembered and plays on each visit. If the person touches the card at the 600 ms mark the hint is skipped for that visit and tried again next time (it is not marked seen). The one-visit help line under reduced motion adds a line above the card on a phone; G5 allows for it. Not run in a browser.
+
 ## For Alex to try on his phone
 - S4 (swipe feel): tap the three buttons quickly, ten times in a row, and swipe a card by hand. Look for: the next card already underneath as the old one flies off, no choice lost, the exit carrying on from where your finger let go, and no flicker or jump when the next card takes over. With Reduce Motion on, cards should simply disappear.
 - G1 (a flick counts): flick a card sideways or up with a short, quick movement of the thumb. Look for: it goes even though your finger travelled only a little; a slow short drag still springs back; a fast flick back towards the middle cancels instead of choosing.
 - G2 (no renders while dragging): drag a card slowly in a circle and up and down. Look for: smooth following with no stutter, the right stamp fading in as you pass about 40 px (Have on the right, Not mine on the left, Want up), springing back when you let go short, and tapping a colour chip never starting a drag.
 - G3 (next card rises): drag the top card slowly sideways and watch the one behind it. Look for: it grows and brightens as you near the line, settles back if you let go short (the top card springs back with a small bounce), and the card that was behind is the right size the moment the old one flies off. Check in light and dark themes.
+- G4 (show how, once): clear this site's data (or use a private tab), open Swipe your wardrobe and wait. Look for: after about half a second the first card leans right with the I have it stamp, then left with Not mine, then settles, and it never plays again on later visits. With Reduce Motion on you should see the text line instead.
 
 ## Questions for Alex
 - T3: two existing assertions in `src/lib/typed.test.ts` had to change from White to the type's usual colour (see the T3 log entry). OK to keep?

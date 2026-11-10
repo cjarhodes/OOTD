@@ -89,3 +89,25 @@ export function choicesAfter(
   if (effects.saveChoice) next = withChoice(next, effects.saveChoice.cardId, effects.saveChoice.choice);
   return next;
 }
+
+/** Whether the one-time "how to swipe" hint has played. It is per device, not per account: the lesson is about the phone in your hand. */
+export const HINT_KEY = "ootd.swipe.v1.hint";
+
+export function hintSeen(storage: StorageLike | null): boolean {
+  if (!storage) return false;
+  try {
+    return storage.getItem(HINT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Remember the hint has played. Failing to write is fine: it may play again next time. */
+export function markHintSeen(storage: StorageLike | null): void {
+  if (!storage) return;
+  try {
+    storage.setItem(HINT_KEY, "1");
+  } catch {
+    // Storage full or blocked.
+  }
+}

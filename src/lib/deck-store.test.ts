@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  HINT_KEY,
   choicesAfter,
+  hintSeen,
+  markHintSeen,
   loadChoices,
   parseChoices,
   saveChoices,
@@ -86,5 +89,25 @@ describe("deck store", () => {
     saveChoices(s, storeKey("a"), { tee: "have" });
     expect(loadChoices(s, storeKey("b"))).toEqual({});
     expect(loadChoices(s, storeKey(null))).toEqual({});
+  });
+
+  it("remembers that the hint has played, on this device only", () => {
+    const s = fake();
+    expect(hintSeen(s)).toBe(false);
+    markHintSeen(s);
+    expect(hintSeen(s)).toBe(true);
+    // Not tied to an account, and kept apart from the card choices.
+    expect(s.data[HINT_KEY]).toBe("1");
+    expect(loadChoices(s, storeKey("a"))).toEqual({});
+    saveChoices(s, storeKey("a"), { tee: "have" });
+    expect(hintSeen(s)).toBe(true);
+  });
+
+  it("treats a missing, odd or blocked store as hint not seen, without throwing", () => {
+    expect(hintSeen(null)).toBe(false);
+    expect(hintSeen(fake({ [HINT_KEY]: "yes" }))).toBe(false);
+    expect(hintSeen(broken)).toBe(false);
+    expect(() => markHintSeen(null)).not.toThrow();
+    expect(() => markHintSeen(broken)).not.toThrow();
   });
 });

@@ -1406,9 +1406,6 @@ li[data-done] .first-run-tick {
   .swipe-name {
     font-size: 23px;
   }
-  .swipe-help {
-    display: none;
-  }
 }
 .swipe-name {
   font-family: var(--display);
@@ -1632,6 +1629,50 @@ li[data-done] .first-run-tick {
 .swipe-leaving .swipe-stamp {
   opacity: 1;
 }
+/* The one-time hint: lean 12 px right, then left, with each stamp showing as it goes. */
+.swipe-card[data-hint] {
+  animation: swipe-hint 900ms ease-in-out 1 both;
+}
+.swipe-card[data-hint] .stamp-have {
+  animation: swipe-hint-have 900ms ease-in-out 1 both;
+}
+.swipe-card[data-hint] .stamp-skip {
+  animation: swipe-hint-skip 900ms ease-in-out 1 both;
+}
+@keyframes swipe-hint {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  28% {
+    transform: translateX(12px) rotate(0.72deg);
+  }
+  72% {
+    transform: translateX(-12px) rotate(-0.72deg);
+  }
+}
+@keyframes swipe-hint-have {
+  0%,
+  10%,
+  45%,
+  100% {
+    opacity: 0;
+  }
+  28% {
+    opacity: 0.7;
+  }
+}
+@keyframes swipe-hint-skip {
+  0%,
+  55%,
+  90%,
+  100% {
+    opacity: 0;
+  }
+  72% {
+    opacity: 0.7;
+  }
+}
 .stamp-have {
   left: 18px;
   color: var(--ink);
@@ -1711,6 +1752,10 @@ li[data-done] .first-run-tick {
   }
   .swipe-leaving {
     display: none;
+  }
+  .swipe-card[data-hint],
+  .swipe-card[data-hint] .swipe-stamp {
+    animation: none;
   }
 }
 
