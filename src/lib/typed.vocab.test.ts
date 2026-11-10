@@ -430,3 +430,69 @@ describe("pattern and cut (T5)", () => {
     expect(parseList("white, black and grey striped tees").map((p) => p.pattern)).toEqual(["stripe", "stripe", "stripe"]);
   });
 });
+
+describe("things OOTD doesn't dress with (table 4)", () => {
+  const ACCESSORIES = "OOTD doesn't plan accessories yet";
+  const SUIT = "Add the jacket and trousers as two pieces";
+
+  function expectUnsupported(words: string[], reason: string) {
+    for (const w of words) {
+      expect(parsePiece(w), w).toMatchObject({ kind: null, unsupported: reason });
+      expect(parsePiece(`black ${w}`), `black ${w}`).toMatchObject({ kind: null, unsupported: reason, color: "Black", colorGuessed: false });
+    }
+  }
+
+  it("accessories", () => {
+    expectUnsupported(
+      ["belt", "hat", "cap", "beanie", "scarf", "gloves", "tie", "bow tie", "watch", "bag", "backpack", "tote", "sunglasses", "socks", "pocket square", "wallet", "ring", "necklace", "bracelet", "jewellery"],
+      ACCESSORIES,
+    );
+    expect(parsePiece("Rolex")).toMatchObject({ kind: null, unsupported: ACCESSORIES });
+    expect(parsePiece("orange beanie")).toMatchObject({ kind: null, unsupported: ACCESSORIES, color: "Rust" });
+    expect(parsePiece("grey wool scarf")).toMatchObject({ kind: null, unsupported: ACCESSORIES, color: "Grey" });
+  });
+
+  it("whole suits are unsupported, but their jacket and trousers are not", () => {
+    expectUnsupported(["suit", "tuxedo", "tux"], SUIT);
+    expect(parsePiece("navy suit")).toMatchObject({ kind: null, unsupported: SUIT, color: "Navy" });
+    expect(parsePiece("suit jacket")).toMatchObject({ kind: "blazer" });
+    expect(parsePiece("suit trousers")).toMatchObject({ kind: "trousers" });
+    expect(parsePiece("charcoal suit trousers")).toMatchObject({ kind: "trousers", color: "Charcoal" });
+    expect(parsePiece("navy suit jacket")?.unsupported).toBeUndefined();
+  });
+
+  it("swimwear, nightwear, underwear and sports kit", () => {
+    expectUnsupported(["swim trunks", "swim shorts", "boardshorts", "swimsuit", "wetsuit"], "OOTD doesn't plan swimwear");
+    expectUnsupported(["pyjamas", "pajamas", "robe", "dressing gown", "slippers"], "OOTD doesn't plan nightwear");
+    expectUnsupported(["underwear", "boxers", "briefs", "undershirt"], "OOTD doesn't plan underwear");
+    expectUnsupported(["bib shorts", "cycling jersey", "running shorts", "running tights", "gym kit", "football shirt"], "OOTD doesn't plan sports kit");
+    expect(parsePiece("swim shorts")?.kind).toBeNull();
+  });
+
+  it("does not mistake garments that share a word", () => {
+    expectKinds([
+      ["gym shorts", "shorts"],
+      ["cap toe oxfords", "loafers"],
+      ["tie dye tee", "tee"],
+      ["navy belted coat", "overcoat"],
+      ["sock sneakers", "sneakers"],
+      ["ring spun tee", "tee"],
+    ]);
+    expect(parsePiece("gym shorts")?.unsupported).toBeUndefined();
+  });
+
+  it("counts an unsupported thing as one row, not several", () => {
+    expect(parseList("black socks x6")).toEqual([expect.objectContaining({ name: "Black socks", kind: null, unsupported: ACCESSORIES })]);
+    expect(parseList("3 black belts")).toHaveLength(1);
+    expect(parseList("white and black socks")).toHaveLength(1);
+  });
+
+  it("is still one row per line, and a colour can join an unsupported thing", () => {
+    expect(parseList("navy crewneck, mystery thing, black belt").map((p) => [p.kind, Boolean(p.unsupported)])).toEqual([
+      ["crewneck", false],
+      [null, false],
+      [null, true],
+    ]);
+    expect(parseList("belt, brown").map((p) => [p.name, Boolean(p.unsupported)])).toEqual([["Brown belt", true]]);
+  });
+});

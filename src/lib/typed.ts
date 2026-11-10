@@ -18,6 +18,8 @@ export interface TypedPiece {
   pattern?: Pattern;
   /** Cut, when the text says so and the type has that cut ("wide" is for trousers only). */
   fit?: Fit;
+  /** A short, plain reason OOTD doesn't dress with this (a belt, a suit). Such a piece has `kind: null`. */
+  unsupported?: string;
   /** The colour wasn't in the text: it's the model's usual colour for the type. */
   colorGuessed: boolean;
   /** A colour was typed that has no swatch (purple, lilac): the person must pick one. */
@@ -215,6 +217,28 @@ function cleanLine(line: string): string {
     .trim();
 }
 
+const ACCESSORIES = "OOTD doesn't plan accessories yet";
+
+/**
+ * Things OOTD doesn't dress with. Checked before any garment word, so "swim
+ * shorts" is swimwear, not shorts. A bare "suit" is here, but "suit jacket" and
+ * "suit trousers" are not: they are a blazer and trousers.
+ */
+const UNSUPPORTED: [RegExp, string][] = [
+  [/\bswim(?:ming)? (?:trunks|shorts)\b|\bboard ?shorts\b|\bswimsuits?\b|\bwetsuits?\b|\btrunks\b/, "OOTD doesn't plan swimwear"],
+  [/\bpy?jamas?\b|\bpajamas?\b|\bpjs\b|\b(?:bath)?robes?\b|\bdressing gowns?\b|\bslippers?\b/, "OOTD doesn't plan nightwear"],
+  [/\bunderwear\b|\bboxers?\b|\bbriefs\b|\bundershirts?\b|\bundies\b/, "OOTD doesn't plan underwear"],
+  [
+    /\bbib (?:shorts|tights)\b|\bcycling (?:jerseys?|shorts|kit)\b|\brunning (?:shorts|tights)\b|\bgym kit\b|\bsports? kit\b|\b(?:football|soccer|basketball|baseball|hockey) (?:shirts?|jerseys?|kit)\b/,
+    "OOTD doesn't plan sports kit",
+  ],
+  [/\btuxedos?\b|\btux\b|\bsuits?\b(?!\s+(?:jackets?|trousers?|pants|coats?|vests?|waistcoats?|shirts?))/, "Add the jacket and trousers as two pieces"],
+  [
+    /\bbelts?\b|\bhats?\b|\bcaps?\b(?![- ]?(?:toe|sleeve))|\bbeanies?\b|\bscarf\b|\bscarves\b|\bgloves?\b|\bties\b|\btie\b(?![- ]?(?:dye|front|neck))|\bbow ties?\b|\bwatch(?:es)?\b|\bbags?\b|\bbackpacks?\b|\btotes?\b|\bsunglasses\b|\bsocks?\b(?!\s+(?:sneakers?|runners?|trainers?|boots?|shoes?))|\bpocket squares?\b|\bwallets?\b|\brings?\b(?![- ]?spun)|\bnecklaces?\b|\bbracelets?\b|\bjewell?ery\b|\bearrings?\b|\brolex\b|\bomega\b|\bseiko\b|\bcasio\b|\bg-shock\b/,
+    ACCESSORIES,
+  ],
+];
+
 /** Patterns by the words people use. "3 stripes" is a logo, not a pattern. */
 const PATTERN_WORDS: [RegExp, Pattern][] = [
   [/\b(?:striped?|stripes|breton)\b/, "stripe"],
@@ -255,6 +279,18 @@ function parsePieceText(line: string): TypedPiece | null {
   const name = cleanLine(line).slice(0, 80);
   if (!name) return null;
   const text = name.toLowerCase();
+  const reason = UNSUPPORTED.find(([re]) => re.test(text))?.[1];
+  if (reason) {
+    const typed = colourIn(text);
+    return {
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      kind: null,
+      unsupported: reason,
+      color: typed?.color ?? "Grey",
+      colorGuessed: !typed?.color,
+      colorMissing: typed !== null && typed.color === null,
+    };
+  }
   // Garment words first, brands second, except for the models that contain a garment word.
   const model = MODEL_HINTS.find((h) => h.re.test(text));
   const strong = model ?? HINTS.find((h) => h.re.test(text));
@@ -394,10 +430,10 @@ function analyse(raw: string): Seg | null {
   };
 }
 
-/** The segment names a garment OOTD has a type for. */
+/** The segment names a garment OOTD has a type for, or a thing it recognises and won't plan. */
 function isThing(seg: Seg): boolean {
   const p = parsePieceText(seg.text);
-  return p !== null && p.kind !== null;
+  return p !== null && (p.kind !== null || Boolean(p.unsupported));
 }
 
 function hasColour(seg: Seg): boolean {
@@ -441,7 +477,7 @@ function expand(seg: Seg): TypedPiece[] {
   const make = (colour: string | null) => parsePieceText(colour ? `${colour} ${body}` : body);
   const first = make(colours[0] ?? null);
   if (!first) return [];
-  // A thing OOTD can't type (or won't plan) is one row, whatever the count or the colours.
+  // A thing OOTD can't type, or won't plan, is one row, whatever the count or the colours.
   if (first.kind === null) return [first];
   const many = colours.length > 1 || seg.count > 1;
   const out: TypedPiece[] = [];

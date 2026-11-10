@@ -7,7 +7,7 @@ import { usualColour } from "./starter";
  * Floors: how many corpus lines the parser must get right. They are set to
  * what the parser achieves today and only ever go UP; a floor never goes down.
  */
-const FLOOR_TYPES = 125;
+const FLOOR_TYPES = 132;
 const FLOOR_COLOURS = 92;
 const FLOOR_PATTERNS = 5;
 const FLOOR_FITS = 3;

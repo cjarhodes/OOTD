@@ -16,7 +16,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | T3 | done | loop/wardrobe-entry | 2026-11-10 |
 | T4 | done | loop/wardrobe-entry | 2026-11-10 |
 | T5 | done | loop/wardrobe-entry | 2026-11-10 |
-| T6 | todo | | |
+| T6 | done | loop/wardrobe-entry | 2026-11-10 |
 | U1 | todo | | |
 | U2 | todo | | |
 | U3 | todo | | |
@@ -97,6 +97,11 @@ What changed: `TypedPiece` has optional `pattern` (stripe, check, print) and `fi
 Corpus: I added `pattern: "check"` to "green flannel shirt", which the plan's flannel rule requires; no other line changed.
 Scorecard: types 125/132, colours 92/92, patterns 5/5, fits 3/3, white guesses 0/132, tests 180. Floors raised to types 125, colours 92, patterns 5, fits 3.
 For the next agent: the 7 type misses left are the unsupported lines (T6). Fit words are read from the whole text, so "wide" in a brand or model name would count on trousers; none in the corpus does. `TypeList.tsx` ignores `pattern` and `fit` on rows but they reach the saved piece through `typedItem` because it spreads the row.
+
+### T6 · 2026-11-10
+What changed: `TypedPiece` has `unsupported?: string`. Everything in Appendix B table 4 gets `kind: null` and one plain reason: "OOTD doesn't plan accessories yet" (belt, hat, cap, beanie, scarf, gloves, tie, bow tie, watch, bag, backpack, tote, sunglasses, socks, pocket square, wallet, ring, necklace, bracelet, jewellery, earrings, and the watch brands Rolex, Omega, Seiko, Casio, G-Shock), "Add the jacket and trousers as two pieces" (suit, tuxedo, tux), "OOTD doesn't plan swimwear", "OOTD doesn't plan nightwear", "OOTD doesn't plan underwear" and "OOTD doesn't plan sports kit". The list is checked before any garment word, so "swim shorts" is swimwear. "Suit jacket" is still a blazer and "suit trousers" are trousers; only a bare "suit" is unsupported. Guards for look-alikes: "cap toe", "cap sleeve", "tie dye", "ring spun", "sock sneakers" and "belted coat" are not unsupported. An unsupported piece keeps a typed colour (else Grey, guessed) and has no pattern, fit or material. A count or colour list on an unsupported thing is one row: "black socks x6" is one "Black socks" row, and "white and black socks" is one row. `isThing` (T4's attach rule) now counts unsupported pieces, so "belt, brown" is one "Brown belt" row. "Rolex" is a watch. Tests are in `src/lib/typed.vocab.test.ts`. The corpus test already counted an expected-unsupported line as right only when the parser marks it unsupported; nothing in it changed.
+Scorecard: types 132/132, colours 92/92, patterns 5/5, fits 3/3, white guesses 0/132, tests 186. Floors raised to types 132.
+For the next agent: the corpus is only 132 lines and was written before the parser work, so 132/132 says the vocabulary is covered, not that the 90% target at 200 or more lines is met; the maintenance turns (section 8) are how it grows, and the first honest test of the parser is new lines written without looking at it. Not handled: bare "jersey", "slippers" are nightwear per the table, "trunks" alone is swimwear, "ring" and "cap" are unsupported anywhere in the text except the listed look-alikes, so an unusual model name containing them would be marked unsupported. `TypeList.tsx` has not been touched: an unsupported row has `kind: null` and shows "pick a type" and blocks the Add button, exactly as an unknown line did, until U1 shows the reason and stops it blocking. U1 can read `row.unsupported`. `typedItem` is never called for such a row.
 
 ## For Alex to try on his phone
 
