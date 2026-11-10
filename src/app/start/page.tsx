@@ -6,7 +6,9 @@ import { GarmentTile } from "@/components/art/Garment";
 import { AddedPieces } from "@/components/AddedPieces";
 import { ColourSheet } from "@/components/ColourSheet";
 import { FixPiece } from "@/components/FixPiece";
+import { LiveRegion, useAnnouncer } from "@/components/LiveRegion";
 import { NextBuys } from "@/components/NextBuys";
+import { recolouredMessage, removedMessage, swipeMessage, UNDONE, withEnding } from "@/lib/announce";
 import { SLOT_LABEL, KINDS } from "@/lib/kinds";
 import { PALETTE, type ColorName } from "@/lib/palette";
 import {
@@ -81,6 +83,7 @@ export default function StartPage() {
   };
   // Each card's choice is remembered on this device, per account, so the deck resumes where it stopped.
   const { user } = useAuth();
+  const { text: spoken, say } = useAnnouncer();
   const storageKey = storeKey(user?.id);
   const stored = useRef<Choices>({});
   const [choicesNow, setChoicesNow] = useState<Choices>({});
@@ -200,7 +203,10 @@ export default function StartPage() {
   const fixed = fixing ? (addedPieces(history).find((a) => a.piece.id === fixing.id) ?? null) : null;
   const justAdded = addedPieces(history);
   const justWished = addedWishes(history);
-  const dropWish = (a: Added) => void apply(step({ type: "removeWish", cardId: a.cardId, id: a.piece.id }));
+  const dropWish = (a: Added) => {
+    say(removedMessage(a.piece.name));
+    void apply(step({ type: "removeWish", cardId: a.cardId, id: a.piece.id }));
+  };
   // Once the wardrobe has a top, trousers and shoes, the counts line says so. Not for the sample wardrobe, which isn't yours.
   const canDress = mode === "personal" && missingEssentials(items).length === 0;
   const eyebrow = done ? "Quick start · done" : end ? `${end.name} · done` : inRound ? `${inRound.name} · ${inRound.at} of ${inRound.total}` : "…";
@@ -219,6 +225,17 @@ export default function StartPage() {
       setDeckNow(state);
       stopDrag();
       remember(choicesAfter(stored.current, effects));
+      const after = roundEnd(state);
+      say(
+        withEnding(
+          swipeMessage(
+            choice,
+            effects.addPieces.map((i) => i.name),
+            effects.addWishes.map((i) => i.name),
+          ),
+          isDone(state) ? "All swiped" : after ? `${after.name} done` : null,
+        ),
+      );
       if (effects.addPieces.length) void addPieces(effects.addPieces.map((item) => ({ item })));
       for (const item of effects.addWishes) addWish(wishFromItem(item));
       // With reduced motion the card just goes; there is nothing to fly away.
@@ -229,7 +246,7 @@ export default function StartPage() {
       window.setTimeout(() => dropLeaving(key), LEAVE_MS);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- remember only reads refs and the storage key
-    [mode, setMode, addPieces, addWish, items, storageKey, dropLeaving, stopDrag],
+    [mode, setMode, addPieces, addWish, items, storageKey, dropLeaving, stopDrag, say],
   );
 
   const undo = useCallback(async () => {
@@ -238,10 +255,11 @@ export default function StartPage() {
     const { state, effects } = deckReducer(cur, { type: "undo" });
     setDeckNow(state);
     remember(choicesAfter(stored.current, effects));
+    say(UNDONE);
     for (const id of effects.removeItemIds) await removeItem(id);
     for (const id of effects.removeWishIds) removeWish(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- remember only reads refs and the storage key
-  }, [removeItem, removeWish, storageKey]);
+  }, [removeItem, removeWish, storageKey, say]);
 
   const hintReady = dk !== null && !isDone(dk);
   useEffect(() => {
@@ -311,6 +329,8 @@ export default function StartPage() {
         <h1 className="display page-title">Swipe your wardrobe</h1>
       </div>
 
+      <LiveRegion text={spoken} />
+
       {!done && hintText && (
         <p className="swipe-help">
           <span>Right: I have it</span>
@@ -368,6 +388,7 @@ export default function StartPage() {
               onAnimationEnd={(e) => {
                 if (e.target === e.currentTarget) delete e.currentTarget.dataset.hint;
               }}
+              role="group"
               aria-roledescription="card"
               aria-label={`${preview.name}. ${card.note}`}
             >
@@ -453,7 +474,7 @@ export default function StartPage() {
           {/* Replaces the card and the buttons, and is shorter than both. */}
           <div className="plinth swipe-round-card">
             <p className="display swipe-round-title">{end.name} done</p>
-            <p className="swipe-round-note" role="status">
+            <p className="swipe-round-note">
               {end.pieces.length
                 ? `${end.pieces.length} ${end.pieces.length === 1 ? "piece" : "pieces"} added`
                 : "Nothing added in this round"}
@@ -488,10 +509,12 @@ export default function StartPage() {
           piece={fixed.piece}
           hide={ownedColours(STARTER_DECK.find((c) => c.id === fixed.cardId)!, items).filter((c) => c !== fixed.piece.color)}
           onColour={(to) => {
+            say(recolouredMessage(fixed.piece.name, to));
             void apply(step({ type: "recolour", cardId: fixed.cardId, from: fixed.piece.color, to, ownedIds: items.map((i) => i.id) }));
             setFixing(null);
           }}
           onRemove={() => {
+            say(removedMessage(fixed.piece.name));
             void apply(step({ type: "removePiece", cardId: fixed.cardId, id: fixed.piece.id }));
             setFixing(null);
           }}

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
 import { ColourSheet } from "@/components/ColourSheet";
 import { KindSheet, kindName } from "@/components/KindSheet";
+import { LiveRegion, useAnnouncer } from "@/components/LiveRegion";
+import { addedMessage, removedMessage } from "@/lib/announce";
 import { PALETTE } from "@/lib/palette";
 import { typedItem } from "@/lib/typed";
 import { addLabel, afterAdding, leftNote, readyRows, rowsOf, withoutRow, type Fix, type Fixes } from "@/lib/typelist";
@@ -32,6 +34,7 @@ export function TypeList({ onClose, onAdded }: { onClose: () => void; onAdded: (
   // Pieces added so far, and whether some lines were left behind for the person to sort out.
   const [addedCount, setAddedCount] = useState(0);
   const [tidied, setTidied] = useState(false);
+  const { text: spoken, say } = useAnnouncer();
 
   const rows = useMemo(() => rowsOf(text, fixes), [text, fixes]);
   const ready = readyRows(rows);
@@ -44,7 +47,8 @@ export function TypeList({ onClose, onAdded }: { onClose: () => void; onAdded: (
   async function add() {
     if (!ready.length || saving) return;
     setSaving(true);
-    await addPieces(ready.map((r) => ({ item: typedItem({ ...r, kind: r.kind! }, newId()) })));
+    const made = ready.map((r) => typedItem({ ...r, kind: r.kind! }, newId()));
+    await addPieces(made.map((item) => ({ item })));
     const left = afterAdding(text, fixes);
     const total = addedCount + ready.length;
     if (!left.text.trim()) {
@@ -56,10 +60,14 @@ export function TypeList({ onClose, onAdded }: { onClose: () => void; onAdded: (
     setFixes(left.fixes);
     setTidied(true);
     setSaving(false);
+    const stillLeft = leftNote(rowsOf(left.text, left.fixes));
+    say(stillLeft ? `${addedMessage(made.map((m) => m.name))}. ${stillLeft}` : addedMessage(made.map((m) => m.name)));
   }
 
   function remove(key: string) {
     const out = withoutRow(text, fixes, key);
+    const gone = rows.find((r) => r.key === key);
+    if (gone) say(removedMessage(gone.name));
     setText(out.text);
     setFixes(out.fixes);
   }
@@ -86,11 +94,8 @@ export function TypeList({ onClose, onAdded }: { onClose: () => void; onAdded: (
           Close
         </button>
       </div>
-      {note && (
-        <p className="typed-note" role="status">
-          {note}
-        </p>
-      )}
+      {note && <p className="typed-note">{note}</p>}
+      <LiveRegion text={spoken} />
       <label className="field" htmlFor="type-list-text">
         <span className="label">One piece per line, or separated by commas</span>
         <textarea

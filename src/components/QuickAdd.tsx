@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
 import { ColourSheet } from "@/components/ColourSheet";
+import { LiveRegion, useAnnouncer } from "@/components/LiveRegion";
+import { addedMessage } from "@/lib/announce";
 import { SLOT_LABEL } from "@/lib/kinds";
 import { PALETTE, type ColorName } from "@/lib/palette";
 import { addedNote, addLabel, colourOptions, defaultPick, filterCards, groupDeck, offerFor, ownedColours, togglePick } from "@/lib/quickadd";
@@ -35,6 +37,7 @@ export function QuickAdd({ onClose }: { onClose: (added: number) => void }) {
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [total, setTotal] = useState(0);
+  const { text: spoken, say } = useAnnouncer();
 
   const groups = useMemo(() => groupDeck(filterCards(STARTER_DECK, query)), [query]);
   const offer = useMemo(() => offerFor(query), [query]);
@@ -58,6 +61,7 @@ export function QuickAdd({ onClose }: { onClose: (added: number) => void }) {
       await addPieces(made.map((item) => ({ item })));
       setTotal((t) => t + made.length);
       setNote(addedNote(made.map((m) => m.name)));
+      say(addedMessage(made.map((m) => m.name)));
       return true;
     } catch {
       setFailed(true);
@@ -106,11 +110,8 @@ export function QuickAdd({ onClose }: { onClose: (added: number) => void }) {
         </button>
       </div>
 
-      {note && (
-        <p className="typed-note" role="status">
-          {note}
-        </p>
-      )}
+      {note && <p className="typed-note">{note}</p>}
+      <LiveRegion text={spoken} />
       {failed && (
         <p className="typed-note" role="alert">
           Couldn’t add that. Try again.
