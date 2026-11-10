@@ -45,7 +45,13 @@ export type DeckAction =
   | { type: "decide"; choice: Choice; ownedIds: readonly string[] }
   | { type: "undo" }
   /** Carry on past the end of a round. */
-  | { type: "continue" };
+  | { type: "continue" }
+  /** Fix a piece just added: swap it for the same card in another colour. */
+  | { type: "recolour"; cardId: string; from: ColorName; to: ColorName; ownedIds: readonly string[] }
+  /** Take back one piece just added, leaving the rest of its card's choice as it was. */
+  | { type: "removePiece"; cardId: string; id: string }
+  /** Take back one wish just added. */
+  | { type: "removeWish"; cardId: string; id: string };
 
 /** What the page should do to the wardrobe and wishlist after an action. */
 export interface DeckEffects {
@@ -89,6 +95,39 @@ export function cardsToShow(
     .sort((a, b) => a.round - b.round); // stable: deck order is kept inside a round
 }
 
+/**
+ * Changing the colour of a starter piece. A starter piece's id holds its
+ * colour (`st-<card>-<colour>`), so the piece can't just be edited: the old
+ * one goes and the card's piece in the new colour comes in, unless the
+ * wardrobe already has that colour, when the old one just goes.
+ */
+export function recolourPlan(
+  card: StarterCard,
+  from: ColorName,
+  to: ColorName,
+  ownedIds: readonly string[],
+): { remove: string[]; add: Item[] } {
+  if (from === to) return { remove: [], add: [] };
+  const next = starterItem(card, to);
+  return { remove: [starterItem(card, from).id], add: ownedIds.includes(next.id) ? [] : [next] };
+}
+
+/** A piece or wish added during this visit, and the card it came from. */
+export interface Added {
+  piece: Item;
+  cardId: string;
+}
+
+/** The pieces added this visit, in the order they were added; with a round, only that round's. */
+export function addedPieces(history: readonly Decision[], round?: Round): Added[] {
+  return history.filter((d) => round === undefined || d.card.round === round).flatMap((d) => d.pieces.map((piece) => ({ piece, cardId: d.card.id })));
+}
+
+/** The wishes added this visit. */
+export function addedWishes(history: readonly Decision[]): Added[] {
+  return history.flatMap((d) => d.wishes.map((piece) => ({ piece, cardId: d.card.id })));
+}
+
 /** `items` are what the wardrobe holds now: the colours of each card already owned are noted so they can't be added again. */
 export function initialDeck(deck: StarterCard[], items: readonly Pick<Item, "id">[] = []): DeckState {
   const owned: Record<string, ColorName[]> = {};
@@ -129,9 +168,9 @@ export interface RoundEnd {
   round: Round;
   name: string;
   /** The pieces added in that round during this visit. */
-  pieces: Item[];
+  pieces: Added[];
   /** Wishes added in that round during this visit. */
-  wishes: number;
+  wishes: Added[];
   /** The round that comes next and how many of its cards are left. */
   next: { round: Round; name: string; left: number };
 }
@@ -145,8 +184,8 @@ export function roundEnd(s: DeckState): RoundEnd | null {
   return {
     round: last.card.round,
     name: ROUND_NAME[last.card.round],
-    pieces: done.flatMap((d) => d.pieces),
-    wishes: done.reduce((n, d) => n + d.wishes.length, 0),
+    pieces: addedPieces(done),
+    wishes: addedWishes(done),
     next: { round: next.round, name: ROUND_NAME[next.round], left: s.deck.slice(s.index).filter((c) => c.round === next.round).length },
   };
 }
@@ -203,6 +242,8 @@ export function countsOf(history: Decision[]): { have: number; want: number } {
     want: history.reduce((n, d) => n + d.wishIds.length, 0),
   };
 }
+
+const withDecision = (s: DeckState, at: number, d: Decision): DeckState => ({ ...s, history: s.history.map((x, i) => (i === at ? d : x)) });
 
 export function deckReducer(state: DeckState, action: DeckAction): DeckResult {
   switch (action.type) {
@@ -262,5 +303,38 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckResult {
     }
     case "continue":
       return { state: { ...state, resumeAt: state.index }, effects: NONE };
+    case "recolour": {
+      const at = state.history.findIndex((d) => d.card.id === action.cardId);
+      const d = state.history[at];
+      if (!d || !d.pieces.some((p) => p.id === starterItem(d.card, action.from).id)) return { state, effects: NONE };
+      // The decision's own pieces are in the wardrobe already, so a colour it holds can't be added twice.
+      const plan = recolourPlan(d.card, action.from, action.to, [...action.ownedIds, ...d.pieces.map((p) => p.id)]);
+      if (!plan.remove.length) return { state, effects: NONE };
+      const pieces = d.pieces.flatMap((p) => (plan.remove.includes(p.id) ? plan.add : [p]));
+      return {
+        state: withDecision(state, at, { ...d, pieces, itemIds: pieces.map((p) => p.id), name: pieces[0]?.name ?? d.name }),
+        effects: { ...NONE, removeItemIds: plan.remove, addPieces: plan.add },
+      };
+    }
+    case "removePiece": {
+      const at = state.history.findIndex((d) => d.card.id === action.cardId);
+      const d = state.history[at];
+      if (!d || !d.itemIds.includes(action.id)) return { state, effects: NONE };
+      const pieces = d.pieces.filter((p) => p.id !== action.id);
+      return {
+        state: withDecision(state, at, { ...d, pieces, itemIds: pieces.map((p) => p.id) }),
+        effects: { ...NONE, removeItemIds: [action.id] },
+      };
+    }
+    case "removeWish": {
+      const at = state.history.findIndex((d) => d.card.id === action.cardId);
+      const d = state.history[at];
+      if (!d || !d.wishIds.includes(action.id)) return { state, effects: NONE };
+      const wishes = d.wishes.filter((p) => p.id !== action.id);
+      return {
+        state: withDecision(state, at, { ...d, wishes, wishIds: wishes.map((p) => p.id) }),
+        effects: { ...NONE, removeWishIds: [action.id] },
+      };
+    }
   }
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { makeItem } from "./kinds";
 import {
+  addedPieces,
+  addedWishes,
   atRoundEnd,
   cardsToShow,
   chosenColours,
@@ -11,6 +13,7 @@ import {
   isDone,
   ownedOnCard,
   placeOf,
+  recolourPlan,
   roundEnd,
   roundPlace,
   shownColour,
@@ -20,6 +23,7 @@ import {
   type DeckState,
 } from "./deck";
 import { KINDS } from "./kinds";
+import type { ColorName } from "./palette";
 import { missingEssentials } from "./essentials";
 import { ROUNDS, ROUND_NAME, STARTER_DECK, type StarterCard } from "./starter";
 
@@ -379,5 +383,83 @@ describe("rounds", () => {
   it("has no round end when the deck is finished or nothing was decided", () => {
     expect(atRoundEnd(initialDeck([tee]))).toBe(false);
     expect(atRoundEnd(run(initialDeck([tee]), have))).toBe(false);
+  });
+});
+
+describe("fixing what was just added", () => {
+  const oneTee = () => deckReducer(initialDeck([tee, jeans]), { type: "decide", choice: "have", ownedIds: [] });
+  const id = (c: string) => `st-tee-${c.toLowerCase()}`;
+  const [white, black, ecru] = tee.colors as [ColorName, ColorName, ColorName];
+
+  it("plans a colour change as removing the old starter piece and adding the card's piece in the new colour", () => {
+    const plan = recolourPlan(tee, white, black, [id(white)]);
+    expect(plan.remove).toEqual([id(white)]);
+    expect(plan.add.map((p) => [p.id, p.color, p.kind])).toEqual([[id(black), black, "tee"]]);
+    expect(plan.add[0]!.name).toBe("Black heavyweight tee");
+  });
+
+  it("only removes when the new colour is already in the wardrobe, and does nothing for the same colour", () => {
+    expect(recolourPlan(tee, white, black, [id(white), id(black)])).toEqual({ remove: [id(white)], add: [] });
+    expect(recolourPlan(tee, white, white, [id(white)])).toEqual({ remove: [], add: [] });
+  });
+
+  it("keeps the id in step with the colour for every card, in every colour it lists", () => {
+    for (const card of STARTER_DECK) {
+      for (const to of card.colors) {
+        const [add] = recolourPlan(card, card.colors[0]!, to, []).add;
+        if (to !== card.colors[0]) expect(add!.id).toBe(`st-${card.id}-${to.toLowerCase()}`);
+      }
+    }
+  });
+
+  it("recolours a piece just added and keeps undo consistent", () => {
+    const decided = oneTee();
+    const { state, effects } = deckReducer(decided.state, { type: "recolour", cardId: "tee", from: white, to: ecru, ownedIds: [id(white)] });
+    expect(effects.removeItemIds).toEqual([id(white)]);
+    expect(effects.addPieces.map((p) => p.id)).toEqual([id(ecru)]);
+    expect(state.history[0]!.itemIds).toEqual([id(ecru)]);
+    expect(state.history[0]!.pieces.map((p) => p.color)).toEqual([ecru]);
+    expect(state.history[0]!.name).toBe("Ecru heavyweight tee");
+    expect(countsOf(state.history)).toEqual({ have: 1, want: 0 });
+    // Undo now takes the new piece out, not the old one.
+    expect(deckReducer(state, { type: "undo" }).effects.removeItemIds).toEqual([id(ecru)]);
+  });
+
+  it("recolours one piece of several and leaves the others, in place", () => {
+    const s = run(initialDeck([tee]), { type: "toggleColour", colour: white }, { type: "toggleColour", colour: black }, { type: "decide", choice: "have", ownedIds: [] });
+    expect(s.history[0]!.itemIds).toEqual([id(white), id(black)]);
+    const r = deckReducer(s, { type: "recolour", cardId: "tee", from: white, to: ecru, ownedIds: [id(white), id(black)] });
+    expect(r.state.history[0]!.itemIds).toEqual([id(ecru), id(black)]);
+    // Into a colour the same decision already holds: the piece just goes.
+    const merged = deckReducer(s, { type: "recolour", cardId: "tee", from: white, to: black, ownedIds: [] });
+    expect(merged.effects.addPieces).toEqual([]);
+    expect(merged.state.history[0]!.itemIds).toEqual([id(black)]);
+  });
+
+  it("ignores a recolour of something that wasn't added", () => {
+    const decided = oneTee().state;
+    const r = deckReducer(decided, { type: "recolour", cardId: "tee", from: black, to: ecru, ownedIds: [] });
+    expect(r.state).toBe(decided);
+    expect(r.effects.removeItemIds).toEqual([]);
+    expect(deckReducer(decided, { type: "recolour", cardId: "nope", from: white, to: ecru, ownedIds: [] }).state).toBe(decided);
+  });
+
+  it("removes one piece just added, and undo then removes only what is left", () => {
+    const s = run(initialDeck([tee]), { type: "toggleColour", colour: white }, { type: "toggleColour", colour: black }, { type: "decide", choice: "have", ownedIds: [] });
+    const r = deckReducer(s, { type: "removePiece", cardId: "tee", id: id(white) });
+    expect(r.effects.removeItemIds).toEqual([id(white)]);
+    expect(r.state.history[0]!.itemIds).toEqual([id(black)]);
+    expect(addedPieces(r.state.history).map((a) => a.piece.id)).toEqual([id(black)]);
+    expect(deckReducer(r.state, { type: "undo" }).effects.removeItemIds).toEqual([id(black)]);
+    expect(deckReducer(r.state, { type: "removePiece", cardId: "tee", id: id(white) }).effects.removeItemIds).toEqual([]);
+  });
+
+  it("removes a wish just added", () => {
+    const s = run(initialDeck([tee]), { type: "decide", choice: "want", ownedIds: [] });
+    expect(addedWishes(s.history).map((a) => [a.cardId, a.piece.id])).toEqual([["tee", id(white)]]);
+    const r = deckReducer(s, { type: "removeWish", cardId: "tee", id: id(white) });
+    expect(r.effects.removeWishIds).toEqual([id(white)]);
+    expect(addedWishes(r.state.history)).toEqual([]);
+    expect(deckReducer(s, { type: "removePiece", cardId: "tee", id: id(white) }).effects.removeItemIds).toEqual([]);
   });
 });

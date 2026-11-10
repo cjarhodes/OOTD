@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { GarmentTile } from "@/components/art/Garment";
+import { AddedPieces } from "@/components/AddedPieces";
 import { ColourSheet } from "@/components/ColourSheet";
+import { FixPiece } from "@/components/FixPiece";
 import { NextBuys } from "@/components/NextBuys";
 import { SLOT_LABEL, KINDS } from "@/lib/kinds";
 import { PALETTE, type ColorName } from "@/lib/palette";
 import {
+  addedPieces,
+  addedWishes,
   atRoundEnd,
   cardsToShow,
   chosenColours,
@@ -24,12 +28,14 @@ import {
   tickedColours,
   visibleColours,
   type Choice,
+  type Added,
   type DeckAction,
+  type DeckEffects,
   type DeckState,
 } from "@/lib/deck";
 import { browserStorage, choicesAfter, hintSeen, loadChoices, markHintSeen, saveChoices, skippedCount, storeKey, withoutSkipped, type Choices } from "@/lib/deck-store";
 import { missingEssentials } from "@/lib/essentials";
-import { colourOptions } from "@/lib/quickadd";
+import { colourOptions, ownedColours } from "@/lib/quickadd";
 import { STARTER_DECK, starterItem, type StarterCard } from "@/lib/starter";
 import { choiceOf, leanOf, strengthOf, velocityOf, type Sample } from "@/lib/swipe";
 import { wishFromItem } from "@/lib/wishlist";
@@ -159,6 +165,15 @@ export default function StartPage() {
     return result.effects;
   };
   const toggle = (c: ColorName) => void step({ type: "toggleColour", colour: c });
+  // A piece just added that is open to fix: which card it came from, and its id.
+  const [fixing, setFixing] = useState<{ cardId: string; id: string } | null>(null);
+  /** Do to the wardrobe and wishlist what a fix asks for. */
+  const apply = async (fx: DeckEffects | null) => {
+    if (!fx) return;
+    if (fx.addPieces.length) await addPieces(fx.addPieces.map((item) => ({ item })));
+    for (const id of fx.removeItemIds) await removeItem(id);
+    for (const id of fx.removeWishIds) removeWish(id);
+  };
   const preview = useMemo(() => (card && color ? starterItem(card, color) : null), [card, color]);
   // The drawings are made once per card, so a tap on a colour chip redraws neither the live card nor the one behind.
   const nextCard = deck?.[index + 1] ?? null;
@@ -170,6 +185,10 @@ export default function StartPage() {
   const place = dk ? placeOf(dk, STARTER_DECK.length) : null;
   const inRound = dk ? roundPlace(dk) : null;
   const end = dk ? roundEnd(dk) : null;
+  const fixed = fixing ? (addedPieces(history).find((a) => a.piece.id === fixing.id) ?? null) : null;
+  const justAdded = addedPieces(history);
+  const justWished = addedWishes(history);
+  const dropWish = (a: Added) => void apply(step({ type: "removeWish", cardId: a.cardId, id: a.piece.id }));
   // Once the wardrobe has a top, trousers and shoes, the counts line says so. Not for the sample wardrobe, which isn't yours.
   const canDress = mode === "personal" && missingEssentials(items).length === 0;
   const eyebrow = done ? "Quick start · done" : end ? `${end.name} · done` : inRound ? `${inRound.name} · ${inRound.at} of ${inRound.total}` : "…";
@@ -234,7 +253,7 @@ export default function StartPage() {
   // Arrow keys: left, up, right; Backspace undoes.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (sheetOpen || e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return;
+      if (sheetOpen || fixing || e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return;
       if (e.key === "ArrowRight") decide("have");
       else if (e.key === "ArrowLeft") decide("skip");
       else if (e.key === "ArrowUp") {
@@ -244,7 +263,7 @@ export default function StartPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [decide, undo, sheetOpen]);
+  }, [decide, undo, sheetOpen, fixing]);
 
   const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     // Colours are tapped, never dragged: only the picture and text start a swipe.
@@ -426,16 +445,13 @@ export default function StartPage() {
               {end.pieces.length
                 ? `${end.pieces.length} ${end.pieces.length === 1 ? "piece" : "pieces"} added`
                 : "Nothing added in this round"}
-              {end.wishes ? ` · ${end.wishes} on your wishlist` : ""}
+              {end.wishes.length ? ` · ${end.wishes.length} on your wishlist` : ""}
             </p>
-            {end.pieces.length > 0 && (
-              <ul className="swipe-round-pieces" aria-label={`Added in ${end.name.toLowerCase()}`}>
-                {end.pieces.map((p) => (
-                  <li key={p.id} title={p.name}>
-                    <GarmentTile item={p} label={p.name} />
-                  </li>
-                ))}
-              </ul>
+            {/* Two rows show; more scroll inside, so the buttons stay on the screen. */}
+            {(end.pieces.length > 0 || end.wishes.length > 0) && (
+              <div className="swipe-round-added">
+                <AddedPieces compact pieces={end.pieces} wishes={end.wishes} onPick={(a) => setFixing({ cardId: a.cardId, id: a.piece.id })} onRemoveWish={dropWish} />
+              </div>
             )}
             <div className="actions">
               <Link href="/" className="btn">
@@ -454,6 +470,23 @@ export default function StartPage() {
         </div>
       )}
 
+      {fixing && fixed && (
+        <FixPiece
+          key={fixed.piece.id}
+          piece={fixed.piece}
+          hide={ownedColours(STARTER_DECK.find((c) => c.id === fixed.cardId)!, items).filter((c) => c !== fixed.piece.color)}
+          onColour={(to) => {
+            void apply(step({ type: "recolour", cardId: fixed.cardId, from: fixed.piece.color, to, ownedIds: items.map((i) => i.id) }));
+            setFixing(null);
+          }}
+          onRemove={() => {
+            void apply(step({ type: "removePiece", cardId: fixed.cardId, id: fixed.piece.id }));
+            setFixing(null);
+          }}
+          onClose={() => setFixing(null)}
+        />
+      )}
+
       {sheetOpen && card && (
         <ColourSheet title={`${card.name}: your colours`} picked={[...owned, ...ticked]} onToggle={toggle} onClose={() => setSheetOpen(false)} />
       )}
@@ -468,6 +501,8 @@ export default function StartPage() {
               {counts.want ? `${counts.want} on your wishlist. ` : ""}Your pieces are drawn for now. Swap in real photos whenever you like from
               Wardrobe.
             </p>
+            {(justAdded.length > 0 || justWished.length > 0) && <p className="setting-note">Tap a piece to fix its colour or remove it.</p>}
+            <AddedPieces pieces={justAdded} wishes={justWished} onPick={(a) => setFixing({ cardId: a.cardId, id: a.piece.id })} onRemoveWish={dropWish} />
             <div className="actions">
               <Link href="/" className="btn">
                 See today’s look
