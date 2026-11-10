@@ -1,7 +1,7 @@
-import { KINDS, makeItem } from "./kinds";
+import { fitsFor, KINDS, makeItem } from "./kinds";
 import { COLOR_NAMES, type ColorName } from "./palette";
 import { usualColour } from "./starter";
-import type { Item, Kind, Material } from "./types";
+import type { Fit, Item, Kind, Material, Pattern } from "./types";
 
 /**
  * Pieces typed in by name ("White Converse high tops, brown Birkenstock
@@ -14,6 +14,10 @@ export interface TypedPiece {
   kind: Kind | null;
   color: ColorName;
   material?: Material;
+  /** Stripe, check or print, when the text says so. Left out for plain pieces. */
+  pattern?: Pattern;
+  /** Cut, when the text says so and the type has that cut ("wide" is for trousers only). */
+  fit?: Fit;
   /** The colour wasn't in the text: it's the model's usual colour for the type. */
   colorGuessed: boolean;
   /** A colour was typed that has no swatch (purple, lilac): the person must pick one. */
@@ -26,6 +30,8 @@ interface Hint {
   material?: Material;
   /** The colour a model usually comes in, when the text doesn't say. */
   color?: ColorName;
+  /** The cut a model usually has, when the text doesn't say. */
+  fit?: Fit;
 }
 
 /**
@@ -37,7 +43,7 @@ const MODEL_HINTS: Hint[] = [
   { re: /\bbetter sweater\b|\bsynchilla\b|\bretro[- ]?x\b|\bsnap[- ]?t\b/, kind: "fleece" },
   { re: /\bdown sweater\b/, kind: "puffer" },
   { re: /\babc pants\b|\blululemon abc\b/, kind: "chinos" },
-  { re: /\bcarhartt double[- ]?knees?\b|\bdouble[- ]?knees?\b|\bdickies 874\b/, kind: "chinos", material: "canvas" },
+  { re: /\bcarhartt double[- ]?knees?\b|\bdouble[- ]?knees?\b|\bdickies 874\b/, kind: "chinos", material: "canvas", fit: "relaxed" },
   { re: /\bnike blazers?\b/, kind: "sneakers", material: "leather" },
   { re: /\bchuck 70 high\b/, kind: "high-tops", material: "canvas" },
 ];
@@ -86,6 +92,7 @@ const HINTS: Hint[] = [
   { re: /\bcargo(?:s| pants| trousers)\b/, kind: "cargos" },
   { re: /\bkhakis\b/, kind: "chinos", color: "Khaki" },
   { re: /\bcords\b|\bcorduroys\b/, kind: "chinos", material: "corduroy" },
+  { re: /\bchino (?:pants|trousers)\b/, kind: "chinos" },
   { re: /\bdress (?:pants|trousers)\b|\bsuit trousers\b|\bslacks\b/, kind: "trousers" },
   { re: /\bsuit jackets?\b|\bsport coats?\b|\bsports jackets?\b/, kind: "blazer" },
   // Layers over a shirt, most specific first.
@@ -98,6 +105,7 @@ const HINTS: Hint[] = [
   { re: /\bleather jackets?\b|\bharringtons?\b|\bvarsity jackets?\b|\bcoach(?:es)? jackets?\b|\bflight jackets?\b/, kind: "bomber" },
   // Tops. Neck and sleeve words come before "tee" and "sweater" so they win.
   { re: /\bchambray\b/, kind: "oxford", color: "Sky" },
+  { re: /\bbretons?\b/, kind: "tee" },
   { re: /\bflannels?\b|\b(?:plaid|check|checked|lumberjack) shirts?\b/, kind: "flannel" },
   { re: /\b(?:hawaiian|cuban|resort|bowling|camp) shirts?\b/, kind: "camp-shirt" },
   { re: /\broll[- ]?necks?\b|\bpolo[- ]?necks?\b/, kind: "turtleneck" },
@@ -179,11 +187,7 @@ const KIND_WORDS: [RegExp, Kind][] = (Object.keys(KINDS) as Kind[])
  * `{ color: null }` means a colour was typed that has no swatch.
  */
 function colourIn(text: string): { color: ColorName | null } | null {
-  // Accent colours aren't the piece's colour: "(with grey accents)", "brown accented", "with gum soles".
-  const plain = text
-    .replace(/\([^)]*\b(?:accents?|accented|trim|details?|soles?|laces|stripes?|logos?)\b[^)]*\)/g, " ")
-    .replace(/\b[\w/-]+[\s-]+(?:accented|accents?|trimmed)\b/g, " ")
-    .replace(/\bwith [\w\s/-]+? (?:accents?|trim|details?|soles?|laces|stripes?|logos?)\b/g, " ");
+  const plain = withoutAsides(text);
   let best: { at: number; color: ColorName | null } | null = null;
   const consider = (re: RegExp, color: ColorName | null) => {
     const m = re.exec(plain);
@@ -195,12 +199,56 @@ function colourIn(text: string): { color: ColorName | null } | null {
   return found ? { color: found.color } : null;
 }
 
+/** The text without asides about trim: "(with grey accents)", "brown accented", "with white stripes". */
+function withoutAsides(text: string): string {
+  return text
+    .replace(/\([^)]*\b(?:accents?|accented|trim|details?|soles?|laces|stripes?|logos?)\b[^)]*\)/g, " ")
+    .replace(/\b[\w/-]+[\s-]+(?:accented|accents?|trimmed)\b/g, " ")
+    .replace(/\bwith [\w\s/-]+? (?:accents?|trim|details?|soles?|laces|stripes?|logos?)\b/g, " ");
+}
+
 /** The text of a line without its bullet or number, tidied. */
 function cleanLine(line: string): string {
   return line
     .replace(/^\s*(?:[-*•·]|\d+[.)])\s*/, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Patterns by the words people use. "3 stripes" is a logo, not a pattern. */
+const PATTERN_WORDS: [RegExp, Pattern][] = [
+  [/\b(?:striped?|stripes|breton)\b/, "stripe"],
+  [/\b(?:check|checked|checks|plaid|gingham|tartan|houndstooth)\b/, "check"],
+  [/\b(?:print|printed|floral|graphic|camo|paisley)\b/, "print"],
+];
+
+function patternIn(text: string, kind: Kind | null): Pattern | undefined {
+  const plain = withoutAsides(text).replace(/\b(?:3|three)[- ]stripes?\b/g, " ");
+  const said = PATTERN_WORDS.find(([re]) => re.test(plain))?.[1];
+  // A flannel is a check unless it says otherwise.
+  return said ?? (kind === "flannel" ? "check" : undefined);
+}
+
+/** Cuts by the words people use. Only cuts the type has are used: "wide" is for trousers, "boxy" for tops. */
+const FIT_WORDS: [RegExp, Fit][] = [
+  [/\b(?:slim|skinny|tapered)\b/, "slim"],
+  [/\b(?:relaxed|loose|baggy)\b/, "relaxed"],
+  [/\bwide(?:[- ]?leg(?:ged)?)?\b/, "wide"],
+  [/\b(?:boxy|oversized|cropped)\b/, "boxy"],
+];
+
+function fitIn(text: string, kind: Kind | null, fallback: Fit | undefined): Fit | undefined {
+  if (!kind) return undefined;
+  const allowed = fitsFor(KINDS[kind].slot);
+  const plain = withoutAsides(text);
+  let best: { at: number; fit: Fit } | null = null;
+  for (const [re, fit] of FIT_WORDS) {
+    const m = allowed.includes(fit) ? re.exec(plain) : null;
+    if (m && (!best || m.index < best.at)) best = { at: m.index, fit };
+  }
+  const found = best as { at: number; fit: Fit } | null;
+  if (found) return found.fit;
+  return fallback && allowed.includes(fallback) ? fallback : undefined;
 }
 
 function parsePieceText(line: string): TypedPiece | null {
@@ -220,11 +268,15 @@ function parsePieceText(line: string): TypedPiece | null {
   const said = typed?.color ?? null;
   // Never white by default: the model's usual colour, then the type's, then a quiet grey.
   const color = said ?? hint?.color ?? (kind ? usualColour(kind) : "Grey");
+  const pattern = patternIn(text, kind);
+  const fit = fitIn(text, kind, hint?.fit);
   return {
     name: name.charAt(0).toUpperCase() + name.slice(1),
     kind,
     color,
     ...(material ? { material } : {}),
+    ...(pattern ? { pattern } : {}),
+    ...(fit ? { fit } : {}),
     colorGuessed: !said,
     colorMissing: typed !== null && typed.color === null,
   };
@@ -464,5 +516,13 @@ export function parseList(text: string): TypedPiece[] {
 
 /** The piece a typed line becomes, once it has a kind. */
 export function typedItem(p: TypedPiece & { kind: Kind }, id: string): Item {
-  return makeItem({ id, name: p.name, kind: p.kind, color: p.color, ...(p.material ? { material: p.material } : {}) });
+  return makeItem({
+    id,
+    name: p.name,
+    kind: p.kind,
+    color: p.color,
+    ...(p.material ? { material: p.material } : {}),
+    ...(p.pattern ? { pattern: p.pattern } : {}),
+    ...(p.fit ? { fit: p.fit } : {}),
+  });
 }

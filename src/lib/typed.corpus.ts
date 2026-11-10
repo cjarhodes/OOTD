@@ -14,7 +14,7 @@ import type { Fit, Kind, Material, Pattern } from "./types";
  *   ("white, black and grey tees").
  * - `count`: how many pieces the line should become ("3 white tees").
  * - `colourMissing`: the text names a colour OOTD has no swatch for (purple).
- * - `material`, `pattern`, `fit`: recorded for later tasks; not scored yet.
+ * - `pattern`, `fit`: scored (see the test). `material`: recorded; not scored yet.
  */
 export interface CorpusLine {
   text: string;
@@ -102,7 +102,7 @@ const MORE: CorpusLine[] = [
   { text: "light blue oxford shirt", kind: "oxford", color: "Sky" },
   { text: "white OCBD", kind: "oxford", color: "White" },
   { text: "pale blue button-up", kind: "oxford", color: "Sky" },
-  { text: "green flannel shirt", kind: "flannel", color: "Olive" },
+  { text: "green flannel shirt", kind: "flannel", color: "Olive", pattern: "check" },
   { text: "red and black check shirt", kind: "flannel", color: "Red", pattern: "check" },
   { text: "Hawaiian shirt", kind: "camp-shirt" },
   { text: "navy henley", kind: "henley", color: "Navy" },

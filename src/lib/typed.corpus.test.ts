@@ -7,8 +7,10 @@ import { usualColour } from "./starter";
  * Floors: how many corpus lines the parser must get right. They are set to
  * what the parser achieves today and only ever go UP; a floor never goes down.
  */
-const FLOOR_TYPES = 124;
+const FLOOR_TYPES = 125;
 const FLOOR_COLOURS = 92;
+const FLOOR_PATTERNS = 5;
+const FLOOR_FITS = 3;
 
 /**
  * Scoring rules (one point per corpus line):
@@ -23,6 +25,11 @@ const FLOOR_COLOURS = 92;
  * `colors`). It is right if the piece count matches and each piece's colour
  * matches (`colors` in order, or `color` for every piece). Lines that expect
  * no colour, or a missing swatch (`colourMissing`), aren't in the colour total.
+ *
+ * Pattern and fit: scored on lines that state one. Right if the piece count
+ * matches and every piece has that pattern (or fit). A line that states
+ * neither must come back with neither: any piece with a pattern or a fit the
+ * line doesn't expect is counted as spurious, and the target is 0.
  *
  * White guesses: pieces that came out White although the text never says
  * "white". The target is 0 and the test asserts it. One case is not a guess:
@@ -62,19 +69,33 @@ describe("typed corpus", () => {
     let colours = 0;
     let whiteGuesses = 0;
     let missingWrong = 0;
+    const withPattern = CORPUS.filter((c) => c.pattern);
+    const withFit = CORPUS.filter((c) => c.fit);
+    let patterns = 0;
+    let fits = 0;
+    let spurious = 0;
     for (const c of CORPUS) {
       const got = parseList(c.text);
       if (typeRight(c, got)) types++;
       if (scoredForColour.includes(c) && colourRight(c, got)) colours++;
       if (silentWhite(c, got)) whiteGuesses++;
+      if (c.pattern && got.length === expectedCount(c) && got.every((p) => p.pattern === c.pattern)) patterns++;
+      if (c.fit && got.length === expectedCount(c) && got.every((p) => p.fit === c.fit)) fits++;
+      if (got.some((p) => (p.pattern && p.pattern !== c.pattern) || (p.fit && p.fit !== c.fit))) spurious++;
       if (got.some((p) => p.colorMissing) !== Boolean(c.colourMissing)) missingWrong++;
     }
     console.log(`types ${types}/${CORPUS.length}`);
     console.log(`colours ${colours}/${scoredForColour.length}`);
+    console.log(`patterns ${patterns}/${withPattern.length}`);
+    console.log(`fits ${fits}/${withFit.length}`);
+    console.log(`pattern or fit set when the line didn't say ${spurious}`);
     console.log(`white guesses ${whiteGuesses}/${CORPUS.length}`);
     expect(CORPUS.length).toBeGreaterThanOrEqual(119);
     expect(types).toBeGreaterThanOrEqual(FLOOR_TYPES);
     expect(colours).toBeGreaterThanOrEqual(FLOOR_COLOURS);
+    expect(patterns).toBeGreaterThanOrEqual(FLOOR_PATTERNS);
+    expect(fits).toBeGreaterThanOrEqual(FLOOR_FITS);
+    expect(spurious).toBe(0);
     expect(whiteGuesses).toBe(0);
     expect(missingWrong).toBe(0);
   });

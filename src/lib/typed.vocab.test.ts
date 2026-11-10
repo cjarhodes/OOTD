@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { KINDS } from "./kinds";
 import { COLOR_NAMES, type ColorName } from "./palette";
 import { usualColour } from "./starter";
-import { parsePiece } from "./typed";
+import { parseList, parsePiece, typedItem } from "./typed";
 import type { Kind } from "./types";
 
 /** One row per word in Appendix B of docs/LOOP.md: the line, and the type it must become. */
@@ -361,5 +361,72 @@ describe("never guess white (table 3)", () => {
     expect(parsePiece("grey hoodie (purple trim)")).toMatchObject({ color: "Grey", colorMissing: false });
     // "multi" is ignored, not a missing colour.
     expect(parsePiece("multicolour tee")).toMatchObject({ colorMissing: false, colorGuessed: true });
+  });
+});
+
+describe("pattern and cut (T5)", () => {
+  it("reads pattern words", () => {
+    for (const w of ["striped", "stripe", "stripes"]) expect(parsePiece(`navy ${w} tee`), w).toMatchObject({ pattern: "stripe" });
+    for (const w of ["check", "checked", "plaid", "gingham", "tartan", "houndstooth"]) expect(parsePiece(`${w} shirt`), w).toMatchObject({ pattern: "check" });
+    for (const w of ["print", "printed", "floral", "graphic", "camo", "paisley"]) expect(parsePiece(`${w} tee`), w).toMatchObject({ pattern: "print" });
+    expect(parsePiece("navy tee")?.pattern).toBeUndefined();
+    expect(parsePiece("striped navy tee")).toMatchObject({ kind: "tee", color: "Navy", pattern: "stripe" });
+  });
+
+  it("makes a breton a striped tee", () => {
+    expect(parsePiece("breton top")).toMatchObject({ kind: "tee", pattern: "stripe" });
+    expect(parsePiece("navy breton")).toMatchObject({ kind: "tee", color: "Navy", pattern: "stripe" });
+  });
+
+  it("treats a flannel as a check unless it says otherwise", () => {
+    expect(parsePiece("green flannel shirt")).toMatchObject({ kind: "flannel", pattern: "check" });
+    expect(parsePiece("plaid flannel")).toMatchObject({ kind: "flannel", pattern: "check" });
+    expect(parsePiece("striped flannel")).toMatchObject({ kind: "flannel", pattern: "stripe" });
+  });
+
+  it("ignores stripes mentioned in an aside, in either direction", () => {
+    expect(parsePiece("navy tee (with white stripes)")?.pattern).toBeUndefined();
+    expect(parsePiece("navy tee with white stripes")?.pattern).toBeUndefined();
+    expect(parsePiece("white sambas with black stripes")?.pattern).toBeUndefined();
+    expect(parsePiece("adidas three stripes joggers")?.pattern).toBeUndefined();
+    // A real stripe next to an aside still counts.
+    expect(parsePiece("striped tee (with grey accents)")).toMatchObject({ pattern: "stripe" });
+  });
+
+  it("reads cut words, only where the type has that cut", () => {
+    for (const w of ["slim", "skinny", "tapered"]) expect(parsePiece(`${w} jeans`), w).toMatchObject({ fit: "slim" });
+    for (const w of ["relaxed", "loose", "baggy"]) expect(parsePiece(`${w} chinos`), w).toMatchObject({ fit: "relaxed" });
+    for (const w of ["wide", "wide-leg", "wide leg"]) expect(parsePiece(`${w} trousers`), w).toMatchObject({ fit: "wide" });
+    for (const w of ["boxy", "oversized", "cropped"]) expect(parsePiece(`${w} hoodie`), w).toMatchObject({ fit: "boxy" });
+    expect(parsePiece("black slim jeans")).toMatchObject({ kind: "jeans", color: "Black", fit: "slim" });
+    // Wide is for trousers only; boxy is for tops only; shoes have no cut.
+    expect(parsePiece("wide hoodie")?.fit).toBeUndefined();
+    expect(parsePiece("boxy jeans")?.fit).toBeUndefined();
+    expect(parsePiece("slim sneakers")?.fit).toBeUndefined();
+    expect(parsePiece("slim mystery")?.fit).toBeUndefined();
+    expect(parsePiece("navy tee")?.fit).toBeUndefined();
+  });
+
+  it("makes Carhartt double knees and Dickies 874 relaxed canvas chinos", () => {
+    expect(parsePiece("Carhartt double knees")).toMatchObject({ kind: "chinos", material: "canvas", fit: "relaxed" });
+    expect(parsePiece("Dickies 874")).toMatchObject({ kind: "chinos", material: "canvas", fit: "relaxed" });
+    // The text can still say a different cut.
+    expect(parsePiece("slim Dickies 874")).toMatchObject({ fit: "slim" });
+  });
+
+  it("matches singular chino pants as chinos", () => {
+    expect(parsePiece("navy chino pants")).toMatchObject({ kind: "chinos", color: "Navy" });
+    expect(parsePiece("chino trousers")).toMatchObject({ kind: "chinos" });
+    expect(parsePiece("navy chino shorts")).toMatchObject({ kind: "shorts" });
+  });
+
+  it("passes pattern and cut through to the piece", () => {
+    const item = typedItem({ ...parsePiece("striped slim jeans")!, kind: "jeans" }, "t1");
+    expect(item).toMatchObject({ pattern: "stripe", fit: "slim" });
+    expect(typedItem({ ...parsePiece("navy tee")!, kind: "tee" }, "t2")).toMatchObject({ pattern: "solid", fit: KINDS.tee.fit });
+  });
+
+  it("keeps pattern and cut on pieces made from a list", () => {
+    expect(parseList("white, black and grey striped tees").map((p) => p.pattern)).toEqual(["stripe", "stripe", "stripe"]);
   });
 });
