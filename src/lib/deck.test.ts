@@ -17,6 +17,8 @@ import {
   roundEnd,
   roundPlace,
   shownColour,
+  slotCardsLeft,
+  slotFromParam,
   tickedColours,
   visibleColours,
   type DeckAction,
@@ -461,5 +463,53 @@ describe("fixing what was just added", () => {
     expect(r.effects.removeWishIds).toEqual([id(white)]);
     expect(addedWishes(r.state.history)).toEqual([]);
     expect(deckReducer(s, { type: "removePiece", cardId: "tee", id: id(white) }).effects.removeItemIds).toEqual([]);
+  });
+});
+
+describe("swiping one part of the wardrobe", () => {
+  const shoes = STARTER_DECK.filter((c) => KINDS[c.kind].slot === "shoes");
+  const have = { type: "decide", choice: "have", ownedIds: [] } as const;
+
+  it("reads ?slot= and ignores anything that isn't a slot", () => {
+    expect(slotFromParam("shoes")).toBe("shoes");
+    expect(slotFromParam("outer")).toBe("outer");
+    for (const bad of ["", "Shoes", "shoe", "toString", "constructor", null, undefined]) expect(slotFromParam(bad)).toBeNull();
+  });
+
+  it("shows only that part's cards, in deck order and whatever their round", () => {
+    const cards = cardsToShow(STARTER_DECK, [], {}, "shoes");
+    expect(cards.map((c) => c.id)).toEqual(shoes.map((c) => c.id));
+    expect(new Set(cards.map((c) => c.round)).size).toBeGreaterThan(1);
+    expect(cardsToShow(STARTER_DECK, [], {}, null)).toHaveLength(STARTER_DECK.length);
+  });
+
+  it("leaves out cards already decided or owned, as everywhere", () => {
+    const own = (id: string) => makeItem({ id, name: id, kind: "sneakers", color: "White" });
+    const sneakers = shoes.find((c) => c.id === "sneakers")!;
+    const items = sneakers.colors.map((c) => own(`st-sneakers-${c.toLowerCase()}`));
+    const left = cardsToShow(STARTER_DECK, items, { loafers: "skip" }, "shoes").map((c) => c.id);
+    expect(left).not.toContain("sneakers");
+    expect(left).not.toContain("loafers");
+    expect(left).toHaveLength(shoes.length - 2);
+    expect(slotCardsLeft("shoes", items, { loafers: "skip" })).toBe(shoes.length - 2);
+    expect(slotCardsLeft("shoes", [])).toBe(shoes.length);
+  });
+
+  it("counts within the part and never stops at the end of a round", () => {
+    let s = initialDeck(cardsToShow(STARTER_DECK, [], {}, "shoes"), [], "shoes");
+    expect(roundPlace(s)).toMatchObject({ name: "Shoes", at: 1, total: shoes.length });
+    // Sneakers and chukka boots are round 1, the next shoes round 3: no round end between them.
+    for (let i = 0; i < shoes.length - 1; i++) {
+      s = run(s, have);
+      expect(atRoundEnd(s)).toBe(false);
+    }
+    expect(roundPlace(s)).toMatchObject({ at: shoes.length, total: shoes.length });
+    expect(isDone(run(s, have))).toBe(true);
+  });
+
+  it("names the part in plain words", () => {
+    const s = initialDeck(cardsToShow(STARTER_DECK, [], {}, "outer"), [], "outer");
+    expect(roundPlace(s)!.name).toBe("Jackets");
+    expect(roundPlace(initialDeck(cardsToShow(STARTER_DECK, [], {}, "base"), [], "base"))!.name).toBe("Tops");
   });
 });

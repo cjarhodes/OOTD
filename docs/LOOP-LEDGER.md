@@ -35,7 +35,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | G5 | done | loop/wardrobe-entry | 2026-11-10 |
 | D1 | done | loop/wardrobe-entry | 2026-11-10 |
 | D2 | done | loop/wardrobe-entry | 2026-11-10 |
-| D3 | todo | | |
+| D3 | done | loop/wardrobe-entry | 2026-11-10 |
 | D4 | todo | | |
 | P1 | todo | | |
 | P2 | todo | | |
@@ -195,6 +195,11 @@ What changed: the finish screen and the round-end panel show the pieces just add
 Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0, tests 299
 For the next agent: only pieces added in this visit are listed (the same reach as Undo); after leaving and resuming, earlier pieces are fixed from Wardrobe. Removing a piece leaves that card's remembered choice as "have", so the card does not come back in the deck; Quick add puts it back. Changing a colour keeps the card's choice and the piece's other details (it is rebuilt by `starterItem`, so a name or fit edited in between would be lost; nothing edits a piece during the swipe). Not run in a browser: see the phone check below.
 
+### D3 · 2026-11-10
+What changed: `/start?slot=shoes` swipes one part of the wardrobe. `slot` is one of base, mid, outer, bottom, shoes; anything else is ignored and the whole deck is used. The page reads it from `window.location` when the deck is made (no `useSearchParams`, so the page stays static). Cards are that part's, in deck order and whatever their round; cards already decided or fully owned are left out as everywhere. There is no round-end panel in this mode, the eyebrow counts within the part ("Shoes · 3 of 10", "Tops", "Layers", "Jackets", "Trousers" for the others), the progress bar fills across the part, and "Go through the ones you skipped (N)" counts and brings back only that part's skipped cards. On Wardrobe, with a layer filter on and cards left for it, a link under the grid reads "Swipe more shoes (6)" (44 px tall, personal wardrobes only, the count read from the same remembered choices as the swipe). Pure parts in `src/lib/deck.ts`, tested (6 new tests, plus 1 in `deck-store.test.ts`): `slotFromParam`, `cardsToShow(all, items, choices, slot)`, `slotCardsLeft`, `SLOT_WORD`, and `DeckState.slot`, which also makes `roundPlace` count within the part and `atRoundEnd` false. `skippedCount` and `withoutSkipped` in `deck-store.ts` take an optional list of card ids.
+Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0, tests 305
+For the next agent: the Wardrobe filter chips say Base, Mid, Outer, Bottoms and Shoes, while the link says tops, layers, jackets, trousers and shoes (`SLOT_WORD`); P2 may want to align them. Pieces added in a slot swipe use the same ids and the same remembered choices, so finishing a card there also removes it from the full deck. Not run in a browser.
+
 ## For Alex to try on his phone
 - S4 (swipe feel): tap the three buttons quickly, ten times in a row, and swipe a card by hand. Look for: the next card already underneath as the old one flies off, no choice lost, the exit carrying on from where your finger let go, and no flicker or jump when the next card takes over. With Reduce Motion on, cards should simply disappear.
 - G1 (a flick counts): flick a card sideways or up with a short, quick movement of the thumb. Look for: it goes even though your finger travelled only a little; a slow short drag still springs back; a fast flick back towards the middle cancels instead of choosing.
@@ -204,6 +209,7 @@ For the next agent: only pieces added in this visit are listed (the same reach a
 - G5 (fits a small phone): on the smallest phone you have (or a browser window at 375 x 667 with the toolbars showing), open Swipe your wardrobe and look at a card with several colours (Heavyweight tee, Flannel shirt, Straight-leg jeans). Look for: the drawing quite small, the name, note, every colour chip and + Other colour all visible, the counts line and Undo under the card, the three buttons below them with nothing underneath and the tab bar below that, and no scrolling. Colour chips should be easy to hit with a thumb.
 - D1 (rounds): on a new account, swipe "I have it" through the first twelve cards. Look for: the eyebrow reading "The basics · 4 of 12" and counting up; once you have a top, trousers and shoes the counts line turning into "You can get dressed now. See today’s look" with no extra row and nothing pushed off the screen; after card 12 a panel replacing the card and buttons, with your pieces drawn, "See today’s look" and "Keep going: layers and jackets (11)". Leave halfway through a round and come back: you should land on the next undecided card of the same round. Check the panel at 375 x 667 and in both themes.
 - D2 (a finish screen you can check): swipe a few cards right, then finish the deck or reach the end of round 1. Look for: your pieces as tiles; tapping one opens a sheet with Change colour and Remove; changing the colour swaps the tile and Wardrobe shows the new colour (and not the old one); Remove drops it; a piece you wanted shows under the tiles with Remove. On the round-end panel at 375 x 667 the buttons must still be on screen, with the tiles scrolling inside their box when there are many.
+- D3 (swipe one part): on Wardrobe pick Shoes. Look for "Swipe more shoes (N)" under the grid; it opens the swipe with only shoe cards and the eyebrow "Shoes · 1 of N", with no end-of-round panel; going back to Wardrobe, the number has dropped by what you decided.
 
 ## Questions for Alex
 - T3: two existing assertions in `src/lib/typed.test.ts` had to change from White to the type's usual colour (see the T3 log entry). OK to keep?

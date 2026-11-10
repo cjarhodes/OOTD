@@ -13,12 +13,15 @@ import { QuickAdd } from "@/components/QuickAdd";
 import { TypeList } from "@/components/TypeList";
 import { wishToItem } from "@/lib/wishlist";
 import { isOwned, SLOT_LABEL, fitOf } from "@/lib/kinds";
+import { SLOT_WORD, slotCardsLeft } from "@/lib/deck";
+import { browserStorage, loadChoices, storeKey } from "@/lib/deck-store";
 import { addedNote } from "@/lib/quickadd";
 import { copiesInColours, takenColours } from "@/lib/recolour";
 import type { ColorName } from "@/lib/palette";
 import { hasBackdrop, preparePhoto, releasePhoto } from "@/lib/photo";
 import { applyTags } from "@/lib/tagging";
 import type { Item, Slot, Status } from "@/lib/types";
+import { useAuth } from "@/state/auth";
 import { newId, useWardrobe } from "@/state/wardrobe";
 
 const SLOTS: Slot[] = ["base", "mid", "outer", "bottom", "shoes"];
@@ -226,6 +229,13 @@ export default function WardrobePage() {
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<number | null>(null);
   const personal = mode === "personal";
+  // With a layer chosen, the swipe deck may still have cards for it: offer them under the grid.
+  const { user } = useAuth();
+  const slotFilter = (SLOTS as string[]).includes(filter) ? (filter as Slot) : null;
+  const swipeLeft = useMemo(
+    () => (personal && ready && slotFilter ? slotCardsLeft(slotFilter, items, loadChoices(browserStorage(), storeKey(user?.id))) : 0),
+    [personal, ready, slotFilter, items, user?.id],
+  );
 
   // /wardrobe?add=list opens Type a list, and ?add=quick opens Quick add. Read it once the wardrobe has loaded, then take it out of the address.
   const router = useRouter();
@@ -367,6 +377,13 @@ export default function WardrobePage() {
               );
             })}
           </div>
+          {slotFilter && swipeLeft > 0 && (
+            <p className="footer-note" style={{ marginTop: 16 }}>
+              <Link href={`/start?slot=${slotFilter}`} className="text-link swipe-more">
+                Swipe more {SLOT_WORD[slotFilter]} ({swipeLeft})
+              </Link>
+            </p>
+          )}
           <p className="footer-note">
             {personal
               ? "Tap a piece to edit it, mark it as in the wash, or style a look around it."

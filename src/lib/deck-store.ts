@@ -73,11 +73,13 @@ export function withoutChoice(choices: Choices, cardId: string): Choices {
   return rest;
 }
 
-export function withoutSkipped(choices: Choices): Choices {
-  return Object.fromEntries(Object.entries(choices).filter(([, c]) => c !== "skip"));
+/** The choices without the "not mine" ones; with `only`, without just the ones for those cards. */
+export function withoutSkipped(choices: Choices, only?: readonly string[]): Choices {
+  return Object.fromEntries(Object.entries(choices).filter(([id, c]) => c !== "skip" || (only !== undefined && !only.includes(id))));
 }
 
-export const skippedCount = (choices: Choices): number => Object.values(choices).filter((c) => c === "skip").length;
+export const skippedCount = (choices: Choices, only?: readonly string[]): number =>
+  Object.entries(choices).filter(([id, c]) => c === "skip" && (only === undefined || only.includes(id))).length;
 
 /** The choices after a deck action: the new choice remembered, or an undone one forgotten. */
 export function choicesAfter(

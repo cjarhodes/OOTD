@@ -1,7 +1,8 @@
+import { KINDS } from "./kinds";
 import type { ColorName } from "./palette";
 import { ownedColours } from "./quickadd";
 import { ROUND_NAME, STARTER_DECK, starterItem, type Round, type StarterCard } from "./starter";
-import type { Item } from "./types";
+import type { Item, Slot } from "./types";
 
 /**
  * The state of a swipe session on /start, as a pure reducer. The page draws
@@ -35,6 +36,8 @@ export interface DeckState {
   /** The colour each card's picture shows. */
   shown: Record<string, ColorName>;
   history: Decision[];
+  /** Set when only one part of the wardrobe is being swiped (`/start?slot=shoes`): rounds are ignored. */
+  slot: Slot | null;
   /** Where the person chose to keep going past the end of a round, so that screen isn't shown again there. */
   resumeAt: number | null;
 }
@@ -85,14 +88,18 @@ export function cardsToShow(
   all: readonly StarterCard[],
   items: readonly Pick<Item, "id">[],
   choices: Readonly<Record<string, Choice>> = {},
+  /** Only this part of the wardrobe, in deck order and ignoring rounds. */
+  slot: Slot | null = null,
 ): StarterCard[] {
-  return all
+  const left = all
     .filter((c) => {
+      if (slot && KINDS[c.kind].slot !== slot) return false;
       if (choices[c.id]) return false;
       const have = ownedColours(c, items);
       return !c.colors.every((col) => have.includes(col));
     })
-    .sort((a, b) => a.round - b.round); // stable: deck order is kept inside a round
+  // Round by round (a stable sort keeps deck order inside a round); one part of the wardrobe stays in deck order.
+  return slot ? left : left.sort((a, b) => a.round - b.round);
 }
 
 /**
@@ -129,13 +136,13 @@ export function addedWishes(history: readonly Decision[]): Added[] {
 }
 
 /** `items` are what the wardrobe holds now: the colours of each card already owned are noted so they can't be added again. */
-export function initialDeck(deck: StarterCard[], items: readonly Pick<Item, "id">[] = []): DeckState {
+export function initialDeck(deck: StarterCard[], items: readonly Pick<Item, "id">[] = [], slot: Slot | null = null): DeckState {
   const owned: Record<string, ColorName[]> = {};
   for (const c of deck) {
     const have = ownedColours(c, items);
     if (have.length) owned[c.id] = have;
   }
-  return { deck, index: 0, owned, picked: {}, shown: {}, history: [], resumeAt: null };
+  return { deck, index: 0, owned, picked: {}, shown: {}, history: [], slot, resumeAt: null };
 }
 
 export const currentCard = (s: DeckState): StarterCard | null => s.deck[s.index] ?? null;
@@ -147,20 +154,43 @@ export function placeOf(s: DeckState, total: number): { at: number; total: numbe
   return { at: Math.min(Math.max(total - s.deck.length, 0) + s.index + 1, total), total };
 }
 
-/** Where the current card sits in its round: "The basics · 4 of 12". Cards set aside or already decided count as passed. */
+/** The plain word for a part of the wardrobe, for "Swipe more shoes (6)". */
+export const SLOT_WORD: Record<Slot, string> = { base: "tops", mid: "layers", outer: "jackets", bottom: "trousers", shoes: "shoes" };
+
+/** The part of the wardrobe a `?slot=` value names, or null for anything else. */
+export function slotFromParam(value: string | null | undefined): Slot | null {
+  return value && Object.hasOwn(SLOT_WORD, value) ? (value as Slot) : null;
+}
+
+/** How many cards are left to swipe for one part of the wardrobe. */
+export function slotCardsLeft(
+  slot: Slot,
+  items: readonly Pick<Item, "id">[],
+  choices: Readonly<Record<string, Choice>> = {},
+  all: readonly StarterCard[] = STARTER_DECK,
+): number {
+  return cardsToShow(all, items, choices, slot).length;
+}
+
+/**
+ * Where the current card sits in its round: "The basics · 4 of 12". Cards set aside or already decided count as
+ * passed. When one part of the wardrobe is being swiped it is counted within that part instead: "Shoes · 3 of 10".
+ */
 export function roundPlace(s: DeckState, all: readonly StarterCard[] = STARTER_DECK): { round: Round; name: string; at: number; total: number } | null {
   const card = currentCard(s);
   if (!card) return null;
-  const total = all.filter((c) => c.round === card.round).length;
-  const left = s.deck.slice(s.index).filter((c) => c.round === card.round).length;
-  return { round: card.round, name: ROUND_NAME[card.round], at: Math.min(Math.max(total - left, 0) + 1, total), total };
+  const same = (c: StarterCard) => (s.slot ? KINDS[c.kind].slot === s.slot : c.round === card.round);
+  const total = all.filter(same).length;
+  const left = s.deck.slice(s.index).filter(same).length;
+  const name = s.slot ? SLOT_WORD[s.slot].charAt(0).toUpperCase() + SLOT_WORD[s.slot].slice(1) : ROUND_NAME[card.round];
+  return { round: card.round, name, at: Math.min(Math.max(total - left, 0) + 1, total), total };
 }
 
 /** True when the last card decided was the end of a round and the next card is in a later one, until the person carries on. */
 export function atRoundEnd(s: DeckState): boolean {
   const last = s.history[s.history.length - 1];
   const next = currentCard(s);
-  if (!last || !next) return false;
+  if (s.slot || !last || !next) return false;
   return last.card.round !== next.round && s.resumeAt !== s.index;
 }
 

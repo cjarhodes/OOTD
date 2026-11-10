@@ -62,6 +62,14 @@ describe("deck store", () => {
     expect(withChoice({}, "a", "want")).toEqual({ a: "want" });
   });
 
+  it("can count and clear the skipped ones of some cards only", () => {
+    const all = { a: "skip", b: "have", c: "skip", d: "want" } as const;
+    expect(skippedCount(all, ["a", "b"])).toBe(1);
+    expect(skippedCount(all, [])).toBe(0);
+    expect(withoutSkipped(all, ["a", "b"])).toEqual({ b: "have", c: "skip", d: "want" });
+    expect(withoutSkipped(all, [])).toEqual(all);
+  });
+
   it("reads nothing from missing, corrupt or odd data", () => {
     expect(loadChoices(fake(), "k")).toEqual({});
     expect(loadChoices(fake({ k: "{not json" }), "k")).toEqual({});

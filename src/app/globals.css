@@ -1837,6 +1837,12 @@ li[data-done] .first-run-tick {
   display: grid;
   gap: 8px;
 }
+/* "Swipe more shoes (6)" under the Wardrobe grid. */
+.swipe-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
 /* The counts line becomes the way to a first look once there is one. */
 .swipe-look {
   display: flex;

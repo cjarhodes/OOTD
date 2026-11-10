@@ -24,7 +24,9 @@ import {
   placeOf,
   roundEnd,
   roundPlace,
+  SLOT_WORD,
   shownColour,
+  slotFromParam,
   tickedColours,
   visibleColours,
   type Choice,
@@ -38,9 +40,13 @@ import { missingEssentials } from "@/lib/essentials";
 import { colourOptions, ownedColours } from "@/lib/quickadd";
 import { STARTER_DECK, starterItem, type StarterCard } from "@/lib/starter";
 import { choiceOf, leanOf, strengthOf, velocityOf, type Sample } from "@/lib/swipe";
+import type { Slot } from "@/lib/types";
 import { wishFromItem } from "@/lib/wishlist";
 import { useAuth } from "@/state/auth";
 import { useWardrobe } from "@/state/wardrobe";
+
+/** The ids of the cards for one part of the wardrobe, or undefined for the whole deck. */
+const slotCardIds = (slot: Slot | null): string[] | undefined => (slot ? STARTER_DECK.filter((c) => KINDS[c.kind].slot === slot).map((c) => c.id) : undefined);
 
 const LABEL: Record<Choice, string> = { have: "I have it", skip: "Not mine", want: "Want it" };
 
@@ -77,28 +83,31 @@ export default function StartPage() {
   const { user } = useAuth();
   const storageKey = storeKey(user?.id);
   const stored = useRef<Choices>({});
-  const [skipped, setSkipped] = useState(0);
+  const [choicesNow, setChoicesNow] = useState<Choices>({});
   const remember = (next: Choices) => {
     stored.current = next;
-    setSkipped(skippedCount(next));
+    setChoicesNow(next);
     saveChoices(browserStorage(), storageKey, next);
   };
   useEffect(() => {
     if (!ready || dk) return;
     const saved = loadChoices(browserStorage(), storageKey);
     stored.current = saved;
-    setSkipped(skippedCount(saved));
-    setDeckNow(initialDeck(cardsToShow(STARTER_DECK, items, saved), items));
+    setChoicesNow(saved);
+    // /start?slot=shoes swipes one part of the wardrobe, whatever the round.
+    const slot = slotFromParam(new URLSearchParams(window.location.search).get("slot"));
+    setDeckNow(initialDeck(cardsToShow(STARTER_DECK, items, saved, slot), items, slot));
   }, [ready, dk, items, storageKey]);
   // The one-time hint: the first card ever shown leans right then left, once. With reduced motion a line of text says it instead.
   const [hintText, setHintText] = useState(false);
   const hintTried = useRef(false);
   /** Bring back the cards marked "not mine". */
   const revisit = () => {
-    const left = withoutSkipped(stored.current);
+    const slot = dkRef.current?.slot ?? null;
+    const left = withoutSkipped(stored.current, slotCardIds(slot));
     remember(left);
     stopDrag();
-    setDeckNow(initialDeck(cardsToShow(STARTER_DECK, items, left), items));
+    setDeckNow(initialDeck(cardsToShow(STARTER_DECK, items, left, slot), items, slot));
   };
 
   // Every other colour opens in a sheet, so the card never holds a long list.
@@ -184,6 +193,9 @@ export default function StartPage() {
   const last = history[history.length - 1] ?? null;
   const place = dk ? placeOf(dk, STARTER_DECK.length) : null;
   const inRound = dk ? roundPlace(dk) : null;
+  const skipped = skippedCount(choicesNow, slotCardIds(dk?.slot ?? null));
+  // The bar fills across the round's part of the deck, or across the whole deck.
+  const barWidth = inRound && dk?.slot ? (inRound.at - 1) / inRound.total : ((place?.at ?? 1) - 1) / STARTER_DECK.length;
   const end = dk ? roundEnd(dk) : null;
   const fixed = fixing ? (addedPieces(history).find((a) => a.piece.id === fixing.id) ?? null) : null;
   const justAdded = addedPieces(history);
@@ -310,7 +322,7 @@ export default function StartPage() {
       {deck && !done && !end && card && preview && color && (
         <div className="swipe">
           <div className="swipe-progress" aria-hidden="true">
-            <span style={{ width: `${(((place?.at ?? 1) - 1) / STARTER_DECK.length) * 100}%` }} />
+            <span style={{ width: `${barWidth * 100}%` }} />
           </div>
           <div className="swipe-stack" ref={stackEl}>
             {deck[index + 1] && (
@@ -436,7 +448,7 @@ export default function StartPage() {
       {deck && !done && end && (
         <div className="swipe swipe-round">
           <div className="swipe-progress" aria-hidden="true">
-            <span style={{ width: `${(((place?.at ?? 1) - 1) / STARTER_DECK.length) * 100}%` }} />
+            <span style={{ width: `${barWidth * 100}%` }} />
           </div>
           {/* Replaces the card and the buttons, and is shorter than both. */}
           <div className="plinth swipe-round-card">
@@ -527,7 +539,9 @@ export default function StartPage() {
       )}
 
       {deck && deck.length === 0 && skipped === 0 && (
-        <p className="footer-note">You’ve already got every piece in the starter deck. Your best next buys are below.</p>
+        <p className="footer-note">
+          {dk?.slot ? `You’ve already been through every card for ${SLOT_WORD[dk.slot]}.` : "You’ve already got every piece in the starter deck. Your best next buys are below."}
+        </p>
       )}
     </>
   );
