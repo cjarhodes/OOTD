@@ -8,6 +8,7 @@ import { NextBuys } from "@/components/NextBuys";
 import { SLOT_LABEL, KINDS } from "@/lib/kinds";
 import { PALETTE, type ColorName } from "@/lib/palette";
 import {
+  atRoundEnd,
   cardsToShow,
   chosenColours,
   countsOf,
@@ -17,6 +18,8 @@ import {
   isDone,
   ownedOnCard,
   placeOf,
+  roundEnd,
+  roundPlace,
   shownColour,
   tickedColours,
   visibleColours,
@@ -25,6 +28,7 @@ import {
   type DeckState,
 } from "@/lib/deck";
 import { browserStorage, choicesAfter, hintSeen, loadChoices, markHintSeen, saveChoices, skippedCount, storeKey, withoutSkipped, type Choices } from "@/lib/deck-store";
+import { missingEssentials } from "@/lib/essentials";
 import { colourOptions } from "@/lib/quickadd";
 import { STARTER_DECK, starterItem, type StarterCard } from "@/lib/starter";
 import { choiceOf, leanOf, strengthOf, velocityOf, type Sample } from "@/lib/swipe";
@@ -164,6 +168,11 @@ export default function StartPage() {
   const counts = countsOf(history);
   const last = history[history.length - 1] ?? null;
   const place = dk ? placeOf(dk, STARTER_DECK.length) : null;
+  const inRound = dk ? roundPlace(dk) : null;
+  const end = dk ? roundEnd(dk) : null;
+  // Once the wardrobe has a top, trousers and shoes, the counts line says so. Not for the sample wardrobe, which isn't yours.
+  const canDress = mode === "personal" && missingEssentials(items).length === 0;
+  const eyebrow = done ? "Quick start · done" : end ? `${end.name} · done` : inRound ? `${inRound.name} · ${inRound.at} of ${inRound.total}` : "…";
 
   const dropLeaving = useCallback((key: string) => setGone((list) => list.filter((g) => g.key !== key)), []);
 
@@ -173,7 +182,7 @@ export default function StartPage() {
       const cur = dkRef.current;
       const top = cur ? currentCard(cur) : null;
       const colour = cur ? shownColour(cur) : null;
-      if (!cur || !top || !colour) return;
+      if (!cur || !top || !colour || atRoundEnd(cur)) return;
       if (mode !== "personal") setMode("personal");
       const { state, effects } = deckReducer(cur, { type: "decide", choice, ownedIds: items.map((i) => i.id) });
       setDeckNow(state);
@@ -267,7 +276,7 @@ export default function StartPage() {
   return (
     <>
       <div className="page-head swipe-head">
-        <span className="eyebrow">Quick start · {done ? "done" : place ? `${place.at} of ${place.total}` : "…"}</span>
+        <span className="eyebrow">{eyebrow}</span>
         <h1 className="display page-title">Swipe your wardrobe</h1>
       </div>
 
@@ -279,7 +288,7 @@ export default function StartPage() {
         </p>
       )}
 
-      {deck && !done && card && preview && color && (
+      {deck && !done && !end && card && preview && color && (
         <div className="swipe">
           <div className="swipe-progress" aria-hidden="true">
             <span style={{ width: `${(((place?.at ?? 1) - 1) / STARTER_DECK.length) * 100}%` }} />
@@ -374,9 +383,16 @@ export default function StartPage() {
           </div>
 
           <div className="swipe-foot">
-            <span className="label">
-              {counts.have} in your wardrobe · {counts.want} on your wishlist
-            </span>
+            {canDress ? (
+              <Link href="/" className="swipe-look">
+                <span className="label">You can get dressed now.</span>
+                <span className="text-link">See today’s look</span>
+              </Link>
+            ) : (
+              <span className="label">
+                {counts.have} in your wardrobe · {counts.want} on your wishlist
+              </span>
+            )}
             {last && (
               <button type="button" className="text-link swipe-undo" onClick={() => void undo()} aria-label={`Undo: ${last.name}`}>
                 Undo
@@ -394,6 +410,46 @@ export default function StartPage() {
             <button type="button" className="swipe-btn have" onClick={() => decide("have")} aria-keyshortcuts="ArrowRight">
               <span aria-hidden="true">✓</span> {chosen.length === 0 ? "Next" : chosen.length > 1 ? `I have ${chosen.length}` : "I have it"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {deck && !done && end && (
+        <div className="swipe swipe-round">
+          <div className="swipe-progress" aria-hidden="true">
+            <span style={{ width: `${(((place?.at ?? 1) - 1) / STARTER_DECK.length) * 100}%` }} />
+          </div>
+          {/* Replaces the card and the buttons, and is shorter than both. */}
+          <div className="plinth swipe-round-card">
+            <p className="display swipe-round-title">{end.name} done</p>
+            <p className="swipe-round-note" role="status">
+              {end.pieces.length
+                ? `${end.pieces.length} ${end.pieces.length === 1 ? "piece" : "pieces"} added`
+                : "Nothing added in this round"}
+              {end.wishes ? ` · ${end.wishes} on your wishlist` : ""}
+            </p>
+            {end.pieces.length > 0 && (
+              <ul className="swipe-round-pieces" aria-label={`Added in ${end.name.toLowerCase()}`}>
+                {end.pieces.map((p) => (
+                  <li key={p.id} title={p.name}>
+                    <GarmentTile item={p} label={p.name} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="actions">
+              <Link href="/" className="btn">
+                See today’s look
+              </Link>
+              <button type="button" className="btn alt" onClick={() => step({ type: "continue" })}>
+                Keep going: {end.next.name.toLowerCase()} ({end.next.left})
+              </button>
+              {last && (
+                <button type="button" className="btn quiet" onClick={() => void undo()} aria-label={`Undo: ${last.name}`}>
+                  Undo
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -2,22 +2,9 @@
 
 import Link from "next/link";
 import { AddRoutes } from "@/components/AddRoutes";
+import { ESSENTIALS, missingEssentials } from "@/lib/essentials";
 import { isOwned } from "@/lib/kinds";
-import type { Item, Slot } from "@/lib/types";
 import { useWardrobe } from "@/state/wardrobe";
-
-/** The pieces a first look can't do without. */
-const ESSENTIALS: { slot: Slot; label: string }[] = [
-  { slot: "base", label: "A top: a tee, shirt or knit polo" },
-  { slot: "bottom", label: "Trousers, jeans or chinos" },
-  { slot: "shoes", label: "A pair of shoes" },
-];
-
-/** Slots a wardrobe still needs before it can make a look. */
-export function missingEssentials(items: Item[]): Slot[] {
-  const have = new Set(items.filter(isOwned).map((i) => i.slot));
-  return ESSENTIALS.map((e) => e.slot).filter((s) => !have.has(s));
-}
 
 /**
  * The first-run checklist for a new account: what to add for a first look,
@@ -31,7 +18,7 @@ export function FirstRun() {
     { done: have.has("mid") || have.has("outer"), label: "A jumper or jacket for cooler days", optional: true },
     { done: Boolean(city), label: "Your city, for real weather", optional: true, href: "/settings#weather" },
   ];
-  const left = steps.filter((s) => !s.done && !s.optional).length;
+  const left = missingEssentials(items).length;
 
   return (
     <div className="first-run">

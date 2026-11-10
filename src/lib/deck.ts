@@ -1,6 +1,6 @@
 import type { ColorName } from "./palette";
 import { ownedColours } from "./quickadd";
-import { starterItem, type StarterCard } from "./starter";
+import { ROUND_NAME, STARTER_DECK, starterItem, type Round, type StarterCard } from "./starter";
 import type { Item } from "./types";
 
 /**
@@ -15,8 +15,12 @@ export interface Decision {
   choice: Choice;
   /** Pieces added to the wardrobe (one per colour you have). */
   itemIds: string[];
+  /** The pieces themselves, for showing what was added. */
+  pieces: Item[];
   /** Entries added to the wishlist (a wish takes the id of the piece it describes). */
   wishIds: string[];
+  /** The pieces those wishes describe. */
+  wishes: Item[];
   /** The name of the piece the card showed, for "Undo: <name>". */
   name: string;
 }
@@ -31,13 +35,17 @@ export interface DeckState {
   /** The colour each card's picture shows. */
   shown: Record<string, ColorName>;
   history: Decision[];
+  /** Where the person chose to keep going past the end of a round, so that screen isn't shown again there. */
+  resumeAt: number | null;
 }
 
 export type DeckAction =
   | { type: "toggleColour"; colour: ColorName }
   /** `ownedIds` are the ids of the pieces already in the wardrobe, so none is added twice. */
   | { type: "decide"; choice: Choice; ownedIds: readonly string[] }
-  | { type: "undo" };
+  | { type: "undo" }
+  /** Carry on past the end of a round. */
+  | { type: "continue" };
 
 /** What the page should do to the wardrobe and wishlist after an action. */
 export interface DeckEffects {
@@ -60,21 +68,25 @@ export interface DeckResult {
 const NONE: DeckEffects = { addPieces: [], addWishes: [], removeItemIds: [], removeWishIds: [], saveChoice: null, clearChoiceId: null };
 
 /**
- * The cards to show for a wardrobe. A card is left out only when its starter
- * piece is in the wardrobe in every colour the card lists, or when a choice
- * for it was remembered. A piece of the same type that didn't come from the
- * deck (typed or photographed) never hides a card.
+ * The cards to show for a wardrobe, round by round and in deck order within a
+ * round. A card is left out only when its starter piece is in the wardrobe in
+ * every colour the card lists, or when a choice for it was remembered. A piece
+ * of the same type that didn't come from the deck (typed or photographed)
+ * never hides a card. So the first card is always in the first round that
+ * still has cards to decide.
  */
 export function cardsToShow(
   all: readonly StarterCard[],
   items: readonly Pick<Item, "id">[],
   choices: Readonly<Record<string, Choice>> = {},
 ): StarterCard[] {
-  return all.filter((c) => {
-    if (choices[c.id]) return false;
-    const have = ownedColours(c, items);
-    return !c.colors.every((col) => have.includes(col));
-  });
+  return all
+    .filter((c) => {
+      if (choices[c.id]) return false;
+      const have = ownedColours(c, items);
+      return !c.colors.every((col) => have.includes(col));
+    })
+    .sort((a, b) => a.round - b.round); // stable: deck order is kept inside a round
 }
 
 /** `items` are what the wardrobe holds now: the colours of each card already owned are noted so they can't be added again. */
@@ -84,7 +96,7 @@ export function initialDeck(deck: StarterCard[], items: readonly Pick<Item, "id"
     const have = ownedColours(c, items);
     if (have.length) owned[c.id] = have;
   }
-  return { deck, index: 0, owned, picked: {}, shown: {}, history: [] };
+  return { deck, index: 0, owned, picked: {}, shown: {}, history: [], resumeAt: null };
 }
 
 export const currentCard = (s: DeckState): StarterCard | null => s.deck[s.index] ?? null;
@@ -94,6 +106,49 @@ export const isDone = (s: DeckState): boolean => s.index >= s.deck.length;
 /** "21 of 44": where the current card sits among every card in the starter deck, however many were set aside. */
 export function placeOf(s: DeckState, total: number): { at: number; total: number } {
   return { at: Math.min(Math.max(total - s.deck.length, 0) + s.index + 1, total), total };
+}
+
+/** Where the current card sits in its round: "The basics · 4 of 12". Cards set aside or already decided count as passed. */
+export function roundPlace(s: DeckState, all: readonly StarterCard[] = STARTER_DECK): { round: Round; name: string; at: number; total: number } | null {
+  const card = currentCard(s);
+  if (!card) return null;
+  const total = all.filter((c) => c.round === card.round).length;
+  const left = s.deck.slice(s.index).filter((c) => c.round === card.round).length;
+  return { round: card.round, name: ROUND_NAME[card.round], at: Math.min(Math.max(total - left, 0) + 1, total), total };
+}
+
+/** True when the last card decided was the end of a round and the next card is in a later one, until the person carries on. */
+export function atRoundEnd(s: DeckState): boolean {
+  const last = s.history[s.history.length - 1];
+  const next = currentCard(s);
+  if (!last || !next) return false;
+  return last.card.round !== next.round && s.resumeAt !== s.index;
+}
+
+export interface RoundEnd {
+  round: Round;
+  name: string;
+  /** The pieces added in that round during this visit. */
+  pieces: Item[];
+  /** Wishes added in that round during this visit. */
+  wishes: number;
+  /** The round that comes next and how many of its cards are left. */
+  next: { round: Round; name: string; left: number };
+}
+
+/** What the end-of-round screen shows, or null when the deck isn't at the end of a round. */
+export function roundEnd(s: DeckState): RoundEnd | null {
+  if (!atRoundEnd(s)) return null;
+  const last = s.history[s.history.length - 1]!;
+  const next = currentCard(s)!;
+  const done = s.history.filter((d) => d.card.round === last.card.round);
+  return {
+    round: last.card.round,
+    name: ROUND_NAME[last.card.round],
+    pieces: done.flatMap((d) => d.pieces),
+    wishes: done.reduce((n, d) => n + d.wishes.length, 0),
+    next: { round: next.round, name: ROUND_NAME[next.round], left: s.deck.slice(s.index).filter((c) => c.round === next.round).length },
+  };
 }
 
 /** The colours of the current card already in the wardrobe. */
@@ -186,12 +241,14 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckResult {
         card,
         choice: action.choice,
         itemIds: addPieces.map((p) => p.id),
+        pieces: addPieces,
         wishIds: addWishes.map((p) => p.id),
+        wishes: addWishes,
         name: starterItem(card, chosen[0] ?? card.colors[0]!).name,
       };
       // The next card is live at once: the page only animates the old one away.
       return {
-        state: { ...state, index: state.index + 1, history: [...state.history, decision] },
+        state: { ...state, index: state.index + 1, history: [...state.history, decision], resumeAt: null },
         effects: { ...NONE, addPieces, addWishes, saveChoice: { cardId: card.id, choice: action.choice } },
       };
     }
@@ -199,9 +256,11 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckResult {
       const last = state.history[state.history.length - 1];
       if (!last) return { state, effects: NONE };
       return {
-        state: { ...state, history: state.history.slice(0, -1), index: Math.max(0, state.index - 1) },
+        state: { ...state, history: state.history.slice(0, -1), index: Math.max(0, state.index - 1), resumeAt: null },
         effects: { ...NONE, removeItemIds: last.itemIds, removeWishIds: last.wishIds, clearChoiceId: last.card.id },
       };
     }
+    case "continue":
+      return { state: { ...state, resumeAt: state.index }, effects: NONE };
   }
 }

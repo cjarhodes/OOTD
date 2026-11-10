@@ -1748,6 +1748,53 @@ li[data-done] .first-run-tick {
   display: grid;
   gap: 28px;
 }
+/* The end of a round: it replaces the card and the buttons, and is shorter than both together. */
+.swipe-round-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px 14px;
+}
+.swipe-round-title {
+  font-size: 24px;
+  color: var(--ink);
+}
+.swipe-round-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.swipe-round-pieces {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  /* Two rows show; a longer list scrolls inside, so the buttons never move off the screen. */
+  max-height: 148px;
+  overflow-y: auto;
+}
+.swipe-round-pieces li {
+  padding: 8px;
+  background: var(--wall);
+  border-radius: var(--radius-tile);
+}
+.swipe-round-pieces .garment-svg {
+  height: 52px;
+  margin: 0;
+}
+.swipe-round-card .actions {
+  display: grid;
+  gap: 8px;
+}
+/* The counts line becomes the way to a first look once there is one. */
+.swipe-look {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  min-height: 44px;
+}
 /* The swipe's colour chips are 44 px tall (the shared chip stays 36 px for Type a list), and tighter around them. */
 .swipe .colour-chips {
   gap: 6px;

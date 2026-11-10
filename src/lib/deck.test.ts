@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeItem } from "./kinds";
 import {
+  atRoundEnd,
   cardsToShow,
   chosenColours,
   countsOf,
@@ -10,13 +11,17 @@ import {
   isDone,
   ownedOnCard,
   placeOf,
+  roundEnd,
+  roundPlace,
   shownColour,
   tickedColours,
   visibleColours,
   type DeckAction,
   type DeckState,
 } from "./deck";
-import { STARTER_DECK, type StarterCard } from "./starter";
+import { KINDS } from "./kinds";
+import { missingEssentials } from "./essentials";
+import { ROUNDS, ROUND_NAME, STARTER_DECK, type StarterCard } from "./starter";
 
 const tee = STARTER_DECK.find((c) => c.id === "tee")!;
 const jeans = STARTER_DECK.find((c) => c.colors.length > 1 && c.id !== "tee")!;
@@ -270,5 +275,109 @@ describe("colours drawn on a small card", () => {
 
   it("keeps an extra colour owned from elsewhere", () => {
     expect(visibleColours([...five, "Grey"], ["Grey"], [])).toEqual(["Navy", "Brown", "Forest", "Grey"]);
+  });
+});
+
+describe("rounds", () => {
+  const round = (n: number) => STARTER_DECK.filter((c) => c.round === n);
+  const have = { type: "decide", choice: "have", ownedIds: [] } as const;
+
+  it("gives every card a round, and the rounds hold the whole deck", () => {
+    expect(STARTER_DECK.every((c) => ROUNDS.includes(c.round))).toBe(true);
+    expect(ROUNDS.reduce((n, r) => n + round(r).length, 0)).toBe(STARTER_DECK.length);
+    expect(ROUNDS.map((r) => ROUND_NAME[r])).toEqual(["The basics", "Layers and jackets", "Shoes", "What’s current"]);
+  });
+
+  it("makes round 1 twelve essential cards covering every slot", () => {
+    const basics = round(1);
+    expect(basics).toHaveLength(12);
+    expect(basics.every((c) => c.tag === "Essential")).toBe(true);
+    const slots = basics.map((c) => KINDS[c.kind].slot);
+    for (const slot of ["base", "mid", "outer", "bottom", "shoes"] as const) expect(slots).toContain(slot);
+    const count = (slot: string) => slots.filter((x) => x === slot).length;
+    expect(count("base")).toBeGreaterThanOrEqual(3);
+    expect(count("bottom")).toBeGreaterThanOrEqual(2);
+    expect(count("shoes")).toBeGreaterThanOrEqual(2);
+    expect(count("mid")).toBeGreaterThanOrEqual(2);
+    expect(count("outer")).toBeGreaterThanOrEqual(2);
+    for (const id of ["tee", "jeans", "sneakers", "oxford", "crew", "hoodie", "chinos"]) expect(basics.map((c) => c.id)).toContain(id);
+  });
+
+  it("keeps layers and jackets in round 2 and shoes in round 3", () => {
+    expect(round(2).every((c) => ["mid", "outer"].includes(KINDS[c.kind].slot))).toBe(true);
+    expect(round(3).every((c) => KINDS[c.kind].slot === "shoes")).toBe(true);
+  });
+
+  it("shows cards round by round, in deck order inside a round", () => {
+    const shown = cardsToShow(STARTER_DECK, []);
+    expect(shown).toHaveLength(STARTER_DECK.length);
+    expect(shown.map((c) => c.round)).toEqual([...shown.map((c) => c.round)].sort((a, b) => a - b));
+    for (const r of ROUNDS) expect(shown.filter((c) => c.round === r).map((c) => c.id)).toEqual(round(r).map((c) => c.id));
+  });
+
+  it("offers a look within twelve cards for a new account", () => {
+    let s = initialDeck(cardsToShow(STARTER_DECK, []));
+    const pieces: ReturnType<typeof makeItem>[] = [];
+    let cards = 0;
+    while (missingEssentials(pieces).length > 0 && !atRoundEnd(s) && cards < 12) {
+      const r = deckReducer(s, have);
+      pieces.push(...r.effects.addPieces);
+      s = r.state;
+      cards += 1;
+    }
+    expect(missingEssentials(pieces)).toEqual([]);
+    expect(cards).toBeLessThanOrEqual(12);
+    expect(cards).toBe(3); // tee, jeans and sneakers are the first three cards
+  });
+
+  it("counts within the round: 'The basics · 4 of 12'", () => {
+    let s = initialDeck(cardsToShow(STARTER_DECK, []));
+    expect(roundPlace(s)).toEqual({ round: 1, name: "The basics", at: 1, total: 12 });
+    s = run(s, have, have, have);
+    expect(roundPlace(s)).toEqual({ round: 1, name: "The basics", at: 4, total: 12 });
+    expect(roundPlace(initialDeck([]))).toBeNull();
+  });
+
+  it("resumes in the first round that still has undecided cards", () => {
+    const some = Object.fromEntries(round(1).slice(0, 8).map((c) => [c.id, "have" as const]));
+    const back = initialDeck(cardsToShow(STARTER_DECK, [], some));
+    expect(roundPlace(back)).toEqual({ round: 1, name: "The basics", at: 9, total: 12 });
+    const all = Object.fromEntries(round(1).map((c) => [c.id, "skip" as const]));
+    const next = initialDeck(cardsToShow(STARTER_DECK, [], all));
+    expect(roundPlace(next)).toEqual({ round: 2, name: "Layers and jackets", at: 1, total: 11 });
+    // Landing there is not a round end: nothing has been decided this visit.
+    expect(atRoundEnd(next)).toBe(false);
+  });
+
+  it("stops at the end of a round with what was added, and carries on when asked", () => {
+    let s = initialDeck(cardsToShow(STARTER_DECK, []));
+    for (let i = 0; i < 11; i++) s = run(s, have);
+    expect(atRoundEnd(s)).toBe(false);
+    s = run(s, { type: "decide", choice: "skip", ownedIds: [] });
+    expect(atRoundEnd(s)).toBe(true);
+    const end = roundEnd(s)!;
+    expect(end.name).toBe("The basics");
+    expect(end.pieces).toHaveLength(11);
+    expect(end.next).toEqual({ round: 2, name: "Layers and jackets", left: 11 });
+    s = run(s, { type: "continue" });
+    expect(atRoundEnd(s)).toBe(false);
+    expect(roundEnd(s)).toBeNull();
+    expect(roundPlace(s)!.name).toBe("Layers and jackets");
+  });
+
+  it("brings the end-of-round screen back after an undo and a new choice", () => {
+    let s = initialDeck(cardsToShow(STARTER_DECK, []));
+    for (let i = 0; i < 12; i++) s = run(s, have);
+    s = run(s, { type: "continue" });
+    s = run(s, { type: "undo" });
+    expect(atRoundEnd(s)).toBe(false);
+    expect(roundPlace(s)!.round).toBe(1);
+    s = run(s, have);
+    expect(atRoundEnd(s)).toBe(true);
+  });
+
+  it("has no round end when the deck is finished or nothing was decided", () => {
+    expect(atRoundEnd(initialDeck([tee]))).toBe(false);
+    expect(atRoundEnd(run(initialDeck([tee]), have))).toBe(false);
   });
 });

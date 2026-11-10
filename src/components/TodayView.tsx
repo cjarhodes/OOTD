@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FirstRun, missingEssentials } from "./FirstRun";
+import { FirstRun } from "./FirstRun";
+import { missingEssentials } from "@/lib/essentials";
 import { FlatLay } from "./FlatLay";
 import { MuseumLabel } from "./MuseumLabel";
 import { isDateKey, longWeekday, shortDate } from "@/lib/dates";
