@@ -9,7 +9,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | F0 | done | loop/wardrobe-entry | 2026-11-09 |
 | F1 | done | loop/wardrobe-entry | 2026-11-10 |
 | F2 | done | loop/wardrobe-entry | 2026-11-10 |
-| F3 | todo | | |
+| F3 | done | loop/wardrobe-entry | 2026-11-10 |
 | F4 | todo | | |
 | T1 | todo | | |
 | T2 | todo | | |
@@ -58,6 +58,11 @@ For the next agent: floors only go up. `material`, `pattern` and `fit` are recor
 What changed: the swipe logic moved out of `src/app/start/page.tsx` into `src/lib/deck.ts` as a pure `deckReducer(state, action)` returning `{ state, effects }`, with 13 tests in `src/lib/deck.test.ts`. State is `{ deck, index, picked, shown, history }`; actions are `toggleColour`, `decide(choice, ownedIds)`, `undo`, plus `advance` (see below). Effects are `addPieces`, `addWishes` (pieces to turn into wishes with `wishFromItem`, which uses the clock, so the reducer stays pure), `removeItemIds` and `removeWishIds`. Selectors `currentCard`, `shownColour`, `tickedColours`, `chosenColours`, `isDone`, `countsOf` are exported too. The page keeps only drawing, pointer handling, the 220 ms exit timer and the calls to `addPieces`, `addWish`, `removeItem`, `removeWish`. Behaviour is unchanged.
 Scorecard: types 59/132, colours 63/92, white guesses 57/132, tests 139
 For the next agent: I added a fourth action, `advance`, because today `decide` records history at once but moves to the next card only after the 220 ms exit animation; folding the index change into `decide` would have changed behaviour. S4 can remove the `leaving` guard and the `advance` timer in the page. `decide` takes `ownedIds` (ids of pieces already in the wardrobe) so the reducer doesn't read the wardrobe. `alreadyHas` is still in `starter.ts`, called from the page when the deck is first built; S1 replaces it. The `Choice` type now lives in `deck.ts`.
+
+### F3 · 2026-11-10
+What changed: the gesture maths moved into `src/lib/swipe.ts` (`leanOf`, `choiceOf`, `strengthOf`, plus exported `THRESHOLD` = 90 and `LEAN` = 40), with 8 tests in `src/lib/swipe.test.ts` covering each direction, diagonals, ties and the dead zone. `src/app/start/page.tsx` imports them and its inline copies are gone. Same numbers and behaviour as before.
+Scorecard: types 59/132, colours 63/92, white guesses 57/132, tests 147
+For the next agent: an exact tie between sideways and upward movement goes sideways (as in the old code, since up must be strictly larger). `strengthOf` ignores downward drag. G1 will extend `choiceOf` with velocity and width; the `Choice` type is imported from `deck.ts`.
 
 ## For Alex to try on his phone
 

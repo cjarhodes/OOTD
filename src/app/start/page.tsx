@@ -21,10 +21,10 @@ import {
   type DeckState,
 } from "@/lib/deck";
 import { alreadyHas, STARTER_DECK, starterItem } from "@/lib/starter";
+import { choiceOf, leanOf, strengthOf } from "@/lib/swipe";
 import { wishFromItem } from "@/lib/wishlist";
 import { useWardrobe } from "@/state/wardrobe";
 
-const THRESHOLD = 90;
 const LABEL: Record<Choice, string> = { have: "I have it", skip: "Not mine", want: "Want it" };
 
 /**
@@ -122,15 +122,14 @@ export default function StartPage() {
     if (!start.current || !drag) return;
     start.current = null;
     const { x, y } = drag;
-    if (y < -THRESHOLD && Math.abs(y) > Math.abs(x)) void decide("want");
-    else if (x > THRESHOLD) void decide("have");
-    else if (x < -THRESHOLD) void decide("skip");
+    const choice = choiceOf(x, y);
+    if (choice) void decide(choice);
     else setDrag(null);
   };
 
   // Which way the card is leaning, for the stamp on it.
-  const lean: Choice | null = leaving ?? (drag ? (drag.y < -40 && Math.abs(drag.y) > Math.abs(drag.x) ? "want" : drag.x > 40 ? "have" : drag.x < -40 ? "skip" : null) : null);
-  const strength = drag ? Math.min(1, Math.max(Math.abs(drag.x), -drag.y) / THRESHOLD) : leaving ? 1 : 0;
+  const lean: Choice | null = leaving ?? (drag ? leanOf(drag.x, drag.y) : null);
+  const strength = drag ? strengthOf(drag.x, drag.y) : leaving ? 1 : 0;
   const transform = leaving
     ? leaving === "want"
       ? "translate(0, -120vh)"
