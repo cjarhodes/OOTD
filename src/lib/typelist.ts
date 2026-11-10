@@ -1,6 +1,6 @@
 import { usualColour } from "./starter";
 import type { ColorName } from "./palette";
-import { parseList, type TypedPiece } from "./typed";
+import { parseChunks, readHeading, type TypedPiece } from "./typed";
 import type { Kind } from "./types";
 
 /**
@@ -41,8 +41,8 @@ function chunksOf(text: string): string[] {
 
 /** Every piece in the text, one row each, with corrections applied. */
 export function rowsOf(text: string, fixes: Fixes): Row[] {
-  return chunksOf(text).flatMap((chunk, i) =>
-    parseList(chunk).map((p, n) => {
+  return parseChunks(text).flatMap((pieces, i) =>
+    pieces.map((p, n) => {
       const key = `${i}:${n}:${p.name}`;
       return { ...applyFix(p, fixes[key]), chunk: i, key };
     }),
@@ -86,19 +86,30 @@ function keepRows(text: string, fixes: Fixes, keep: (r: Row) => boolean): { text
   for (const r of rowsOf(text, fixes)) byChunk.set(r.chunk, [...(byChunk.get(r.chunk) ?? []), r]);
   const lines: string[] = [];
   const next: Fixes = {};
+  // A heading stays only while some line under it does, and a blank line is kept only to end a heading's lines.
+  let pending: string | null = null;
+  let active = false;
   chunksOf(text).forEach((chunk, i) => {
     const mine = byChunk.get(i) ?? [];
+    if (mine.length === 0 && !chunk.trim()) {
+      pending = null;
+      if (active) lines.push("");
+      active = false;
+      return;
+    }
+    if (mine.length === 0 && readHeading(chunk)) {
+      pending = chunk;
+      return;
+    }
     const kept = mine.filter(keep);
     let line: string;
-    if (mine.length === 0) {
-      if (!chunk.trim()) return;
-      line = chunk;
-    } else if (kept.length === 0) {
-      return;
-    } else if (kept.length === mine.length) {
-      line = chunk;
-    } else {
-      line = kept.map((r) => r.name).join(", ");
+    if (mine.length > 0 && kept.length === 0) return;
+    if (kept.length === mine.length) line = chunk;
+    else line = kept.map((r) => r.name).join(", ");
+    if (pending !== null) {
+      lines.push(pending);
+      pending = null;
+      active = true;
     }
     const c = lines.push(line) - 1;
     kept.forEach((r, n) => {
@@ -106,6 +117,7 @@ function keepRows(text: string, fixes: Fixes, keep: (r: Row) => boolean): { text
       if (f) next[`${c}:${n}:${r.name}`] = f;
     });
   });
+  while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
   return { text: lines.join("\n"), fixes: next };
 }
 

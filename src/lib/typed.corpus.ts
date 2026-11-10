@@ -174,6 +174,11 @@ const MORE: CorpusLine[] = [
   // Several pieces in a line
   { text: "navy and grey crewnecks", kind: "crewneck", colors: ["Navy", "Grey"] },
   { text: "two grey hoodies", kind: "hoodie", color: "Grey", count: 2 },
+  // Fresh lines the parser was never tuned on (U3)
+  { text: "black North Face fleece", kind: "fleece", color: "Black" },
+  { text: "a couple of white t shirts", kind: "tee", color: "White", count: 2 },
+  { text: "navy rain mac", kind: "rain-shell", color: "Navy" },
+  { text: "navy sweat shorts", kind: "shorts", color: "Navy" },
 ];
 
 export const CORPUS: CorpusLine[] = [...SEED, ...MORE];

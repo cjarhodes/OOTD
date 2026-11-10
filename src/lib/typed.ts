@@ -1,7 +1,7 @@
 import { fitsFor, KINDS, makeItem } from "./kinds";
 import { COLOR_NAMES, type ColorName } from "./palette";
 import { usualColour } from "./starter";
-import type { Fit, Item, Kind, Material, Pattern } from "./types";
+import type { Fit, Item, Kind, Material, Pattern, Slot } from "./types";
 
 /**
  * Pieces typed in by name ("White Converse high tops, brown Birkenstock
@@ -89,6 +89,8 @@ const HINTS: Hint[] = [
   { re: /\bslip[- ]?ons?\b|\bdeck shoes?\b|\bboat shoes?\b|\bespadrilles?\b/, kind: "canvas" },
   { re: /\bsliders?\b/, kind: "sandals", material: "leather" },
   // Garments, in words people use. Longer phrases come before the words inside them.
+  // "sweat shorts" would otherwise be read as a sweatshirt.
+  { re: /\b(?:sweat|jersey) shorts\b/, kind: "shorts" },
   { re: /\bdenim jackets?\b|\btrucker\b/, kind: "denim-jacket" },
   { re: /\bsweat ?pants\b|\bjoggers?\b|\bsweats\b|\btrack ?pants\b|\btracksuit bottoms?\b|\bjogging bottoms?\b/, kind: "sweatpants" },
   { re: /\bcargo(?:s| pants| trousers)\b/, kind: "cargos" },
@@ -100,7 +102,7 @@ const HINTS: Hint[] = [
   // Layers over a shirt, most specific first.
   { re: /\bshackets?\b|\bshirt jackets?\b|\bfield jackets?\b/, kind: "overshirt" },
   { re: /\bwork(?:er)? jackets?\b|\bchore jackets?\b/, kind: "chore-coat" },
-  { re: /\brain ?jackets?\b|\brain ?coats?\b|\bwindbreakers?\b|\banoraks?\b|\bcagoules?\b|\bwaterproofs?\b|\bhard ?shells?\b/, kind: "rain-shell" },
+  { re: /\brain ?jackets?\b|\brain ?coats?\b|\brain ?macs?\b|\bwindbreakers?\b|\banoraks?\b|\bcagoules?\b|\bwaterproofs?\b|\bhard ?shells?\b/, kind: "rain-shell" },
   { re: /\bvests?\b|\bbody ?warmers?\b/, kind: "gilet" },
   { re: /\bparkas?\b|\bdown jackets?\b|\bpuffas?\b|\bquilted jackets?\b/, kind: "puffer" },
   { re: /\bpea ?coats?\b|\btrench(?: coats?)?\b|\btop ?coats?\b|\bmacs?\b|\bduff[el]e coats?\b/, kind: "overcoat" },
@@ -127,6 +129,8 @@ const HINTS: Hint[] = [
  */
 const WEAK_HINTS: Hint[] = [
   { re: /\bjumpers?\b|\bsweaters?\b|\bpullovers?\b/, kind: "crewneck" },
+  // A bare "fleece" ("black North Face fleece") is the fleece type; any other garment word wins.
+  { re: /\bfleeces?\b/, kind: "fleece" },
   { re: /\bcoats?\b/, kind: "overcoat" },
   { re: /\boxfords?\b|\bshirts?\b/, kind: "oxford" },
   { re: /\bpants\b/, kind: "trousers" },
@@ -332,8 +336,23 @@ const MAX_COUNT = 10;
 
 const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
 
+/** Trousers, shorts and shoes already come as a pair, and so does anything unplaced: "a pair of jeans" is one piece. */
+function isPairGarment(text: string): boolean {
+  const p = parsePieceText(text);
+  if (!p || !p.kind) return true;
+  const slot = KINDS[p.kind].slot;
+  return slot === "bottom" || slot === "shoes";
+}
+
 /** A leading number ("3 ", "2x ", "two ", "4 pairs of ") or a trailing "x2" / "(x2)", taken off the text. */
 function takeCount(text: string): { count: number; text: string } {
+  // "a couple of white tees" is two; "a pair of white tees" is two, but a pair of jeans or shoes is one.
+  const loose = /^(?:an?\s+|one\s+)?(couple|pair)\s+of\s+(?=\S)/i.exec(text);
+  if (loose) {
+    const rest = text.slice(loose[0].length).trim();
+    const one = loose[1]?.toLowerCase() === "pair" && isPairGarment(rest);
+    return { count: one ? 1 : 2, text: rest };
+  }
   const lead = /^(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)(?:\s*[x×]\s+|\s+(?:pairs?\s+of\s+)?)(?=\S)/i.exec(text);
   const trail = lead ? null : /\s+\(?[x×]\s*(\d{1,2})\)?$/i.exec(text);
   if (!lead && !trail) return { count: 1, text };
@@ -529,9 +548,40 @@ function attach(segs: Seg[]): Set<Seg> {
   return orphans;
 }
 
+/** The text names a garment OOTD has a type for, or a thing it recognises and won't plan. */
+function isThingText(text: string): boolean {
+  const p = parsePieceText(text);
+  return p !== null && (p.kind !== null || Boolean(p.unsupported));
+}
+
+/**
+ * "jeans and chinos" is two pieces, but "black and white tee" and "navy and
+ * grey crewnecks" are not: it splits at an "and" only where a garment stands on
+ * each side.
+ */
+function splitAnd(segment: string): string[] {
+  const parts = segment.split(/(\s+(?:and|&)\s+)/i);
+  if (parts.length < 3) return [segment];
+  const out: string[] = [];
+  let current = parts[0] ?? "";
+  for (let i = 1; i < parts.length; i += 2) {
+    const joiner = parts[i] ?? " and ";
+    const next = parts[i + 1] ?? "";
+    if (isThingText(current) && isThingText(next)) {
+      out.push(current);
+      current = next;
+    } else {
+      current = `${current}${joiner}${next}`;
+    }
+  }
+  out.push(current);
+  return out;
+}
+
 function parseLine(line: string): TypedPiece[] {
   const segs = turnRound(cleanLine(line))
     .split(/,(?![^(]*\))/)
+    .flatMap(splitAnd)
     .map(analyse)
     .filter((s): s is Seg => s !== null);
   const orphans = attach(segs);
@@ -547,7 +597,111 @@ function parseLine(line: string): TypedPiece[] {
  * comma ("Quarter zip, navy") belongs to the piece before it.
  */
 export function parseList(text: string): TypedPiece[] {
-  return text.split(/\n|;/).flatMap(parseLine);
+  return parseChunks(text).flat();
+}
+
+// ---------------------------------------------------------------------------
+// Headings in pasted notes: "Shoes:", "Jackets". A heading makes no piece, but
+// the lines under it (until the next heading or a blank line) are read as
+// belonging to that part of the wardrobe when their words could go two ways.
+// ---------------------------------------------------------------------------
+
+/** Words that name a part of the wardrobe. With a colon after them, or alone on a line, they are headings. */
+const HEADING_SLOTS: [RegExp, Slot][] = [
+  [/^(?:tops?|shirts|t-shirts|base layers?|base)$/, "base"],
+  [/^(?:knitwear|knits|jumpers|sweaters|mid layers?|layers|mid)$/, "mid"],
+  [/^(?:jackets|coats|outerwear|outer layers?|outer)$/, "outer"],
+  [/^(?:bottoms|bottom)$/, "bottom"],
+  [/^(?:shoes|footwear)$/, "shoes"],
+];
+
+/**
+ * Is this line a heading, and for which part of the wardrobe? `null` when it
+ * is an ordinary line. A line ending in a colon is always a heading ("Work
+ * clothes:" has no slot); without one only the plain slot words count, so a
+ * lone "trousers" is still a piece.
+ */
+export function readHeading(line: string): { slot: Slot | null } | null {
+  const cleaned = cleanLine(line);
+  if (!cleaned) return null;
+  const colon = cleaned.endsWith(":");
+  const words = cleaned.replace(/:+$/, "").trim().toLowerCase();
+  if (!words) return null;
+  const named = HEADING_SLOTS.find(([re]) => re.test(words))?.[1];
+  if (named) return { slot: named };
+  if (!colon) return null;
+  const kind = parsePieceText(words)?.kind;
+  return { slot: kind ? KINDS[kind].slot : null };
+}
+
+/**
+ * Readings that settle a tie under a heading. They are tried only when the
+ * line has no type, or one from another part of the wardrobe: "white oxford"
+ * is a shirt on its own but a shoe under "Shoes:".
+ */
+const CONTEXT_HINTS: Partial<Record<Slot, Hint[]>> = {
+  base: [{ re: /\blinen\b/, kind: "oxford", material: "linen" }],
+  mid: [{ re: /\bmerino\b|\bcashmere\b|\blambswool\b|\bcable[- ]?knit\b|\bknit\b/, kind: "crewneck", material: "knit" }],
+  outer: [
+    { re: /\bleather\b/, kind: "bomber", material: "leather" },
+    { re: /\bwaxed?\b/, kind: "waxed-jacket" },
+    { re: /\bdenim\b/, kind: "denim-jacket" },
+    { re: /\bquilted\b|\bpuffy\b|\bdown\b/, kind: "puffer" },
+  ],
+  bottom: [
+    { re: /\bdenim\b|\bdark wash\b|\blight wash\b|\braw\b|\bselvedge\b/, kind: "jeans" },
+    { re: /\blinen\b|\bpleated\b|\btailored\b/, kind: "trousers" },
+  ],
+  shoes: [
+    { re: /\boxfords?\b|\bdrivers?\b|\bmoccasins?\b|\bmocs\b/, kind: "loafers", material: "leather" },
+    { re: /\bblazers?\b/, kind: "sneakers", material: "leather" },
+  ],
+};
+
+/** A piece read again under a heading, when its type is missing or from a different part of the wardrobe. */
+function inContext(p: TypedPiece, slot: Slot): TypedPiece {
+  if (p.unsupported || (p.kind && KINDS[p.kind].slot === slot)) return p;
+  const hint = CONTEXT_HINTS[slot]?.find((h) => h.re.test(p.name.toLowerCase()));
+  if (!hint?.kind) return p;
+  const kind = hint.kind;
+  const material = hint.material ?? p.material;
+  const fit = p.fit && fitsFor(KINDS[kind].slot).includes(p.fit) ? p.fit : undefined;
+  const rest = { ...p };
+  delete rest.material;
+  delete rest.fit;
+  return {
+    ...rest,
+    kind,
+    color: p.colorGuessed ? (hint.color ?? usualColour(kind)) : p.color,
+    ...(material ? { material } : {}),
+    ...(fit ? { fit } : {}),
+  };
+}
+
+/**
+ * The pieces each line (split on new lines and semicolons) makes, in order,
+ * with headings read: a heading's own line makes none, and the lines under it
+ * are read in its context until the next heading or a blank line.
+ */
+export function parseChunks(text: string): TypedPiece[][] {
+  const out: TypedPiece[][] = [];
+  let context: Slot | null = null;
+  for (const chunk of text.split(/\n|;/)) {
+    if (!chunk.trim()) {
+      context = null;
+      out.push([]);
+      continue;
+    }
+    const heading = readHeading(chunk);
+    if (heading) {
+      context = heading.slot;
+      out.push([]);
+      continue;
+    }
+    const pieces = parseLine(chunk);
+    out.push(context ? pieces.map((p) => inContext(p, context as Slot)) : pieces);
+  }
+  return out;
 }
 
 /** The piece a typed line becomes, once it has a kind. */
