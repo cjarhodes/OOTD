@@ -276,3 +276,10 @@ None of this was seen running. Do these on an iPhone in Safari, signed in with a
 ## Ideas (not for now)
 - Fix `SOURCE_URL` in `src/components/CloudBackup.tsx` (still `cjarhodes/Clothing`). Found in F4.
 - Done in X1: `SOURCE_URL` in `CloudBackup.tsx` now points at `cjarhodes/OOTD`.
+
+### Orchestrator check · 2026-11-10
+What changed: the swipe card's drawing gets 18 px more room (`.swipe-art` clamp now subtracts 572 px, not 590), measured in headless Chrome at phone sizes.
+Checked in a real browser at 375 × 667 during the run, signed in with a local test account: Quick add, the "+ Add" sheet, Type a list (partial add, unsupported and colour-missing rows), the type sheet, multi-colour "I have it", 10 fast taps (10 decisions), touch drags left, right and up, spring-back on a short drag, Undo, resume after reload, rounds, "You can get dressed now" after three cards, the round-end panel, fixing a colour there, `/start?slot=shoes`, "Swipe more in Shoes", and a first look on Today after 12 cards. No page or console errors.
+Fit, no scrolling: 375 × 667, 390 × 844, 393 × 852, 430 × 932. At 320 × 568 the swipe page scrolls.
+Not confirmed: a short fast flick (the headless browser moves touches too slowly to produce one), the one-time hint animation, VoiceOver output, and dark theme on the swipe screens.
+Held-out parser check: 46 of 50 fresh lines right before the four misses were fixed in U3.

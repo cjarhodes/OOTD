@@ -1381,10 +1381,10 @@ li[data-done] .first-run-tick {
   transition: none;
 }
 /* The drawing gives way first: the card, the counts line and the three buttons have to fit the screen
-   (about 590 px of everything else on a phone), so it takes what is left, between 56 and 280 px. */
+   (about 572 px of everything else on a phone), so it takes what is left, between 56 and 280 px. */
 .swipe-art {
-  height: clamp(56px, calc(100vh - 590px), 280px);
-  height: clamp(56px, calc(100dvh - 590px), 280px);
+  height: clamp(56px, calc(100vh - 572px), 280px);
+  height: clamp(56px, calc(100dvh - 572px), 280px);
   display: grid;
   place-items: center;
   border-radius: 0;
