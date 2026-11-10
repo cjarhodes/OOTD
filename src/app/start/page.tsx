@@ -83,19 +83,50 @@ export default function StartPage() {
   const revisit = () => {
     const left = withoutSkipped(stored.current);
     remember(left);
-    setDrag(null);
+    stopDrag();
     setDeckNow(initialDeck(cardsToShow(STARTER_DECK, items, left), items));
   };
 
   // Every other colour opens in a sheet, so the card never holds a long list.
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [gone, setGone] = useState<Leaving[]>([]);
   const goneCount = useRef(0);
   const cardEl = useRef<HTMLDivElement | null>(null);
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
   // The last few pointer positions, for the speed of a flick on release.
   const samples = useRef<Sample[]>([]);
+  // Where the card has been dragged to. Dragging never touches React state: the position is written to the
+  // card as CSS custom properties, at most once a frame, and only a decision re-renders the page.
+  const dragAt = useRef({ x: 0, y: 0 });
+  const frame = useRef<number | null>(null);
+  const paint = useCallback(() => {
+    frame.current = null;
+    const el = cardEl.current;
+    if (!el) return;
+    const { x, y } = dragAt.current;
+    const lean = leanOf(x, y);
+    const width = el.offsetWidth; // read before writing, so a frame forces no extra layout
+    el.style.setProperty("--dx", String(x));
+    el.style.setProperty("--dy", String(Math.min(y, 40)));
+    el.style.setProperty("--strength", String(strengthOf(x, y, width)));
+    if (lean) el.dataset.lean = lean;
+    else delete el.dataset.lean;
+  }, []);
+  /** Let go of the card without a decision, or drop a drag that is over: cancel any frame still waiting. */
+  const stopDrag = useCallback(() => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+    start.current = null;
+    dragAt.current = { x: 0, y: 0 };
+    const el = cardEl.current;
+    if (!el) return;
+    delete el.dataset.dragging;
+    delete el.dataset.lean;
+    el.style.setProperty("--dx", "0");
+    el.style.setProperty("--dy", "0");
+    el.style.setProperty("--strength", "0");
+  }, []);
+  useEffect(() => stopDrag, [stopDrag]);
 
   const deck = dk?.deck ?? null;
   const index = dk?.index ?? 0;
@@ -115,6 +146,10 @@ export default function StartPage() {
   };
   const toggle = (c: ColorName) => void step({ type: "toggleColour", colour: c });
   const preview = useMemo(() => (card && color ? starterItem(card, color) : null), [card, color]);
+  // The drawings are made once per card, so a tap on a colour chip redraws neither the live card nor the one behind.
+  const nextCard = deck?.[index + 1] ?? null;
+  const previewArt = useMemo(() => (preview ? <GarmentTile item={preview} decorative /> : null), [preview]);
+  const nextArt = useMemo(() => (nextCard ? <GarmentTile item={starterItem(nextCard)} decorative /> : null), [nextCard]);
   const done = dk !== null && isDone(dk);
   const counts = countsOf(history);
   const last = history[history.length - 1] ?? null;
@@ -132,7 +167,7 @@ export default function StartPage() {
       if (mode !== "personal") setMode("personal");
       const { state, effects } = deckReducer(cur, { type: "decide", choice, ownedIds: items.map((i) => i.id) });
       setDeckNow(state);
-      setDrag(null);
+      stopDrag();
       remember(choicesAfter(stored.current, effects));
       if (effects.addPieces.length) void addPieces(effects.addPieces.map((item) => ({ item })));
       for (const item of effects.addWishes) addWish(wishFromItem(item));
@@ -144,7 +179,7 @@ export default function StartPage() {
       window.setTimeout(() => dropLeaving(key), LEAVE_MS);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- remember only reads refs and the storage key
-    [mode, setMode, addPieces, addWish, items, storageKey, dropLeaving],
+    [mode, setMode, addPieces, addWish, items, storageKey, dropLeaving, stopDrag],
   );
 
   const undo = useCallback(async () => {
@@ -178,28 +213,25 @@ export default function StartPage() {
     if ((e.target as HTMLElement).closest("button, .colour-picks")) return;
     start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
     samples.current = [{ t: performance.now(), x: e.clientX, y: e.clientY }];
+    dragAt.current = { x: 0, y: 0 };
+    e.currentTarget.dataset.dragging = "true";
     e.currentTarget.setPointerCapture(e.pointerId);
-    setDrag({ x: 0, y: 0 });
   };
+  // No state is set here: the position goes to the card on the next frame.
   const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (!start.current || start.current.id !== e.pointerId) return;
     samples.current = [...samples.current.slice(-7), { t: performance.now(), x: e.clientX, y: e.clientY }];
-    setDrag({ x: e.clientX - start.current.x, y: e.clientY - start.current.y });
+    dragAt.current = { x: e.clientX - start.current.x, y: e.clientY - start.current.y };
+    if (frame.current === null) frame.current = requestAnimationFrame(paint);
   };
   const onUp = () => {
-    if (!start.current || !drag) return;
-    start.current = null;
-    const { x, y } = drag;
+    if (!start.current) return;
+    const { x, y } = dragAt.current;
     const { vx, vy } = velocityOf(samples.current, performance.now());
     const choice = choiceOf(x, y, vx, vy, cardEl.current?.offsetWidth);
     if (choice) decide(choice, { x, y });
-    else setDrag(null);
+    else stopDrag();
   };
-
-  // Which way the card is leaning, for the stamp on it.
-  const lean: Choice | null = drag ? leanOf(drag.x, drag.y) : null;
-  const strength = drag ? strengthOf(drag.x, drag.y) : 0;
-  const transform = drag ? `translate(${drag.x}px, ${Math.min(drag.y, 40)}px) rotate(${drag.x * 0.06}deg)` : undefined;
 
   return (
     <>
@@ -225,7 +257,7 @@ export default function StartPage() {
             {deck[index + 1] && (
               <div className="swipe-card swipe-next" aria-hidden="true">
                 <div className="plinth swipe-art">
-                  <GarmentTile item={starterItem(deck[index + 1]!)} decorative />
+                  {nextArt}
                 </div>
               </div>
             )}
@@ -257,26 +289,21 @@ export default function StartPage() {
             <div
               key={card.id}
               ref={cardEl}
-              className={`swipe-card${drag ? " dragging" : ""}`}
-              style={{ transform }}
+              className="swipe-card"
               onPointerDown={onDown}
               onPointerMove={onMove}
               onPointerUp={onUp}
-              onPointerCancel={() => {
-                start.current = null;
-                setDrag(null);
-              }}
+              onPointerCancel={stopDrag}
               aria-roledescription="card"
               aria-label={`${preview.name}. ${card.note}`}
             >
-              {lean && (
-                <span className={`swipe-stamp stamp-${lean}`} style={{ opacity: strength }} aria-hidden="true">
-                  {LABEL[lean]}
+              {/* All three stamps are there; the card's data-lean says which one shows, and --strength how much. */}
+              {(["have", "skip", "want"] as const).map((c) => (
+                <span key={c} className={`swipe-stamp stamp-${c}`} aria-hidden="true">
+                  {LABEL[c]}
                 </span>
-              )}
-              <div className="plinth swipe-art">
-                <GarmentTile item={preview} decorative />
-              </div>
+              ))}
+              <div className="plinth swipe-art">{previewArt}</div>
               <div className="swipe-text">
                 <span className="label">
                   {card.tag === "Now" ? "On trend" : "Essential"} · {SLOT_LABEL[KINDS[card.kind].slot]}

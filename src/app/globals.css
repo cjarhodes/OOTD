@@ -1313,9 +1313,11 @@ li[data-done] .first-run-tick {
   overflow: hidden;
   user-select: none;
   cursor: grab;
+  /* Where the card is comes from --dx and --dy (pixels, no unit), which the page writes while it is dragged. */
+  transform: translate(calc(var(--dx, 0) * 1px), calc(var(--dy, 0) * 1px)) rotate(calc(var(--dx, 0) * 0.06deg));
   transition: transform 220ms ease;
 }
-.swipe-card.dragging {
+.swipe-card[data-dragging] {
   transition: none;
   cursor: grabbing;
 }
@@ -1611,6 +1613,18 @@ li[data-done] .first-run-tick {
   text-transform: uppercase;
   background: var(--wall);
   pointer-events: none;
+}
+/* The stamp for the way the card leans, as strong as the drag is far. */
+.swipe-stamp {
+  opacity: 0;
+}
+.swipe-card[data-lean="have"] .stamp-have,
+.swipe-card[data-lean="skip"] .stamp-skip,
+.swipe-card[data-lean="want"] .stamp-want {
+  opacity: var(--strength, 0);
+}
+.swipe-leaving .swipe-stamp {
+  opacity: 1;
 }
 .stamp-have {
   left: 18px;

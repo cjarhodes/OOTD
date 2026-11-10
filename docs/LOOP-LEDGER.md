@@ -29,7 +29,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | S3 | done | loop/wardrobe-entry | 2026-11-10 |
 | S4 | done | loop/wardrobe-entry | 2026-11-10 |
 | G1 | done | loop/wardrobe-entry | 2026-11-10 |
-| G2 | todo | | |
+| G2 | done | loop/wardrobe-entry | 2026-11-10 |
 | G3 | todo | | |
 | G4 | todo | | |
 | G5 | todo | | |
@@ -163,9 +163,15 @@ What changed: a flick counts. `src/lib/swipe.ts` gains `velocityOf(samples, now)
 Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0, renders per pointermove 1 (G2), tests 275
 For the next agent: samples use `performance.now()` both when recorded and on release. The exit animation still starts from the release offset, so a short fast flick leaves from a small offset and speeds off from there; it doesn't yet use the velocity. The card's width is `offsetWidth` of the live card (about 343 px on a 375 px phone, so the threshold there is about 86 px, not 90). Not run in a browser.
 
+### G2 · 2026-11-10
+What changed: dragging a card no longer re-renders the page. The `drag` state is gone. `onPointerMove` only records the pointer (a ref of samples and a ref of the drag offset) and asks for one `requestAnimationFrame`; the frame writes `--dx`, `--dy` (already limited to 40 px downwards) and `--strength` as CSS custom properties on the card element, and `data-lean` (have, skip or want, removed in the dead zone). `data-dragging` is set on the card on pointer down. CSS does the rest: the card's transform is `translate(var(--dx) * 1px, var(--dy) * 1px) rotate(var(--dx) * 0.06deg)` on the base `.swipe-card` rule, `[data-dragging]` turns the transition off, and all three stamps are always in the card with opacity 0, the one matching `data-lean` taking `var(--strength)`. The leaving card's stamp is forced to opacity 1. Letting go without a decision (`stopDrag`) clears the attributes and zeroes the properties, so the card springs back through the existing 220 ms transition; a decision calls `stopDrag` too. The pending frame is cancelled on release, on a decision, on cancel and on unmount. Only React state that changes is the deck, on release. The drawings of the live card and the one behind are `useMemo`ed on the card/colour, so ticking a colour chip doesn't redraw the card behind. A press on a colour chip or the colour block still returns early in `onDown` before anything starts. Buttons and arrow keys are untouched. `--strength` reaches 1 at the card's own threshold (G1's width rule). Reduced motion: the card's transition is still off, and there is nothing else animated here.
+Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0, renders per pointermove 0 (was 1), tests 275
+For the next agent: nothing here is covered by a unit test (it is DOM and frames); `npm run check` covers types and the build only. G3 should move `--strength` from the card to `.swipe-stack` so the card behind can read it. The attributes `data-lean` and `data-dragging` are set by hand on the element, which React doesn't manage; the card is keyed by card id, so a new card starts clean. Not run in a browser.
+
 ## For Alex to try on his phone
 - S4 (swipe feel): tap the three buttons quickly, ten times in a row, and swipe a card by hand. Look for: the next card already underneath as the old one flies off, no choice lost, the exit carrying on from where your finger let go, and no flicker or jump when the next card takes over. With Reduce Motion on, cards should simply disappear.
 - G1 (a flick counts): flick a card sideways or up with a short, quick movement of the thumb. Look for: it goes even though your finger travelled only a little; a slow short drag still springs back; a fast flick back towards the middle cancels instead of choosing.
+- G2 (no renders while dragging): drag a card slowly in a circle and up and down. Look for: smooth following with no stutter, the right stamp fading in as you pass about 40 px (Have on the right, Not mine on the left, Want up), springing back when you let go short, and tapping a colour chip never starting a drag.
 
 ## Questions for Alex
 - T3: two existing assertions in `src/lib/typed.test.ts` had to change from White to the type's usual colour (see the T3 log entry). OK to keep?
