@@ -10,7 +10,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | F1 | done | loop/wardrobe-entry | 2026-11-10 |
 | F2 | done | loop/wardrobe-entry | 2026-11-10 |
 | F3 | done | loop/wardrobe-entry | 2026-11-10 |
-| F4 | todo | | |
+| F4 | blocked | loop/wardrobe-entry (workflow change not pushed) | 2026-11-10 |
 | T1 | todo | | |
 | T2 | todo | | |
 | T3 | todo | | |
@@ -64,8 +64,16 @@ What changed: the gesture maths moved into `src/lib/swipe.ts` (`leanOf`, `choice
 Scorecard: types 59/132, colours 63/92, white guesses 57/132, tests 147
 For the next agent: an exact tie between sideways and upward movement goes sideways (as in the old code, since up must be strictly larger). `strengthOf` ignores downward drag. G1 will extend `choiceOf` with velocity and width; the `Choice` type is imported from `deck.ts`.
 
+### F4 · 2026-11-10
+What changed: `repository.url` in `package.json` and both `cjarhodes/Clothing` references in the README's deploy button (the clone URL and the `envLink`) now point at `cjarhodes/OOTD`. Playwright was not added (owner decision 2 is "No", the default), so the phone-sized smoke test half of F4 is skipped, and G5 should skip its Playwright extension too.
+Blocked: the workflow change was not pushed. GitHub refused the push with "refusing to allow an OAuth App to create or update workflow `.github/workflows/checks.yml` without `workflow` scope", and the credentials in this session cannot be given that scope. Retrying with the same credentials would fail the same way, so I reverted the workflow edit and pushed the rest. The change still to make, by hand or by an agent with a token that has the `workflow` scope: in `.github/workflows/checks.yml` rename `name: Verify FORM` to `name: Checks`, and change the last step from `npm run build` to `npm run check`. Until then CI runs only `npm run build` (tests and build, no separate type check; the Next build does type check, but `npm run check` is the plan's gate).
+Scorecard: types 59/132, colours 63/92, white guesses 57/132, tests 147
+For the next agent: `SOURCE_URL` in `src/components/CloudBackup.tsx` still points at `https://github.com/cjarhodes/Clothing`. It is outside F4's listed files, so I left it (see Ideas). The workflow names Node 24 while `package.json` engines say `>=22`; left as is.
+
 ## For Alex to try on his phone
 
 ## Questions for Alex
+- F4: the agent token can't change `.github/workflows/**` (no `workflow` scope). Please apply the two-line workflow change described in the F4 log entry, or give the agent a token with that scope.
 
 ## Ideas (not for now)
+- Fix `SOURCE_URL` in `src/components/CloudBackup.tsx` (still `cjarhodes/Clothing`). Found in F4.

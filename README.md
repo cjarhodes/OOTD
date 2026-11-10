@@ -4,7 +4,7 @@
 
 **Try it:** [ootd.cjarhodes.com](https://ootd.cjarhodes.com). The sample wardrobe needs no account. To keep your own, sign in with your email (we send a link and a 6-digit code, no password) and add photos of your clothes.
 
-[![Deploy your own with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FClothing&project-name=ootd&repository-name=ootd&env=RESEND_API_KEY%2COOTD_EMAIL_FROM&envDescription=A%20Resend%20API%20key%20for%20sign-in%20emails%2C%20and%20the%20sender%20address%20on%20your%20Resend-verified%20domain&envLink=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FClothing%23run-your-own-copy&stores=%5B%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22private%22%7D%5D)
+[![Deploy your own with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FOOTD&project-name=ootd&repository-name=ootd&env=RESEND_API_KEY%2COOTD_EMAIL_FROM&envDescription=A%20Resend%20API%20key%20for%20sign-in%20emails%2C%20and%20the%20sender%20address%20on%20your%20Resend-verified%20domain&envLink=https%3A%2F%2Fgithub.com%2Fcjarhodes%2FOOTD%23run-your-own-copy&stores=%5B%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22private%22%7D%5D)
 
 ## How it handles your data
 
