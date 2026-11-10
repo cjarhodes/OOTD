@@ -1,5 +1,6 @@
 import { KINDS, makeItem } from "./kinds";
 import { COLOR_NAMES, type ColorName } from "./palette";
+import { usualColour } from "./starter";
 import type { Item, Kind, Material } from "./types";
 
 /**
@@ -13,8 +14,10 @@ export interface TypedPiece {
   kind: Kind | null;
   color: ColorName;
   material?: Material;
-  /** The colour wasn't in the text: it's the model's usual colour, or white. */
+  /** The colour wasn't in the text: it's the model's usual colour for the type. */
   colorGuessed: boolean;
+  /** A colour was typed that has no swatch (purple, lilac): the person must pick one. */
+  colorMissing: boolean;
 }
 
 interface Hint {
@@ -133,21 +136,36 @@ const MATERIAL_HINTS: [RegExp, Material][] = [
   [/\bdenim\b/, "denim"],
 ];
 
-/** Everyday colour words, mapped to the nearest swatch. */
-const COLOUR_WORDS: [RegExp, ColorName][] = [
+/** Everyday colour words, mapped to the nearest swatch. `null` is a colour OOTD has no swatch for. */
+const COLOUR_WORDS: [RegExp, ColorName | null][] = [
   [/\boff[- ]?white\b|\bcream\b|\bivory\b|\bnatural\b/, "Ecru"],
   // "light blue", "baby blue", "light/baby blue", "powder blue".
   [/\b(?:light|pale|baby|powder|ice)(?:[\s/-]+(?:light|pale|baby|powder|ice))?[\s/-]+blue\b/, "Sky"],
   [/\bdark blue\b|\bmidnight\b/, "Navy"],
+  [/\broyal blue\b|\belectric blue\b|\bbright blue\b/, "Cobalt"],
+  // Denim washes. "washed black" and "faded black" come before "faded".
+  [/\bdark wash\b|\braw\b|\brinse\b|\bselvedge\b/, "Indigo"],
+  [/\bwashed black\b|\bfaded black\b/, "Charcoal"],
+  [/\blight wash\b|\bmid wash\b|\bstone ?wash(?:ed)?\b|\bfaded\b|\bbleached\b/, "Denim"],
+  [/\bdark gr[ae]y\b|\bslate\b|\bgraphite\b|\banthracite\b/, "Charcoal"],
+  [/\blight gr[ae]y\b|\bsilver\b|\bmarl\b/, "Grey"],
   [/\bgr[ae]y\b|\bheather\b/, "Grey"],
-  [/\btaupe\b|\bbeige\b/, "Stone"],
-  [/\btan\b/, "Camel"],
+  [/\bburnt orange\b|\borange\b|\bterracotta\b|\bbrick\b/, "Rust"],
+  [/\byellow\b|\bgold\b|\bochre\b/, "Mustard"],
+  [/\btaupe\b|\bbeige\b|\bsand\b|\bbone\b|\bputty\b|\bgreige\b/, "Stone"],
+  [/\btan\b|\bcaramel\b|\btobacco\b|\bwhisky\b/, "Camel"],
+  [/\bdark green\b|\bbottle green\b|\bhunter\b|\bemerald\b|\bteal\b/, "Forest"],
+  [/\bmint\b|\blight green\b|\bpistachio\b/, "Sage"],
+  [/\barmy\b|\bmilitary green\b|\bmoss\b/, "Olive"],
   [/\bgreen\b|\bkhaki green\b/, "Olive"],
   [/\bblue\b/, "Denim"],
   [/\bmaroon\b|\bwine\b|\boxblood\b/, "Burgundy"],
+  [/\bsalmon\b|\brose\b|\bblush\b|\bcoral\b/, "Pink"],
   [/\bcharcoal\b/, "Charcoal"],
-  [/\bbrown\b|\bcognac\b/, "Brown"],
   [/\bdark brown\b|\bespresso\b/, "Chocolate"],
+  [/\bbrown\b|\bcognac\b/, "Brown"],
+  // No swatch for these: the person is asked to pick one.
+  [/\bpurple\b|\blilac\b|\blavender\b|\bviolet\b/, null],
 ];
 
 /** Garment kinds by their own names, longest first ("denim jacket" before "jacket"). */
@@ -156,21 +174,25 @@ const KIND_WORDS: [RegExp, Kind][] = (Object.keys(KINDS) as Kind[])
   .sort((a, b) => b[0].length - a[0].length)
   .map(([label, k]) => [new RegExp(`\\b${label.replace(/[-\s]/g, "[- ]?")}s?\\b`), k]);
 
-/** The first colour in the text, ignoring asides like "(with grey accents)". */
-function colourIn(text: string): ColorName | null {
+/**
+ * The first colour in the text, ignoring asides like "(with grey accents)".
+ * `{ color: null }` means a colour was typed that has no swatch.
+ */
+function colourIn(text: string): { color: ColorName | null } | null {
   // Accent colours aren't the piece's colour: "(with grey accents)", "brown accented", "with gum soles".
   const plain = text
     .replace(/\([^)]*\b(?:accents?|accented|trim|details?|soles?|laces|stripes?|logos?)\b[^)]*\)/g, " ")
     .replace(/\b[\w/-]+[\s-]+(?:accented|accents?|trimmed)\b/g, " ")
     .replace(/\bwith [\w\s/-]+? (?:accents?|trim|details?|soles?|laces|stripes?|logos?)\b/g, " ");
-  let best: { at: number; color: ColorName } | null = null;
-  const consider = (re: RegExp, color: ColorName) => {
+  let best: { at: number; color: ColorName | null } | null = null;
+  const consider = (re: RegExp, color: ColorName | null) => {
     const m = re.exec(plain);
     if (m && (!best || m.index < best.at)) best = { at: m.index, color };
   };
   for (const c of COLOR_NAMES) consider(new RegExp(`\\b${c.toLowerCase()}\\b`), c);
   for (const [re, c] of COLOUR_WORDS) consider(re, c);
-  return (best as { at: number; color: ColorName } | null)?.color ?? null;
+  const found = best as { at: number; color: ColorName | null } | null;
+  return found ? { color: found.color } : null;
 }
 
 export function parsePiece(line: string): TypedPiece | null {
@@ -190,13 +212,17 @@ export function parsePiece(line: string): TypedPiece | null {
     (named ? undefined : (WEAK_HINTS.find((h) => h.re.test(text)) ?? BRAND_HINTS.find((h) => h.re.test(text))));
   const kind = hint?.kind ?? named ?? null;
   const material = MATERIAL_HINTS.find(([re]) => re.test(text))?.[1] ?? hint?.material;
-  const said = colourIn(text);
+  const typed = colourIn(text);
+  const said = typed?.color ?? null;
+  // Never white by default: the model's usual colour, then the type's, then a quiet grey.
+  const color = said ?? hint?.color ?? (kind ? usualColour(kind) : "Grey");
   return {
     name: name.charAt(0).toUpperCase() + name.slice(1),
     kind,
-    color: said ?? hint?.color ?? "White",
+    color,
     ...(material ? { material } : {}),
     colorGuessed: !said,
+    colorMissing: typed !== null && typed.color === null,
   };
 }
 

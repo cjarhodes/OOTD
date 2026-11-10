@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { CORPUS, type CorpusLine } from "./typed.corpus";
 import { parseList, type TypedPiece } from "./typed";
+import { usualColour } from "./starter";
 
 /**
  * Floors: how many corpus lines the parser must get right. They are set to
  * what the parser achieves today and only ever go UP; a floor never goes down.
  */
 const FLOOR_TYPES = 114;
-const FLOOR_COLOURS = 71;
+const FLOOR_COLOURS = 82;
 
 /**
  * Scoring rules (one point per corpus line):
@@ -24,8 +25,21 @@ const FLOOR_COLOURS = 71;
  * no colour, or a missing swatch (`colourMissing`), aren't in the colour total.
  *
  * White guesses: pieces that came out White although the text never says
- * "white". The target is 0.
+ * "white". The target is 0 and the test asserts it. One case is not a guess:
+ * a type whose usual colour really is white (a bare "tee", "sneakers", "canvas
+ * sneakers"). There the piece is White, `colorGuessed` is true, and
+ * `usualColour(kind)` is White, so it is the type's usual colour, declared as
+ * a guess the person can see, and not a silent default. Any other White that
+ * the text didn't ask for counts.
+ *
+ * Missing swatches: a line marked `colourMissing` must come back with
+ * `colorMissing` true, and no other line may.
  */
+function silentWhite(c: CorpusLine, got: TypedPiece[]): boolean {
+  if (/white/i.test(c.text)) return false;
+  return got.some((p) => p.color === "White" && !(p.colorGuessed && p.kind !== null && usualColour(p.kind) === "White"));
+}
+
 function expectedCount(c: CorpusLine): number {
   return c.count ?? c.colors?.length ?? 1;
 }
@@ -47,11 +61,13 @@ describe("typed corpus", () => {
     let types = 0;
     let colours = 0;
     let whiteGuesses = 0;
+    let missingWrong = 0;
     for (const c of CORPUS) {
       const got = parseList(c.text);
       if (typeRight(c, got)) types++;
       if (scoredForColour.includes(c) && colourRight(c, got)) colours++;
-      if (!/white/i.test(c.text) && got.some((p) => p.color === "White")) whiteGuesses++;
+      if (silentWhite(c, got)) whiteGuesses++;
+      if (got.some((p) => p.colorMissing) !== Boolean(c.colourMissing)) missingWrong++;
     }
     console.log(`types ${types}/${CORPUS.length}`);
     console.log(`colours ${colours}/${scoredForColour.length}`);
@@ -59,5 +75,7 @@ describe("typed corpus", () => {
     expect(CORPUS.length).toBeGreaterThanOrEqual(119);
     expect(types).toBeGreaterThanOrEqual(FLOOR_TYPES);
     expect(colours).toBeGreaterThanOrEqual(FLOOR_COLOURS);
+    expect(whiteGuesses).toBe(0);
+    expect(missingWrong).toBe(0);
   });
 });

@@ -89,6 +89,15 @@ export function starterItem(card: StarterCard, color: ColorName = card.colors[0]
   });
 }
 
+/**
+ * The colour a piece of this type usually comes in, for when nobody said:
+ * the first colour of the first starter card of that type. V-necks have no
+ * card; navy is the usual v-neck.
+ */
+export function usualColour(kind: Kind): ColorName {
+  return STARTER_DECK.find((c) => c.kind === kind)?.colors[0] ?? "Navy";
+}
+
 /** Has this wardrobe already got this card's piece (same kind, any listed colour, or same card)? */
 export function alreadyHas(card: StarterCard, items: Item[]): boolean {
   return items.some((i) => i.id.startsWith(`st-${card.id}-`) || (i.kind === card.kind && card.colors.includes(i.color as ColorName)));

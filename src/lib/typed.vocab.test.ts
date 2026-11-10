@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { KINDS } from "./kinds";
+import { COLOR_NAMES, type ColorName } from "./palette";
+import { usualColour } from "./starter";
 import { parsePiece } from "./typed";
 import type { Kind } from "./types";
 
@@ -268,5 +271,95 @@ describe("brands and models (table 2)", () => {
       ["Brooks Brothers shirt", "oxford"],
       ["Carhartt hoodie", "hoodie"],
     ]);
+  });
+});
+
+describe("never guess white (table 3)", () => {
+  it("gives every type a usual colour", () => {
+    for (const kind of Object.keys(KINDS) as Kind[]) expect(COLOR_NAMES, kind).toContain(usualColour(kind));
+    expect(usualColour("v-neck")).toBe("Navy");
+    expect(usualColour("cargos")).toBe("Olive");
+    expect(usualColour("tee")).toBe("White");
+  });
+
+  it("uses the usual colour when none is typed, and says it guessed", () => {
+    expect(parsePiece("dark wash jeans")).toMatchObject({ kind: "jeans", color: "Indigo", colorGuessed: false });
+    expect(parsePiece("khakis")).toMatchObject({ kind: "chinos", color: "Khaki", colorGuessed: true });
+    expect(parsePiece("trench coat")).toMatchObject({ kind: "overcoat", color: "Camel", colorGuessed: true });
+    expect(parsePiece("rain jacket")).toMatchObject({ color: "Black", colorGuessed: true });
+    expect(parsePiece("cashmere sweater")).toMatchObject({ color: "Navy", colorGuessed: true });
+    expect(parsePiece("navy v neck")).toMatchObject({ color: "Navy", colorGuessed: false });
+    expect(parsePiece("v neck jumper")).toMatchObject({ kind: "v-neck", color: "Navy", colorGuessed: true });
+    // Nothing known at all is a quiet grey, never white.
+    expect(parsePiece("mystery thing")).toMatchObject({ kind: null, color: "Grey", colorGuessed: true });
+  });
+
+  it("reads the colour words", () => {
+    const rows: [string, ColorName][] = [
+      ["orange tee", "Rust"],
+      ["burnt orange tee", "Rust"],
+      ["terracotta tee", "Rust"],
+      ["brick tee", "Rust"],
+      ["yellow tee", "Mustard"],
+      ["gold tee", "Mustard"],
+      ["ochre tee", "Mustard"],
+      ["sand tee", "Stone"],
+      ["bone tee", "Stone"],
+      ["putty tee", "Stone"],
+      ["greige tee", "Stone"],
+      ["tan tee", "Camel"],
+      ["caramel tee", "Camel"],
+      ["tobacco tee", "Camel"],
+      ["whisky tee", "Camel"],
+      ["dark green tee", "Forest"],
+      ["bottle green tee", "Forest"],
+      ["hunter tee", "Forest"],
+      ["emerald tee", "Forest"],
+      ["teal tee", "Forest"],
+      ["army tee", "Olive"],
+      ["military green tee", "Olive"],
+      ["moss tee", "Olive"],
+      ["mint tee", "Sage"],
+      ["light green tee", "Sage"],
+      ["pistachio tee", "Sage"],
+      ["royal blue tee", "Cobalt"],
+      ["electric blue tee", "Cobalt"],
+      ["bright blue tee", "Cobalt"],
+      ["dark grey tee", "Charcoal"],
+      ["slate tee", "Charcoal"],
+      ["graphite tee", "Charcoal"],
+      ["anthracite tee", "Charcoal"],
+      ["light grey tee", "Grey"],
+      ["silver tee", "Grey"],
+      ["marl tee", "Grey"],
+      ["salmon tee", "Pink"],
+      ["rose tee", "Pink"],
+      ["blush tee", "Pink"],
+      ["coral tee", "Pink"],
+      ["dark wash jeans", "Indigo"],
+      ["raw jeans", "Indigo"],
+      ["rinse jeans", "Indigo"],
+      ["selvedge jeans", "Indigo"],
+      ["light wash jeans", "Denim"],
+      ["mid wash jeans", "Denim"],
+      ["stonewash jeans", "Denim"],
+      ["faded jeans", "Denim"],
+      ["bleached jeans", "Denim"],
+      ["washed black jeans", "Charcoal"],
+      ["faded black jeans", "Charcoal"],
+    ];
+    for (const [text, color] of rows) expect(parsePiece(text), text).toMatchObject({ color, colorGuessed: false });
+  });
+
+  it("flags colours that have no swatch", () => {
+    for (const word of ["purple", "lilac", "lavender", "violet"]) {
+      expect(parsePiece(`${word} hoodie`), word).toMatchObject({ kind: "hoodie", colorMissing: true, colorGuessed: true, color: "Grey" });
+    }
+    expect(parsePiece("navy hoodie")).toMatchObject({ colorMissing: false });
+    expect(parsePiece("hoodie")).toMatchObject({ colorMissing: false });
+    // A purple accent isn't the piece's colour.
+    expect(parsePiece("grey hoodie (purple trim)")).toMatchObject({ color: "Grey", colorMissing: false });
+    // "multi" is ignored, not a missing colour.
+    expect(parsePiece("multicolour tee")).toMatchObject({ colorMissing: false, colorGuessed: true });
   });
 });

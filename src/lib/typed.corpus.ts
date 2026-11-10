@@ -115,7 +115,7 @@ const MORE: CorpusLine[] = [
   { text: "grey crew neck jumper", kind: "crewneck", color: "Grey" },
   { text: "burgundy lambswool jumper", kind: "crewneck", color: "Burgundy", material: "knit" },
   { text: "navy v neck", kind: "v-neck", color: "Navy" },
-  { text: "oatmeal cardigan", kind: "cardigan", color: "Ecru" },
+  { text: "oatmeal cardigan", kind: "cardigan", color: "Oatmeal" },
   { text: "Quarter zip, navy", kind: "quarter-zip", color: "Navy" },
   { text: "half zip knit", kind: "quarter-zip", material: "knit" },
   { text: "black Nike hoodie", kind: "hoodie", color: "Black" },

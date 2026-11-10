@@ -13,7 +13,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | F4 | blocked | loop/wardrobe-entry (workflow change not pushed) | 2026-11-10 |
 | T1 | done | loop/wardrobe-entry | 2026-11-10 |
 | T2 | done | loop/wardrobe-entry | 2026-11-10 |
-| T3 | todo | | |
+| T3 | done | loop/wardrobe-entry | 2026-11-10 |
 | T4 | todo | | |
 | T5 | todo | | |
 | T6 | todo | | |
@@ -80,9 +80,17 @@ What changed: the Appendix B table 2 brands and models are in `src/lib/typed.ts`
 Scorecard: types 114/132, colours 71/92, white guesses 49/132, tests 155. Floors raised to types 114, colours 71.
 For the next agent: the table says Carhartt double knee and Dickies 874 are "fit relaxed"; `TypedPiece` has no fit until T5, so I set only the material. T5 should add `fit: "relaxed"` to those two hints (`Hint` will need a `fit` field). Usual colours from the table (Indigo, Olive, Black, Camel, Brown) are set on the hints and only apply when the brand hint is what matched the type; T3 adds the per-type usual colour for everything else. Remaining type misses: colour-list and count lines (T4), unsupported lines (T6), "breton top" (T5), and four lines with a trailing colour after a comma (see T1).
 
+### T3 · 2026-11-10
+What changed: a piece with no typed colour is no longer White. `usualColour(kind)` is exported from `src/lib/starter.ts` (the first colour of the first starter card of that type; v-neck is Navy; a test checks every `Kind` gets one). `parsePiece` uses, in order: the colour in the text, the colour on the brand hint (Levi's Indigo and so on), the type's usual colour, and Grey when there is no type at all. `colorGuessed` stays true whenever the colour wasn't typed. All of Appendix B table 3 is in `COLOUR_WORDS` (denim washes, "washed black" is Charcoal, and so on). `TypedPiece.colorMissing` is new: true when purple, lilac, lavender or violet was typed (an accent in an aside doesn't count); the piece then carries its usual colour with `colorGuessed` true. "multi", "multicolour" and "various" are simply not colours. Tests are in `src/lib/typed.vocab.test.ts`. "dark wash jeans" is Indigo, "khakis" Khaki, "trench coat" Camel.
+Deviation to check, two existing assertions in `src/lib/typed.test.ts` changed: the plan says existing tests stay unchanged, but two of them recorded the White default that fault 3 and this task remove. `Rothy's slip on sandals` expected White and now expects Brown (usual colour for sandals); `parsePiece("hoodie")` expected White and now expects Grey (usual colour for hoodies). Nothing else in that file changed, and the `colorGuessed: true` part of the hoodie check is kept. If Alex disagrees, the alternative is to special-case those two inputs, which I didn't want to do.
+Corpus: I corrected one line, "oatmeal cardigan" from Ecru to Oatmeal, because Oatmeal is a swatch in the palette and the text names it. The corpus test now asserts white guesses is 0 and that `colorMissing` is true on exactly the `colourMissing` lines. A bare "tee", "sneakers", "canvas sneakers", "long-sleeve tee" or "high-tops" does come out White, because White is their usual colour; the test counts that as a usual-colour guess (White, `colorGuessed` true, `usualColour(kind)` is White), not a silent white. The rule is written at the top of the test file.
+Scorecard: types 114/132, colours 82/92, white guesses 0/132, tests 159. Floors raised to types 114, colours 82.
+For the next agent: the 10 colour misses left are the colour-list, count and trailing-comma lines (T4), nothing else. `TypeList.tsx` still compiles: it spreads `TypedPiece`, so `colorMissing` just rides along unused until U1. In `TypeList` a person who corrects the type from the menu keeps the colour the parser chose for the old type (or Grey when there was none); U1 or U2 could re-derive it with `usualColour` while `colorGuessed` is still true.
+
 ## For Alex to try on his phone
 
 ## Questions for Alex
+- T3: two existing assertions in `src/lib/typed.test.ts` had to change from White to the type's usual colour (see the T3 log entry). OK to keep?
 - F4: the agent token can't change `.github/workflows/**` (no `workflow` scope). Please apply the two-line workflow change described in the F4 log entry, or give the agent a token with that scope.
 
 ## Ideas (not for now)
