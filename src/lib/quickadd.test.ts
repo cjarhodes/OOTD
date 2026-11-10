@@ -28,7 +28,8 @@ describe("searching", () => {
   });
 
   it("matches words in any order, ignoring case", () => {
-    expect(filterCards(STARTER_DECK, "LOAFERS").map((c) => c.id)).toEqual(["loafers"]);
+    // Both loafer cards: the suede ones and the leather dress shoes are the same type.
+    expect(filterCards(STARTER_DECK, "LOAFERS").map((c) => c.id)).toEqual(["loafers", "dress-shoes"]);
     expect(filterCards(STARTER_DECK, "tee heavyweight").map((c) => c.id)).toEqual(["tee"]);
     expect(filterCards(STARTER_DECK, "zzzz")).toEqual([]);
   });

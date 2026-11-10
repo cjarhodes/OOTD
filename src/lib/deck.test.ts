@@ -350,7 +350,7 @@ describe("rounds", () => {
     expect(roundPlace(back)).toEqual({ round: 1, name: "The basics", at: 9, total: 12 });
     const all = Object.fromEntries(round(1).map((c) => [c.id, "skip" as const]));
     const next = initialDeck(cardsToShow(STARTER_DECK, [], all));
-    expect(roundPlace(next)).toEqual({ round: 2, name: "Layers and jackets", at: 1, total: 11 });
+    expect(roundPlace(next)).toEqual({ round: 2, name: "Layers and jackets", at: 1, total: round(2).length });
     // Landing there is not a round end: nothing has been decided this visit.
     expect(atRoundEnd(next)).toBe(false);
   });
@@ -364,7 +364,7 @@ describe("rounds", () => {
     const end = roundEnd(s)!;
     expect(end.name).toBe("The basics");
     expect(end.pieces).toHaveLength(11);
-    expect(end.next).toEqual({ round: 2, name: "Layers and jackets", left: 11 });
+    expect(end.next).toEqual({ round: 2, name: "Layers and jackets", left: round(2).length });
     s = run(s, { type: "continue" });
     expect(atRoundEnd(s)).toBe(false);
     expect(roundEnd(s)).toBeNull();

@@ -85,6 +85,18 @@ export const STARTER_DECK: StarterCard[] = [
   { id: "gilet", name: "Quilted gilet", kind: "gilet", colors: ["Navy", "Olive", "Black"], round: 2, note: "Warmth without bulk, over a shirt or a knit.", tag: "Now" },
   { id: "shorts", name: "Shorts", kind: "shorts", colors: ["Khaki", "Navy", "Stone"], round: 4, note: "Mid-thigh, not long. For proper summer days.", tag: "Essential" },
   { id: "chelsea", name: "Chelsea boots", kind: "boots", colors: ["Black", "Brown"], material: "leather", formality: 3, round: 3, note: "Sleek with trousers, easy with black jeans.", tag: "Now" },
+  { id: "dress-shirt", name: "Dress shirt", kind: "oxford", colors: ["White", "Sky"], formality: 4, round: 4, note: "Crisp and plain, for the office and for dinner. Tucked in or left loose.", tag: "Essential" },
+  { id: "vneck", name: "Merino V-neck", kind: "v-neck", colors: ["Navy", "Charcoal", "Grey", "Burgundy"], round: 2, note: "Over an oxford with the collar showing: the smart-casual knit.", tag: "Essential" },
+  { id: "slim-jeans", name: "Slim jeans", kind: "jeans", colors: ["Black", "Charcoal"], fit: "slim", round: 4, note: "Slim and dark: the pair that dresses up with a blazer and boots.", tag: "Essential" },
+  { id: "linen-shirt", name: "Linen shirt", kind: "oxford", colors: ["Ecru", "White", "Sky"], material: "linen", round: 4, note: "Creased on purpose. Open over a tee, or buttoned with shorts in summer.", tag: "Now" },
+  { id: "linen-trousers", name: "Linen trousers", kind: "trousers", colors: ["Stone", "Ecru", "Navy"], material: "linen", formality: 2, round: 4, note: "Light and loose for hot days, with a linen shirt or a plain tee.", tag: "Now" },
+  { id: "cords", name: "Corduroy trousers", kind: "chinos", colors: ["Brown", "Olive", "Navy"], material: "corduroy", round: 4, note: "Ribbed and warm for autumn: a rich colour with a plain knit.", tag: "Now" },
+  { id: "suede-bomber", name: "Suede bomber", kind: "bomber", colors: ["Brown", "Chocolate", "Black"], material: "suede", round: 2, note: "Soft and cropped. Best with a plain tee and straight jeans.", tag: "Now" },
+  { id: "denim-overshirt", name: "Denim overshirt", kind: "overshirt", colors: ["Indigo", "Denim", "Black"], material: "denim", round: 2, note: "Open over a tee, or buttoned up as a jacket in spring.", tag: "Now" },
+  { id: "chunky", name: "Chunky jumper", kind: "crewneck", colors: ["Ecru", "Navy", "Forest"], round: 2, note: "Thick and textured. With straight jeans and boots it does the work of a coat.", tag: "Now" },
+  { id: "jersey-polo", name: "Jersey polo", kind: "polo", colors: ["White", "Navy", "Sky"], round: 4, note: "The plain summer polo: tucked into chinos or loose over shorts.", tag: "Essential" },
+  { id: "dress-shoes", name: "Leather dress shoes", kind: "loafers", colors: ["Black", "Brown"], material: "leather", formality: 4, round: 3, note: "For the office and for weddings, with tailored trousers or dark jeans.", tag: "Essential" },
+  { id: "tailored", name: "Tailored trousers", kind: "trousers", colors: ["Navy", "Grey", "Charcoal"], formality: 4, round: 4, note: "Straight and sharp: with an oxford and a blazer, or a knit and loafers.", tag: "Essential" },
 ];
 
 /** The piece a card adds, in the colour chosen. Ids are stable per card and colour. */
