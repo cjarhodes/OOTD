@@ -7,19 +7,22 @@ import { ColourSheet } from "@/components/ColourSheet";
 import { NextBuys } from "@/components/NextBuys";
 import { SLOT_LABEL, KINDS } from "@/lib/kinds";
 import { PALETTE, type ColorName } from "@/lib/palette";
-import { alreadyHas, STARTER_DECK, starterItem, type StarterCard } from "@/lib/starter";
+import {
+  chosenColours,
+  countsOf,
+  currentCard,
+  deckReducer,
+  initialDeck,
+  isDone,
+  shownColour,
+  tickedColours,
+  type Choice,
+  type DeckAction,
+  type DeckState,
+} from "@/lib/deck";
+import { alreadyHas, STARTER_DECK, starterItem } from "@/lib/starter";
 import { wishFromItem } from "@/lib/wishlist";
 import { useWardrobe } from "@/state/wardrobe";
-
-type Choice = "have" | "skip" | "want";
-interface Decision {
-  card: StarterCard;
-  choice: Choice;
-  /** Pieces added to the wardrobe (one per colour you have). */
-  itemIds: string[];
-  /** Entries added to the wishlist. */
-  wishIds: string[];
-}
 
 const THRESHOLD = 90;
 const LABEL: Record<Choice, string> = { have: "I have it", skip: "Not mine", want: "Want it" };
@@ -32,81 +35,62 @@ const LABEL: Record<Choice, string> = { have: "I have it", skip: "Not mine", wan
 export default function StartPage() {
   const { ready, items, mode, setMode, addPieces, removeItem, addWish, removeWish } = useWardrobe();
   // Fix the deck when the page opens, so pieces added while swiping don't reshuffle it.
-  const [deck, setDeck] = useState<StarterCard[] | null>(null);
+  const [dk, setDk] = useState<DeckState | null>(null);
   useEffect(() => {
-    if (ready && !deck) setDeck(STARTER_DECK.filter((c) => !alreadyHas(c, items)));
-  }, [ready, deck, items]);
+    if (ready && !dk) setDk(initialDeck(STARTER_DECK.filter((c) => !alreadyHas(c, items))));
+  }, [ready, dk, items]);
 
-  const [index, setIndex] = useState(0);
-  // The colours ticked on each card, and the one its picture shows.
-  const [picked, setPicked] = useState<Record<string, ColorName[]>>({});
-  const [shown, setShown] = useState<Record<string, ColorName>>({});
   // Every other colour opens in a sheet, so the card never holds a long list.
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [history, setHistory] = useState<Decision[]>([]);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [leaving, setLeaving] = useState<Choice | null>(null);
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
 
-  const card = deck?.[index] ?? null;
-  const color = card ? (shown[card.id] ?? card.colors[0]!) : null;
-  const ticked = card ? (picked[card.id] ?? []) : [];
-  // With nothing ticked, the colour on show is the one you mean.
-  const chosen: ColorName[] = ticked.length ? ticked : color ? [color] : [];
-  const toggle = (c: ColorName) => {
-    if (!card) return;
-    setShown((m) => ({ ...m, [card.id]: c }));
-    setPicked((m) => {
-      const now = m[card.id] ?? [];
-      return { ...m, [card.id]: now.includes(c) ? now.filter((x) => x !== c) : [...now, c] };
-    });
+  const deck = dk?.deck ?? null;
+  const index = dk?.index ?? 0;
+  const history = dk?.history ?? [];
+  const card = dk ? currentCard(dk) : null;
+  const color = dk ? shownColour(dk) : null;
+  const ticked = dk ? tickedColours(dk) : [];
+  const chosen: ColorName[] = dk ? chosenColours(dk) : [];
+  /** Apply an action to the deck, returning what to do to the wardrobe. */
+  const step = (action: DeckAction) => {
+    if (!dk) return null;
+    const result = deckReducer(dk, action);
+    setDk(result.state);
+    return result.effects;
   };
+  const toggle = (c: ColorName) => void step({ type: "toggleColour", colour: c });
   const preview = useMemo(() => (card && color ? starterItem(card, color) : null), [card, color]);
-  const done = deck !== null && index >= deck.length;
-  const counts = {
-    have: history.reduce((n, d) => n + d.itemIds.length, 0),
-    want: history.reduce((n, d) => n + d.wishIds.length, 0),
-  };
+  const done = dk !== null && isDone(dk);
+  const counts = countsOf(history);
 
   const decide = useCallback(
     async (choice: Choice) => {
-      if (!card || !preview || leaving) return;
+      if (!dk || !card || !preview || leaving) return;
       if (mode !== "personal") setMode("personal");
       setLeaving(choice);
-      let itemIds: string[] = [];
-      let wishIds: string[] = [];
-      if (choice === "have") {
-        // One piece per colour you have, skipping any already in the wardrobe.
-        const pieces = chosen.map((c) => starterItem(card, c)).filter((p) => !items.some((i) => i.id === p.id));
-        itemIds = pieces.map((p) => p.id);
-        if (pieces.length) void addPieces(pieces.map((item) => ({ item })));
-      } else if (choice === "want") {
-        // Tracked on the wishlist only: nothing joins the wardrobe.
-        for (const c of chosen) {
-          const wish = wishFromItem(starterItem(card, c));
-          addWish(wish);
-          wishIds.push(wish.id);
-        }
-      }
-      setHistory((h) => [...h, { card, choice, itemIds, wishIds }]);
+      const { state, effects } = deckReducer(dk, { type: "decide", choice, ownedIds: items.map((i) => i.id) });
+      setDk(state);
+      if (effects.addPieces.length) void addPieces(effects.addPieces.map((item) => ({ item })));
+      for (const item of effects.addWishes) addWish(wishFromItem(item));
       // Let the card fly off before the next one takes its place.
       window.setTimeout(() => {
         setLeaving(null);
         setDrag(null);
-        setIndex((i) => i + 1);
+        setDk((s) => (s ? deckReducer(s, { type: "advance" }).state : s));
       }, 220);
     },
-    [card, preview, leaving, mode, setMode, addPieces, addWish, chosen, items],
+    [dk, card, preview, leaving, mode, setMode, addPieces, addWish, items],
   );
 
   const undo = useCallback(async () => {
-    const last = history[history.length - 1];
-    if (!last || leaving) return;
-    for (const id of last.itemIds) await removeItem(id);
-    for (const id of last.wishIds) removeWish(id);
-    setHistory((h) => h.slice(0, -1));
-    setIndex((i) => Math.max(0, i - 1));
-  }, [history, leaving, removeItem, removeWish]);
+    if (!dk || !dk.history.length || leaving) return;
+    const { state, effects } = deckReducer(dk, { type: "undo" });
+    setDk(state);
+    for (const id of effects.removeItemIds) await removeItem(id);
+    for (const id of effects.removeWishIds) removeWish(id);
+  }, [dk, leaving, removeItem, removeWish]);
 
   // Arrow keys: left, up, right; Backspace undoes.
   useEffect(() => {
