@@ -46,6 +46,10 @@ export interface DeckEffects {
   addWishes: Item[];
   removeItemIds: string[];
   removeWishIds: string[];
+  /** The choice to remember on this device for a card, if one was just made. */
+  saveChoice: { cardId: string; choice: Choice } | null;
+  /** The card whose remembered choice an undo takes back. */
+  clearChoiceId: string | null;
 }
 
 export interface DeckResult {
@@ -53,15 +57,21 @@ export interface DeckResult {
   effects: DeckEffects;
 }
 
-const NONE: DeckEffects = { addPieces: [], addWishes: [], removeItemIds: [], removeWishIds: [] };
+const NONE: DeckEffects = { addPieces: [], addWishes: [], removeItemIds: [], removeWishIds: [], saveChoice: null, clearChoiceId: null };
 
 /**
  * The cards to show for a wardrobe. A card is left out only when its starter
- * piece is in the wardrobe in every colour the card lists. A piece of the same
- * type that didn't come from the deck (typed or photographed) never hides a card.
+ * piece is in the wardrobe in every colour the card lists, or when a choice
+ * for it was remembered. A piece of the same type that didn't come from the
+ * deck (typed or photographed) never hides a card.
  */
-export function cardsToShow(all: readonly StarterCard[], items: readonly Pick<Item, "id">[]): StarterCard[] {
+export function cardsToShow(
+  all: readonly StarterCard[],
+  items: readonly Pick<Item, "id">[],
+  choices: Readonly<Record<string, Choice>> = {},
+): StarterCard[] {
   return all.filter((c) => {
+    if (choices[c.id]) return false;
     const have = ownedColours(c, items);
     return !c.colors.every((col) => have.includes(col));
   });
@@ -80,6 +90,11 @@ export function initialDeck(deck: StarterCard[], items: readonly Pick<Item, "id"
 export const currentCard = (s: DeckState): StarterCard | null => s.deck[s.index] ?? null;
 
 export const isDone = (s: DeckState): boolean => s.index >= s.deck.length;
+
+/** "21 of 44": where the current card sits among every card in the starter deck, however many were set aside. */
+export function placeOf(s: DeckState, total: number): { at: number; total: number } {
+  return { at: Math.min(Math.max(total - s.deck.length, 0) + s.index + 1, total), total };
+}
 
 /** The colours of the current card already in the wardrobe. */
 export function ownedOnCard(s: DeckState): ColorName[] {
@@ -160,7 +175,7 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckResult {
       };
       return {
         state: { ...state, history: [...state.history, decision] },
-        effects: { ...NONE, addPieces, addWishes },
+        effects: { ...NONE, addPieces, addWishes, saveChoice: { cardId: card.id, choice: action.choice } },
       };
     }
     case "advance":
@@ -170,7 +185,7 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckResult {
       if (!last) return { state, effects: NONE };
       return {
         state: { ...state, history: state.history.slice(0, -1), index: Math.max(0, state.index - 1) },
-        effects: { ...NONE, removeItemIds: last.itemIds, removeWishIds: last.wishIds },
+        effects: { ...NONE, removeItemIds: last.itemIds, removeWishIds: last.wishIds, clearChoiceId: last.card.id },
       };
     }
   }

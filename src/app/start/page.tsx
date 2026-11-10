@@ -16,16 +16,19 @@ import {
   initialDeck,
   isDone,
   ownedOnCard,
+  placeOf,
   shownColour,
   tickedColours,
   type Choice,
   type DeckAction,
   type DeckState,
 } from "@/lib/deck";
+import { browserStorage, choicesAfter, loadChoices, saveChoices, skippedCount, storeKey, withoutSkipped, type Choices } from "@/lib/deck-store";
 import { colourOptions } from "@/lib/quickadd";
 import { STARTER_DECK, starterItem } from "@/lib/starter";
 import { choiceOf, leanOf, strengthOf } from "@/lib/swipe";
 import { wishFromItem } from "@/lib/wishlist";
+import { useAuth } from "@/state/auth";
 import { useWardrobe } from "@/state/wardrobe";
 
 const LABEL: Record<Choice, string> = { have: "I have it", skip: "Not mine", want: "Want it" };
@@ -39,9 +42,30 @@ export default function StartPage() {
   const { ready, items, mode, setMode, addPieces, removeItem, addWish, removeWish } = useWardrobe();
   // Fix the deck when the page opens, so pieces added while swiping don't reshuffle it.
   const [dk, setDk] = useState<DeckState | null>(null);
+  // Each card's choice is remembered on this device, per account, so the deck resumes where it stopped.
+  const { user } = useAuth();
+  const storageKey = storeKey(user?.id);
+  const stored = useRef<Choices>({});
+  const [skipped, setSkipped] = useState(0);
+  const remember = (next: Choices) => {
+    stored.current = next;
+    setSkipped(skippedCount(next));
+    saveChoices(browserStorage(), storageKey, next);
+  };
   useEffect(() => {
-    if (ready && !dk) setDk(initialDeck(cardsToShow(STARTER_DECK, items), items));
-  }, [ready, dk, items]);
+    if (!ready || dk) return;
+    const saved = loadChoices(browserStorage(), storageKey);
+    stored.current = saved;
+    setSkipped(skippedCount(saved));
+    setDk(initialDeck(cardsToShow(STARTER_DECK, items, saved), items));
+  }, [ready, dk, items, storageKey]);
+  /** Bring back the cards marked "not mine". */
+  const revisit = () => {
+    const left = withoutSkipped(stored.current);
+    remember(left);
+    setDrag(null);
+    setDk(initialDeck(cardsToShow(STARTER_DECK, items, left), items));
+  };
 
   // Every other colour opens in a sheet, so the card never holds a long list.
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -68,6 +92,7 @@ export default function StartPage() {
   const preview = useMemo(() => (card && color ? starterItem(card, color) : null), [card, color]);
   const done = dk !== null && isDone(dk);
   const counts = countsOf(history);
+  const place = dk ? placeOf(dk, STARTER_DECK.length) : null;
 
   const decide = useCallback(
     async (choice: Choice) => {
@@ -76,6 +101,7 @@ export default function StartPage() {
       setLeaving(choice);
       const { state, effects } = deckReducer(dk, { type: "decide", choice, ownedIds: items.map((i) => i.id) });
       setDk(state);
+      remember(choicesAfter(stored.current, effects));
       if (effects.addPieces.length) void addPieces(effects.addPieces.map((item) => ({ item })));
       for (const item of effects.addWishes) addWish(wishFromItem(item));
       // Let the card fly off before the next one takes its place.
@@ -92,6 +118,7 @@ export default function StartPage() {
     if (!dk || !dk.history.length || leaving) return;
     const { state, effects } = deckReducer(dk, { type: "undo" });
     setDk(state);
+    remember(choicesAfter(stored.current, effects));
     for (const id of effects.removeItemIds) await removeItem(id);
     for (const id of effects.removeWishIds) removeWish(id);
   }, [dk, leaving, removeItem, removeWish]);
@@ -145,7 +172,7 @@ export default function StartPage() {
   return (
     <>
       <div className="page-head">
-        <span className="eyebrow">Quick start · {done ? "done" : deck ? `${Math.min(index + 1, deck.length)} of ${deck.length}` : "…"}</span>
+        <span className="eyebrow">Quick start · {done ? "done" : place ? `${place.at} of ${place.total}` : "…"}</span>
         <h1 className="display page-title">Swipe your wardrobe</h1>
       </div>
 
@@ -160,7 +187,7 @@ export default function StartPage() {
       {deck && !done && card && preview && color && (
         <div className="swipe">
           <div className="swipe-progress" aria-hidden="true">
-            <span style={{ width: `${(index / deck.length) * 100}%` }} />
+            <span style={{ width: `${(((place?.at ?? 1) - 1) / STARTER_DECK.length) * 100}%` }} />
           </div>
           <div className="swipe-stack">
             {deck[index + 1] && (
@@ -271,13 +298,18 @@ export default function StartPage() {
               <Link href="/add" className="btn quiet">
                 Add photos of your own
               </Link>
+              {skipped > 0 && (
+                <button type="button" className="btn quiet" onClick={revisit}>
+                  Go through the ones you skipped ({skipped})
+                </button>
+              )}
             </div>
           </div>
           <NextBuys />
         </div>
       )}
 
-      {deck && deck.length === 0 && (
+      {deck && deck.length === 0 && skipped === 0 && (
         <p className="footer-note">You’ve already got every piece in the starter deck. Your best next buys are below.</p>
       )}
     </>

@@ -9,6 +9,7 @@ import {
   initialDeck,
   isDone,
   ownedOnCard,
+  placeOf,
   shownColour,
   tickedColours,
   type DeckAction,
@@ -66,7 +67,14 @@ describe("deck reducer", () => {
 
   it("adds nothing when a card is skipped", () => {
     const { effects, state } = deckReducer(start(), { type: "decide", choice: "skip", ownedIds: [] });
-    expect(effects).toEqual({ addPieces: [], addWishes: [], removeItemIds: [], removeWishIds: [] });
+    expect(effects).toEqual({
+      addPieces: [],
+      addWishes: [],
+      removeItemIds: [],
+      removeWishIds: [],
+      saveChoice: { cardId: "tee", choice: "skip" },
+      clearChoiceId: null,
+    });
     expect(state.history).toEqual([expect.objectContaining({ choice: "skip", itemIds: [], wishIds: [] })]);
   });
 
@@ -171,5 +179,28 @@ describe("owning one colour never hides a card", () => {
     const { effects, state } = deckReducer(all, { type: "decide", choice: "have", ownedIds: [] });
     expect(effects.addPieces).toEqual([]);
     expect(state.history).toHaveLength(1);
+  });
+});
+
+describe("remembered choices", () => {
+  it("asks the page to remember a choice and to forget it on undo", () => {
+    const decided = deckReducer(initialDeck([tee, jeans]), { type: "decide", choice: "want", ownedIds: [] });
+    expect(decided.effects.saveChoice).toEqual({ cardId: "tee", choice: "want" });
+    expect(deckReducer(decided.state, { type: "undo" }).effects.clearChoiceId).toBe("tee");
+  });
+
+  it("leaves out cards that have a stored choice", () => {
+    const left = cardsToShow(STARTER_DECK, [], { tee: "skip", jeans: "have" });
+    expect(left).toHaveLength(STARTER_DECK.length - 2);
+    expect(left.some((c) => c.id === "tee" || c.id === "jeans")).toBe(false);
+  });
+
+  it("counts every card in the starter deck in the place shown", () => {
+    const left = STARTER_DECK.slice(20);
+    const s = initialDeck(left);
+    expect(placeOf(s, STARTER_DECK.length)).toEqual({ at: 21, total: STARTER_DECK.length });
+    const later = run(s, { type: "decide", choice: "skip", ownedIds: [] }, { type: "advance" });
+    expect(placeOf(later, STARTER_DECK.length).at).toBe(22);
+    expect(placeOf(initialDeck([]), 44)).toEqual({ at: 44, total: 44 });
   });
 });
