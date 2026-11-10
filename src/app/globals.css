@@ -1315,7 +1315,8 @@ li[data-done] .first-run-tick {
   cursor: grab;
   /* Where the card is comes from --dx and --dy (pixels, no unit), which the page writes while it is dragged. */
   transform: translate(calc(var(--dx, 0) * 1px), calc(var(--dy, 0) * 1px)) rotate(calc(var(--dx, 0) * 0.06deg));
-  transition: transform 220ms ease;
+  /* Let go short of the line and it springs back with a slight overshoot. */
+  transition: transform 180ms cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 .swipe-card[data-dragging] {
   transition: none;
@@ -1331,7 +1332,7 @@ li[data-done] .first-run-tick {
   pointer-events: none;
   cursor: default;
   transition: none;
-  animation: 260ms ease-in forwards;
+  animation: 160ms ease-in forwards;
 }
 .swipe-leaving.leave-have {
   animation-name: swipe-out-have;
@@ -1370,9 +1371,14 @@ li[data-done] .first-run-tick {
   position: absolute;
   inset: 0;
   z-index: 0;
-  transform: scale(0.95) translateY(10px);
-  opacity: 0.55;
+  /* The card behind rises to meet the top card as it is dragged: --strength is 0 at rest and 1 at the line. */
+  transform: scale(calc(0.95 + 0.05 * var(--strength, 0))) translateY(calc(10px * (1 - var(--strength, 0))));
+  opacity: calc(0.55 + 0.45 * var(--strength, 0));
+  transition: transform 180ms ease, opacity 180ms ease;
   pointer-events: none;
+}
+.swipe-stack[data-dragging] .swipe-next {
+  transition: none;
 }
 .swipe-art {
   height: min(24vh, 280px);
@@ -1699,6 +1705,7 @@ li[data-done] .first-run-tick {
 }
 @media (prefers-reduced-motion: reduce) {
   .swipe-card,
+  .swipe-next,
   .swipe-progress span {
     transition: none;
   }

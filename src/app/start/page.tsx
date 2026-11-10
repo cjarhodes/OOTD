@@ -45,7 +45,7 @@ interface Leaving {
   height: number | undefined;
 }
 /** A little longer than the exit animation in the stylesheet, as a fallback if `animationend` never comes. */
-const LEAVE_MS = 450;
+const LEAVE_MS = 320;
 
 /**
  * Build a wardrobe by swiping: right for pieces you own, left for ones you
@@ -92,6 +92,8 @@ export default function StartPage() {
   const [gone, setGone] = useState<Leaving[]>([]);
   const goneCount = useRef(0);
   const cardEl = useRef<HTMLDivElement | null>(null);
+  // The stack holds both cards, so --strength is set here and the card behind can rise as the top card goes.
+  const stackEl = useRef<HTMLDivElement | null>(null);
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
   // The last few pointer positions, for the speed of a flick on release.
   const samples = useRef<Sample[]>([]);
@@ -108,7 +110,7 @@ export default function StartPage() {
     const width = el.offsetWidth; // read before writing, so a frame forces no extra layout
     el.style.setProperty("--dx", String(x));
     el.style.setProperty("--dy", String(Math.min(y, 40)));
-    el.style.setProperty("--strength", String(strengthOf(x, y, width)));
+    stackEl.current?.style.setProperty("--strength", String(strengthOf(x, y, width)));
     if (lean) el.dataset.lean = lean;
     else delete el.dataset.lean;
   }, []);
@@ -118,13 +120,17 @@ export default function StartPage() {
     frame.current = null;
     start.current = null;
     dragAt.current = { x: 0, y: 0 };
+    const stack = stackEl.current;
+    if (stack) {
+      delete stack.dataset.dragging;
+      stack.style.setProperty("--strength", "0");
+    }
     const el = cardEl.current;
     if (!el) return;
     delete el.dataset.dragging;
     delete el.dataset.lean;
     el.style.setProperty("--dx", "0");
     el.style.setProperty("--dy", "0");
-    el.style.setProperty("--strength", "0");
   }, []);
   useEffect(() => stopDrag, [stopDrag]);
 
@@ -215,6 +221,7 @@ export default function StartPage() {
     samples.current = [{ t: performance.now(), x: e.clientX, y: e.clientY }];
     dragAt.current = { x: 0, y: 0 };
     e.currentTarget.dataset.dragging = "true";
+    if (stackEl.current) stackEl.current.dataset.dragging = "true";
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   // No state is set here: the position goes to the card on the next frame.
@@ -253,9 +260,9 @@ export default function StartPage() {
           <div className="swipe-progress" aria-hidden="true">
             <span style={{ width: `${(((place?.at ?? 1) - 1) / STARTER_DECK.length) * 100}%` }} />
           </div>
-          <div className="swipe-stack">
+          <div className="swipe-stack" ref={stackEl}>
             {deck[index + 1] && (
-              <div className="swipe-card swipe-next" aria-hidden="true">
+              <div key={deck[index + 1]!.id} className="swipe-card swipe-next" aria-hidden="true">
                 <div className="plinth swipe-art">
                   {nextArt}
                 </div>

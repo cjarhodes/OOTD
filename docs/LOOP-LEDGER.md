@@ -30,7 +30,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | S4 | done | loop/wardrobe-entry | 2026-11-10 |
 | G1 | done | loop/wardrobe-entry | 2026-11-10 |
 | G2 | done | loop/wardrobe-entry | 2026-11-10 |
-| G3 | todo | | |
+| G3 | done | loop/wardrobe-entry | 2026-11-10 |
 | G4 | todo | | |
 | G5 | todo | | |
 | D1 | todo | | |
@@ -168,10 +168,16 @@ What changed: dragging a card no longer re-renders the page. The `drag` state is
 Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0, renders per pointermove 0 (was 1), tests 275
 For the next agent: nothing here is covered by a unit test (it is DOM and frames); `npm run check` covers types and the build only. G3 should move `--strength` from the card to `.swipe-stack` so the card behind can read it. The attributes `data-lean` and `data-dragging` are set by hand on the element, which React doesn't manage; the card is keyed by card id, so a new card starts clean. Not run in a browser.
 
+### G3 · 2026-11-10
+What changed: the card behind rises as the top card is dragged. `--strength` is now written on `.swipe-stack` (the parent of both cards) instead of the top card, so the stamps and the card behind both read it by inheritance; `--dx`, `--dy` and `data-lean` stay on the card. `.swipe-next` is `scale(0.95 + 0.05 * strength)`, `translateY(10px * (1 - strength))` and `opacity: 0.55 + 0.45 * strength`, so it goes from 0.95 and 0.55 to 1 and 1 as the strength goes from 0 to 1 (full strength is the commit threshold). While dragging (`data-dragging` on the stack) its transition is off so it tracks the finger; otherwise it eases back in 180 ms. A card let go short of the line springs back in 180 ms with `cubic-bezier(.2, 1.4, .4, 1)`; a decided card leaves in 160 ms (was 260 ms; the page's fallback timer is now 320 ms). The card behind is keyed by its card id, so when it becomes the live card and a new one appears behind, the new one starts at rest instead of animating from the old one's state. Under reduced motion the new transition on `.swipe-next` is off with the others, and the leaving card is still not created. Only colours already in use, so both themes are as before.
+Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0, renders per pointermove 0, tests 275
+For the next agent: the G2 entry says `--strength` is on the card; it moved to the stack here. The overshoot curve also applies to the rotation on spring-back, so the card may tilt slightly past level for a moment, which was intended as part of the feel. Not run in a browser.
+
 ## For Alex to try on his phone
 - S4 (swipe feel): tap the three buttons quickly, ten times in a row, and swipe a card by hand. Look for: the next card already underneath as the old one flies off, no choice lost, the exit carrying on from where your finger let go, and no flicker or jump when the next card takes over. With Reduce Motion on, cards should simply disappear.
 - G1 (a flick counts): flick a card sideways or up with a short, quick movement of the thumb. Look for: it goes even though your finger travelled only a little; a slow short drag still springs back; a fast flick back towards the middle cancels instead of choosing.
 - G2 (no renders while dragging): drag a card slowly in a circle and up and down. Look for: smooth following with no stutter, the right stamp fading in as you pass about 40 px (Have on the right, Not mine on the left, Want up), springing back when you let go short, and tapping a colour chip never starting a drag.
+- G3 (next card rises): drag the top card slowly sideways and watch the one behind it. Look for: it grows and brightens as you near the line, settles back if you let go short (the top card springs back with a small bounce), and the card that was behind is the right size the moment the old one flies off. Check in light and dark themes.
 
 ## Questions for Alex
 - T3: two existing assertions in `src/lib/typed.test.ts` had to change from White to the type's usual colour (see the T3 log entry). OK to keep?
