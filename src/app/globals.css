@@ -1414,6 +1414,16 @@ li[data-done] .first-run-tick {
   padding-left: 12px;
   color: var(--ink-2);
 }
+/* A colour already in the wardrobe: shown ticked, and not tappable. */
+.colour-chip:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+.colour-owned {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-2);
+}
 .colour-dot {
   width: 22px;
   height: 22px;

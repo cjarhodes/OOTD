@@ -8,19 +8,22 @@ import { NextBuys } from "@/components/NextBuys";
 import { SLOT_LABEL, KINDS } from "@/lib/kinds";
 import { PALETTE, type ColorName } from "@/lib/palette";
 import {
+  cardsToShow,
   chosenColours,
   countsOf,
   currentCard,
   deckReducer,
   initialDeck,
   isDone,
+  ownedOnCard,
   shownColour,
   tickedColours,
   type Choice,
   type DeckAction,
   type DeckState,
 } from "@/lib/deck";
-import { alreadyHas, STARTER_DECK, starterItem } from "@/lib/starter";
+import { colourOptions } from "@/lib/quickadd";
+import { STARTER_DECK, starterItem } from "@/lib/starter";
 import { choiceOf, leanOf, strengthOf } from "@/lib/swipe";
 import { wishFromItem } from "@/lib/wishlist";
 import { useWardrobe } from "@/state/wardrobe";
@@ -37,7 +40,7 @@ export default function StartPage() {
   // Fix the deck when the page opens, so pieces added while swiping don't reshuffle it.
   const [dk, setDk] = useState<DeckState | null>(null);
   useEffect(() => {
-    if (ready && !dk) setDk(initialDeck(STARTER_DECK.filter((c) => !alreadyHas(c, items))));
+    if (ready && !dk) setDk(initialDeck(cardsToShow(STARTER_DECK, items), items));
   }, [ready, dk, items]);
 
   // Every other colour opens in a sheet, so the card never holds a long list.
@@ -52,6 +55,7 @@ export default function StartPage() {
   const card = dk ? currentCard(dk) : null;
   const color = dk ? shownColour(dk) : null;
   const ticked = dk ? tickedColours(dk) : [];
+  const owned = dk ? ownedOnCard(dk) : [];
   const chosen: ColorName[] = dk ? chosenColours(dk) : [];
   /** Apply an action to the deck, returning what to do to the wardrobe. */
   const step = (action: DeckAction) => {
@@ -194,15 +198,25 @@ export default function StartPage() {
                 <p className="swipe-name">{preview.name}</p>
                 <p className="swipe-note">{card.note}</p>
                 <fieldset className="colour-picks">
-                  <legend className="label">{ticked.length ? `You have ${ticked.length}` : "Your colours: tap every one you own"}</legend>
+                  <legend className="label">
+                    {ticked.length ? `You have ${ticked.length}` : owned.length ? "Any other colours you own?" : "Your colours: tap every one you own"}
+                  </legend>
                   <div className="colour-chips">
-                    {/* The card's own colours, then any others picked from the sheet. */}
-                    {[...card.colors, ...ticked.filter((c) => !card.colors.includes(c))].map((c) => (
-                      <button key={c} type="button" className="colour-chip" aria-pressed={ticked.includes(c)} onClick={() => toggle(c)}>
-                        <span className="colour-dot" style={{ background: PALETTE[c].hex }} aria-hidden="true" />
-                        {c}
-                      </button>
-                    ))}
+                    {/* The card's own colours, then any others owned or picked from the sheet. */}
+                    {colourOptions(card, owned, ticked).map((c) =>
+                      owned.includes(c) ? (
+                        <button key={c} type="button" className="colour-chip owned" aria-pressed="true" disabled>
+                          <span className="colour-dot" style={{ background: PALETTE[c].hex }} aria-hidden="true" />
+                          {c}
+                          <span className="colour-owned">In your wardrobe</span>
+                        </button>
+                      ) : (
+                        <button key={c} type="button" className="colour-chip" aria-pressed={ticked.includes(c)} onClick={() => toggle(c)}>
+                          <span className="colour-dot" style={{ background: PALETTE[c].hex }} aria-hidden="true" />
+                          {c}
+                        </button>
+                      ),
+                    )}
                     <button type="button" className="colour-chip more" onClick={() => setSheetOpen(true)} aria-haspopup="dialog">
                       + Other colour
                     </button>
@@ -220,7 +234,7 @@ export default function StartPage() {
               <span aria-hidden="true">☆</span> {chosen.length > 1 ? `Want ${chosen.length}` : "Want it"}
             </button>
             <button type="button" className="swipe-btn have" onClick={() => void decide("have")} aria-keyshortcuts="ArrowRight">
-              <span aria-hidden="true">✓</span> {chosen.length > 1 ? `I have ${chosen.length}` : "I have it"}
+              <span aria-hidden="true">✓</span> {chosen.length === 0 ? "Next" : chosen.length > 1 ? `I have ${chosen.length}` : "I have it"}
             </button>
           </div>
           <div className="swipe-foot">
@@ -237,7 +251,7 @@ export default function StartPage() {
       )}
 
       {sheetOpen && card && (
-        <ColourSheet title={`${card.name}: your colours`} picked={ticked} onToggle={toggle} onClose={() => setSheetOpen(false)} />
+        <ColourSheet title={`${card.name}: your colours`} picked={[...owned, ...ticked]} onToggle={toggle} onClose={() => setSheetOpen(false)} />
       )}
 
       {done && (

@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { makeItem } from "./kinds";
 import {
+  cardsToShow,
   chosenColours,
   countsOf,
   currentCard,
   deckReducer,
   initialDeck,
   isDone,
+  ownedOnCard,
+  shownColour,
+  tickedColours,
   type DeckAction,
   type DeckState,
 } from "./deck";
@@ -122,5 +127,49 @@ describe("deck reducer", () => {
   it("starts each card on its own first colour", () => {
     const card: StarterCard = jeans;
     expect(chosenColours(run(start(), { type: "advance" }))).toEqual([card.colors[0]]);
+  });
+});
+
+describe("owning one colour never hides a card", () => {
+  const own = (id: string) => makeItem({ id, name: id, kind: "tee", color: "White" });
+  /** Pieces that did not come from the deck: typed or photographed. */
+  const blackJeans = makeItem({ id: "photo-1", name: "Black straight jeans", kind: "jeans", color: "Black" });
+  const whiteTee = makeItem({ id: "typed-2", name: "White tee", kind: "tee", color: "White" });
+
+  it("hides no card for a typed or photographed piece of the same type (the fault 11 example)", () => {
+    expect(cardsToShow(STARTER_DECK, [blackJeans, whiteTee])).toHaveLength(STARTER_DECK.length);
+    const s = initialDeck(STARTER_DECK, [blackJeans, whiteTee]);
+    expect(s.owned).toEqual({});
+  });
+
+  it("hides a card only when its starter piece is owned in every colour it lists", () => {
+    const some = tee.colors.slice(0, -1).map((c) => own(`st-tee-${c.toLowerCase()}`));
+    expect(cardsToShow(STARTER_DECK, some).some((c) => c.id === "tee")).toBe(true);
+    const all = tee.colors.map((c) => own(`st-tee-${c.toLowerCase()}`));
+    expect(cardsToShow(STARTER_DECK, all).some((c) => c.id === "tee")).toBe(false);
+  });
+
+  it("notes the owned colours, shows the first one not owned and adds nothing twice", () => {
+    const first = tee.colors[0]!;
+    const s = initialDeck([tee, jeans], [own(`st-tee-${first.toLowerCase()}`)]);
+    expect(ownedOnCard(s)).toEqual([first]);
+    expect(shownColour(s)).toBe(tee.colors[1]);
+    expect(chosenColours(s)).toEqual([tee.colors[1]]);
+    // An owned colour can't be ticked.
+    const same = deckReducer(s, { type: "toggleColour", colour: first }).state;
+    expect(tickedColours(same)).toEqual([]);
+    const { effects } = deckReducer(s, { type: "decide", choice: "have", ownedIds: [] });
+    expect(effects.addPieces.map((p) => p.color)).toEqual([tee.colors[1]]);
+  });
+
+  it("has nothing to add when the colour on show is owned and nothing else is ticked", () => {
+    const owned = tee.colors.slice(0, -1).map((c) => own(`st-tee-${c.toLowerCase()}`));
+    const s = initialDeck([tee], owned);
+    expect(chosenColours(s)).toEqual([tee.colors[tee.colors.length - 1]]);
+    const all = initialDeck([tee], tee.colors.map((c) => own(`st-tee-${c.toLowerCase()}`)));
+    expect(chosenColours(all)).toEqual([]);
+    const { effects, state } = deckReducer(all, { type: "decide", choice: "have", ownedIds: [] });
+    expect(effects.addPieces).toEqual([]);
+    expect(state.history).toHaveLength(1);
   });
 });

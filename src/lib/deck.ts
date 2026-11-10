@@ -1,4 +1,5 @@
 import type { ColorName } from "./palette";
+import { ownedColours } from "./quickadd";
 import { starterItem, type StarterCard } from "./starter";
 import type { Item } from "./types";
 
@@ -21,6 +22,8 @@ export interface Decision {
 export interface DeckState {
   deck: StarterCard[];
   index: number;
+  /** The colours of each card already in the wardrobe, worked out when the deck was made. */
+  owned: Record<string, ColorName[]>;
   /** The colours ticked on each card. */
   picked: Record<string, ColorName[]>;
   /** The colour each card's picture shows. */
@@ -52,18 +55,44 @@ export interface DeckResult {
 
 const NONE: DeckEffects = { addPieces: [], addWishes: [], removeItemIds: [], removeWishIds: [] };
 
-export function initialDeck(deck: StarterCard[]): DeckState {
-  return { deck, index: 0, picked: {}, shown: {}, history: [] };
+/**
+ * The cards to show for a wardrobe. A card is left out only when its starter
+ * piece is in the wardrobe in every colour the card lists. A piece of the same
+ * type that didn't come from the deck (typed or photographed) never hides a card.
+ */
+export function cardsToShow(all: readonly StarterCard[], items: readonly Pick<Item, "id">[]): StarterCard[] {
+  return all.filter((c) => {
+    const have = ownedColours(c, items);
+    return !c.colors.every((col) => have.includes(col));
+  });
+}
+
+/** `items` are what the wardrobe holds now: the colours of each card already owned are noted so they can't be added again. */
+export function initialDeck(deck: StarterCard[], items: readonly Pick<Item, "id">[] = []): DeckState {
+  const owned: Record<string, ColorName[]> = {};
+  for (const c of deck) {
+    const have = ownedColours(c, items);
+    if (have.length) owned[c.id] = have;
+  }
+  return { deck, index: 0, owned, picked: {}, shown: {}, history: [] };
 }
 
 export const currentCard = (s: DeckState): StarterCard | null => s.deck[s.index] ?? null;
 
 export const isDone = (s: DeckState): boolean => s.index >= s.deck.length;
 
-/** The colour on show for the current card. */
+/** The colours of the current card already in the wardrobe. */
+export function ownedOnCard(s: DeckState): ColorName[] {
+  const card = currentCard(s);
+  return card ? (s.owned[card.id] ?? []) : [];
+}
+
+/** The colour on show for the current card: the one last tapped, else the first it lists that isn't owned yet. */
 export function shownColour(s: DeckState): ColorName | null {
   const card = currentCard(s);
-  return card ? (s.shown[card.id] ?? card.colors[0]!) : null;
+  if (!card) return null;
+  const owned = s.owned[card.id] ?? [];
+  return s.shown[card.id] ?? card.colors.find((c) => !owned.includes(c)) ?? card.colors[0]!;
 }
 
 /** The colours ticked on the current card. */
@@ -72,11 +101,15 @@ export function tickedColours(s: DeckState): ColorName[] {
   return card ? (s.picked[card.id] ?? []) : [];
 }
 
-/** With nothing ticked, the colour on show is the one you mean. */
+/**
+ * The colours a choice applies to. With nothing ticked, the colour on show is
+ * the one you mean, unless you already own it: then there is nothing to add.
+ */
 export function chosenColours(s: DeckState): ColorName[] {
-  const ticked = tickedColours(s);
+  const owned = ownedOnCard(s);
+  const ticked = tickedColours(s).filter((c) => !owned.includes(c));
   const shown = shownColour(s);
-  return ticked.length ? ticked : shown ? [shown] : [];
+  return ticked.length ? ticked : shown && !owned.includes(shown) ? [shown] : [];
 }
 
 export function countsOf(history: Decision[]): { have: number; want: number } {
@@ -91,6 +124,8 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckResult {
     case "toggleColour": {
       const card = currentCard(state);
       if (!card) return { state, effects: NONE };
+      // Colours already in the wardrobe can't be ticked again.
+      if ((state.owned[card.id] ?? []).includes(action.colour)) return { state, effects: NONE };
       const now = state.picked[card.id] ?? [];
       return {
         state: {

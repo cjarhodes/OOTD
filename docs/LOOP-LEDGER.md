@@ -24,7 +24,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | Q1 | done | loop/wardrobe-entry | 2026-11-10 |
 | Q2 | done | loop/wardrobe-entry | 2026-11-10 |
 | Q3 | done | loop/wardrobe-entry | 2026-11-10 |
-| S1 | todo | | |
+| S1 | done | loop/wardrobe-entry | 2026-11-10 |
 | S2 | todo | | |
 | S3 | todo | | |
 | S4 | todo | | |
@@ -137,6 +137,11 @@ For the next agent: scorecard line 4 is 3 taps from Quick add and 4 from the War
 What changed: a piece without a photo gets "Add another colour" in its sheet (beside "Add a photo"). It opens `ColourSheet` (multi-pick) and, when the sheet is closed with Done, adds a copy per colour picked through `addPieces`, each with `newId()`, the same details, status "available" (a copy of a piece in the wash starts clean) and the colour swapped at the start of the name where the name starts with the old colour ("Navy merino crewneck" to "Grey merino crewneck"; any other name is kept as it is). A line under the button says what was added ("Added: grey merino crewneck"). Colours the wardrobe already has for an identical piece (same type, same name once the leading colour is taken off, case ignored, archived pieces included) and the piece's own colour are not offered: `ColourSheet` has a new optional `hide` list for this and leaves out a group with nothing left. Pure parts in `src/lib/recolour.ts` (`takenColours`, `renamedFor`, `copiesInColours`, 8 tests in `recolour.test.ts`). The change in `src/app/wardrobe/page.tsx` is inside `ItemSheet`. I also corrected the scorecard line of Q2's entry above (it was muddled; line 4 is 4 taps from Wardrobe now).
 Scorecard: types 136/136, colours 96/96, white guesses 0/136, taps to add one common piece 4 from Wardrobe (3 once Quick add is open), tests 247
 For the next agent: a navy crewneck becomes navy and grey crewnecks in three taps (Add another colour, Grey, Done); the plan said two, and the multi-pick sheet needs Done. Closing the sheet with Esc also adds what was picked. Pieces with a photo don't get the button (the plan says photoless only). The copy keeps the original's fit, material, pattern and so on, since it spreads the piece. Not seen running in a browser: the button's place in the sheet at 375 px, the sheet opening above the piece sheet, and that the new tile appears in the grid when the piece sheet is closed.
+
+### S1 · 2026-11-10
+What changed: owning one colour no longer hides a card. `cardsToShow(all, items)` in `src/lib/deck.ts` leaves a card out only when its starter piece (`st-<card>-<colour>`) is in the wardrobe in every colour the card lists, reusing `ownedColours` from `src/lib/quickadd.ts`. `initialDeck(deck, items)` now records the owned colours per card (`DeckState.owned`); `ownedOnCard`, `shownColour` (first colour not owned) and `chosenColours` (never an owned colour) read it, and `toggleColour` ignores owned colours. On the page, owned colours show ticked, disabled, with "In your wardrobe", and "I have it" reads "Next" when there is nothing new to add. Typed or photographed pieces never hide or lock anything. `alreadyHas` stays in `starter.ts` with its old meaning because `src/lib/recommend.ts` (next buys) uses it for that; only the deck stopped using it. 4 new tests in `deck.test.ts`, including the fault 11 example (black jeans and a white tee that didn't come from the deck hide no card).
+Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0 (was 2), tests 251
+For the next agent: `initialDeck`'s second argument is optional so old callers and tests still work. The owned colours are a snapshot from when the deck opened, so an undo doesn't need to recompute them. The colour chips are 36 px tall (existing style, shared with Type a list); the new "In your wardrobe" chips follow it.
 
 ## For Alex to try on his phone
 
