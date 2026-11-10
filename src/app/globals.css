@@ -1665,7 +1665,7 @@ li[data-done] .first-run-tick {
 }
 .typed-row {
   display: grid;
-  grid-template-columns: 64px 1fr;
+  grid-template-columns: 64px 1fr 44px;
   gap: 12px;
   align-items: center;
 }
@@ -1699,7 +1699,7 @@ li[data-done] .first-run-tick {
 }
 .typed-kind {
   width: auto;
-  min-height: 36px;
+  min-height: 44px;
   padding: 4px 10px;
   font-size: 14px;
 }
@@ -1710,4 +1710,34 @@ li[data-done] .first-run-tick {
   margin-left: 4px;
   font-size: 12px;
   color: var(--label);
+}
+.typed-controls .colour-chip {
+  min-height: 44px;
+}
+.typed-controls .colour-chip[aria-invalid="true"] {
+  padding-left: 12px;
+  border-color: var(--cobalt);
+}
+.typed-reason {
+  font-size: 13px;
+  color: var(--label);
+}
+.typed-remove {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.typed-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
 }
