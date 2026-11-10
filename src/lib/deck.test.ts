@@ -20,7 +20,7 @@ import { STARTER_DECK, type StarterCard } from "./starter";
 const tee = STARTER_DECK.find((c) => c.id === "tee")!;
 const jeans = STARTER_DECK.find((c) => c.colors.length > 1 && c.id !== "tee")!;
 
-/** Apply actions in order, as the page does (advancing after each decision). */
+/** Apply actions in order, as the page does. */
 function run(state: DeckState, ...actions: DeckAction[]): DeckState {
   return actions.reduce((s, a) => deckReducer(s, a).state, state);
 }
@@ -80,8 +80,8 @@ describe("deck reducer", () => {
 
   it("undoes a 'have' by removing its pieces", () => {
     const decided = deckReducer(start(), { type: "decide", choice: "have", ownedIds: [] });
-    const moved = deckReducer(decided.state, { type: "advance" }).state;
-    const { state, effects } = deckReducer(moved, { type: "undo" });
+    expect(decided.state.index).toBe(1);
+    const { state, effects } = deckReducer(decided.state, { type: "undo" });
     expect(effects.removeItemIds).toEqual(decided.effects.addPieces.map((p) => p.id));
     expect(effects.removeWishIds).toEqual([]);
     expect(state.history).toEqual([]);
@@ -115,7 +115,7 @@ describe("deck reducer", () => {
     let s = start();
     expect(isDone(s)).toBe(false);
     for (const choice of ["have", "skip"] as const) {
-      s = run(s, { type: "decide", choice, ownedIds: [] }, { type: "advance" });
+      s = run(s, { type: "decide", choice, ownedIds: [] });
     }
     expect(isDone(s)).toBe(true);
     expect(currentCard(s)).toBeNull();
@@ -128,13 +128,13 @@ describe("deck reducer", () => {
   it("counts what was added and wished for", () => {
     const [a, b] = tee.colors;
     let s = run(start(), { type: "toggleColour", colour: a! }, { type: "toggleColour", colour: b! });
-    s = run(s, { type: "decide", choice: "have", ownedIds: [] }, { type: "advance" }, { type: "decide", choice: "want", ownedIds: [] });
+    s = run(s, { type: "decide", choice: "have", ownedIds: [] }, { type: "decide", choice: "want", ownedIds: [] });
     expect(countsOf(s.history)).toEqual({ have: 2, want: 1 });
   });
 
   it("starts each card on its own first colour", () => {
     const card: StarterCard = jeans;
-    expect(chosenColours(run(start(), { type: "advance" }))).toEqual([card.colors[0]]);
+    expect(chosenColours(run(start(), { type: "decide", choice: "skip", ownedIds: [] }))).toEqual([card.colors[0]]);
   });
 });
 
@@ -199,7 +199,7 @@ describe("remembered choices", () => {
     const left = STARTER_DECK.slice(20);
     const s = initialDeck(left);
     expect(placeOf(s, STARTER_DECK.length)).toEqual({ at: 21, total: STARTER_DECK.length });
-    const later = run(s, { type: "decide", choice: "skip", ownedIds: [] }, { type: "advance" });
+    const later = run(s, { type: "decide", choice: "skip", ownedIds: [] });
     expect(placeOf(later, STARTER_DECK.length).at).toBe(22);
     expect(placeOf(initialDeck([]), 44)).toEqual({ at: 44, total: 44 });
   });
@@ -208,7 +208,7 @@ describe("remembered choices", () => {
 describe("undo from the finish screen", () => {
   it("brings the last card back and names the piece to undo", () => {
     let s = initialDeck([tee]);
-    s = run(s, { type: "decide", choice: "have", ownedIds: [] }, { type: "advance" });
+    s = run(s, { type: "decide", choice: "have", ownedIds: [] });
     expect(isDone(s)).toBe(true);
     expect(s.history[s.history.length - 1]!.name).toBe("White heavyweight tee");
     s = run(s, { type: "undo" });
@@ -221,5 +221,28 @@ describe("undo from the finish screen", () => {
     const { state } = deckReducer(initialDeck([tee]), { type: "toggleColour", colour: tee.colors[1]! });
     const decided = deckReducer(state, { type: "decide", choice: "skip", ownedIds: [] }).state;
     expect(decided.history[0]!.name).toBe("Black heavyweight tee");
+  });
+});
+
+describe("fast tapping", () => {
+  it("applies ten decisions in a row, one history entry each, with no step in between", () => {
+    const many = STARTER_DECK.slice(0, 12);
+    let s = initialDeck(many);
+    const choices = ["have", "skip", "want", "have", "have", "skip", "want", "skip", "have", "want"] as const;
+    for (const choice of choices) s = deckReducer(s, { type: "decide", choice, ownedIds: [] }).state;
+    expect(s.history).toHaveLength(10);
+    expect(s.history.map((d) => d.card.id)).toEqual(many.slice(0, 10).map((c) => c.id));
+    expect(s.index).toBe(10);
+    expect(currentCard(s)).toBe(many[10]);
+  });
+
+  it("decides the next card at once, so a second tap is never for the card that is leaving", () => {
+    const first = deckReducer(initialDeck([tee, jeans]), { type: "decide", choice: "have", ownedIds: [] });
+    expect(currentCard(first.state)).toBe(jeans);
+    const second = deckReducer(first.state, { type: "decide", choice: "want", ownedIds: [] });
+    expect(second.state.history.map((d) => [d.card.id, d.choice])).toEqual([
+      ["tee", "have"],
+      [jeans.id, "want"],
+    ]);
   });
 });

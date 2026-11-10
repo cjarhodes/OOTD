@@ -27,7 +27,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | S1 | done | loop/wardrobe-entry | 2026-11-10 |
 | S2 | done | loop/wardrobe-entry | 2026-11-10 |
 | S3 | done | loop/wardrobe-entry | 2026-11-10 |
-| S4 | todo | | |
+| S4 | done | loop/wardrobe-entry | 2026-11-10 |
 | G1 | todo | | |
 | G2 | todo | | |
 | G3 | todo | | |
@@ -153,7 +153,13 @@ What changed: Undo is on the finish screen as well as under the card, so the las
 Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, tests 264
 For the next agent: Undo only reaches decisions made in this visit; after resuming a deck there is nothing to undo until a new choice is made. For a choice with several colours the name is the first colour's piece.
 
+### S4 · 2026-11-10
+What changed: fast tapping never drops a choice. `decide` in `src/lib/deck.ts` now moves to the next card itself, and the `advance` action is gone (the F2 note's suggestion); the reducer tests that used it were updated, not weakened. On the page the `leaving` state and its input guard are gone. The deck lives in a ref as well as state (`dkRef`), so two taps or key presses in one frame can't both act on the same card. A decided card is copied into a short `gone` list and drawn as a separate absolutely positioned `.swipe-leaving` element over the live card, which is already the next card (keyed by card id so it is a fresh element, with no transition from the dragged position). The exit is a CSS keyframe animation (`swipe-out-have`, `-skip`, `-want`, 260 ms) that starts from where the card was let go (`--fx`, `--fy`, `--fr`) and removes itself on `animationend`, with a 450 ms timeout as a fallback. Under `prefers-reduced-motion` the page doesn't create the leaving element at all, and the stylesheet hides it as well. Arrow keys and the three buttons call the same `decide`. 2 new reducer tests, including 10 `decide` actions in a row giving 10 history entries.
+Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0 (was most), tests 266
+For the next agent: the leaving card's key is the card id plus a counter, not the card id alone, so the same card undone and decided again doesn't clash. Its text omits the colour chips; its height is copied from the live card so the shape doesn't jump. G1 (flick) will want to pass its release velocity into the exit; `decide` takes the release offset as its second argument and the keyframes read it from CSS variables. This was not run in a browser: see the phone check below.
+
 ## For Alex to try on his phone
+- S4 (swipe feel): tap the three buttons quickly, ten times in a row, and swipe a card by hand. Look for: the next card already underneath as the old one flies off, no choice lost, the exit carrying on from where your finger let go, and no flicker or jump when the next card takes over. With Reduce Motion on, cards should simply disappear.
 
 ## Questions for Alex
 - T3: two existing assertions in `src/lib/typed.test.ts` had to change from White to the type's usual colour (see the T3 log entry). OK to keep?

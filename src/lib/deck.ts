@@ -37,8 +37,6 @@ export type DeckAction =
   | { type: "toggleColour"; colour: ColorName }
   /** `ownedIds` are the ids of the pieces already in the wardrobe, so none is added twice. */
   | { type: "decide"; choice: Choice; ownedIds: readonly string[] }
-  /** Move on to the next card, once the last one has finished leaving. */
-  | { type: "advance" }
   | { type: "undo" };
 
 /** What the page should do to the wardrobe and wishlist after an action. */
@@ -176,13 +174,12 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckResult {
         wishIds: addWishes.map((p) => p.id),
         name: starterItem(card, chosen[0] ?? card.colors[0]!).name,
       };
+      // The next card is live at once: the page only animates the old one away.
       return {
-        state: { ...state, history: [...state.history, decision] },
+        state: { ...state, index: state.index + 1, history: [...state.history, decision] },
         effects: { ...NONE, addPieces, addWishes, saveChoice: { cardId: card.id, choice: action.choice } },
       };
     }
-    case "advance":
-      return { state: { ...state, index: state.index + 1 }, effects: NONE };
     case "undo": {
       const last = state.history[state.history.length - 1];
       if (!last) return { state, effects: NONE };

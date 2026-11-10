@@ -1319,6 +1319,51 @@ li[data-done] .first-run-tick {
   transition: none;
   cursor: grabbing;
 }
+/* A decided card flying away over the live one. It starts where it was let go. */
+.swipe-leaving {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  pointer-events: none;
+  cursor: default;
+  transition: none;
+  animation: 260ms ease-in forwards;
+}
+.swipe-leaving.leave-have {
+  animation-name: swipe-out-have;
+}
+.swipe-leaving.leave-skip {
+  animation-name: swipe-out-skip;
+}
+.swipe-leaving.leave-want {
+  animation-name: swipe-out-want;
+}
+@keyframes swipe-out-have {
+  from {
+    transform: translate(var(--fx, 0), var(--fy, 0)) rotate(var(--fr, 0deg));
+  }
+  to {
+    transform: translate(120vw, 0) rotate(18deg);
+  }
+}
+@keyframes swipe-out-skip {
+  from {
+    transform: translate(var(--fx, 0), var(--fy, 0)) rotate(var(--fr, 0deg));
+  }
+  to {
+    transform: translate(-120vw, 0) rotate(-18deg);
+  }
+}
+@keyframes swipe-out-want {
+  from {
+    transform: translate(var(--fx, 0), var(--fy, 0)) rotate(var(--fr, 0deg));
+  }
+  to {
+    transform: translate(0, -120vh);
+  }
+}
 .swipe-next {
   position: absolute;
   inset: 0;
@@ -1642,6 +1687,9 @@ li[data-done] .first-run-tick {
   .swipe-card,
   .swipe-progress span {
     transition: none;
+  }
+  .swipe-leaving {
+    display: none;
   }
 }
 
