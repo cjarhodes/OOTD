@@ -28,7 +28,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | S2 | done | loop/wardrobe-entry | 2026-11-10 |
 | S3 | done | loop/wardrobe-entry | 2026-11-10 |
 | S4 | done | loop/wardrobe-entry | 2026-11-10 |
-| G1 | todo | | |
+| G1 | done | loop/wardrobe-entry | 2026-11-10 |
 | G2 | todo | | |
 | G3 | todo | | |
 | G4 | todo | | |
@@ -158,8 +158,14 @@ What changed: fast tapping never drops a choice. `decide` in `src/lib/deck.ts` n
 Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0 (was most), tests 266
 For the next agent: the leaving card's key is the card id plus a counter, not the card id alone, so the same card undone and decided again doesn't clash. Its text omits the colour chips; its height is copied from the live card so the shape doesn't jump. G1 (flick) will want to pass its release velocity into the exit; `decide` takes the release offset as its second argument and the keyframes read it from CSS variables. This was not run in a browser: see the phone check below.
 
+### G1 · 2026-11-10
+What changed: a flick counts. `src/lib/swipe.ts` gains `velocityOf(samples, now)` (pointer speed in px per ms over the samples in the last 80 ms; fewer than two samples, or a pause before letting go, is no speed), `thresholdFor(width)` (90 px, or a quarter of the card's width when that is less) and a new `choiceOf(dx, dy, vx, vy, width)`. A swipe commits on distance past the threshold, or on speed over 0.5 px/ms with at least 24 px travelled in that direction. A fast pull back towards the centre (over 0.5 px/ms the other way) cancels it however far the card had come. Up still wins only when it is the larger movement. The last four arguments are optional, so `choiceOf(dx, dy)` is exactly the old rule and all the old tests pass untouched. `strengthOf` takes an optional width too, so the stamp reaches full strength at the card's own threshold. The page keeps the last eight pointer samples in a ref (no state) and passes the velocity and the card's width on release. 9 new tests: velocity window, short fast flick each way, a slow long drag, a fast flick back cancelling, the 24 px and 0.5 px/ms edges, a narrow card.
+Scorecard: types 132/132, colours 92/92, white guesses 0/132, wrongly hidden cards 0, choices dropped in 10 taps 0, renders per pointermove 1 (G2), tests 275
+For the next agent: samples use `performance.now()` both when recorded and on release. The exit animation still starts from the release offset, so a short fast flick leaves from a small offset and speeds off from there; it doesn't yet use the velocity. The card's width is `offsetWidth` of the live card (about 343 px on a 375 px phone, so the threshold there is about 86 px, not 90). Not run in a browser.
+
 ## For Alex to try on his phone
 - S4 (swipe feel): tap the three buttons quickly, ten times in a row, and swipe a card by hand. Look for: the next card already underneath as the old one flies off, no choice lost, the exit carrying on from where your finger let go, and no flicker or jump when the next card takes over. With Reduce Motion on, cards should simply disappear.
+- G1 (a flick counts): flick a card sideways or up with a short, quick movement of the thumb. Look for: it goes even though your finger travelled only a little; a slow short drag still springs back; a fast flick back towards the middle cancels instead of choosing.
 
 ## Questions for Alex
 - T3: two existing assertions in `src/lib/typed.test.ts` had to change from White to the type's usual colour (see the T3 log entry). OK to keep?

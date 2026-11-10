@@ -26,7 +26,7 @@ import {
 import { browserStorage, choicesAfter, loadChoices, saveChoices, skippedCount, storeKey, withoutSkipped, type Choices } from "@/lib/deck-store";
 import { colourOptions } from "@/lib/quickadd";
 import { STARTER_DECK, starterItem, type StarterCard } from "@/lib/starter";
-import { choiceOf, leanOf, strengthOf } from "@/lib/swipe";
+import { choiceOf, leanOf, strengthOf, velocityOf, type Sample } from "@/lib/swipe";
 import { wishFromItem } from "@/lib/wishlist";
 import { useAuth } from "@/state/auth";
 import { useWardrobe } from "@/state/wardrobe";
@@ -94,6 +94,8 @@ export default function StartPage() {
   const goneCount = useRef(0);
   const cardEl = useRef<HTMLDivElement | null>(null);
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
+  // The last few pointer positions, for the speed of a flick on release.
+  const samples = useRef<Sample[]>([]);
 
   const deck = dk?.deck ?? null;
   const index = dk?.index ?? 0;
@@ -175,18 +177,21 @@ export default function StartPage() {
     // Colours are tapped, never dragged: only the picture and text start a swipe.
     if ((e.target as HTMLElement).closest("button, .colour-picks")) return;
     start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    samples.current = [{ t: performance.now(), x: e.clientX, y: e.clientY }];
     e.currentTarget.setPointerCapture(e.pointerId);
     setDrag({ x: 0, y: 0 });
   };
   const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (!start.current || start.current.id !== e.pointerId) return;
+    samples.current = [...samples.current.slice(-7), { t: performance.now(), x: e.clientX, y: e.clientY }];
     setDrag({ x: e.clientX - start.current.x, y: e.clientY - start.current.y });
   };
   const onUp = () => {
     if (!start.current || !drag) return;
     start.current = null;
     const { x, y } = drag;
-    const choice = choiceOf(x, y);
+    const { vx, vy } = velocityOf(samples.current, performance.now());
+    const choice = choiceOf(x, y, vx, vy, cardEl.current?.offsetWidth);
     if (choice) decide(choice, { x, y });
     else setDrag(null);
   };
