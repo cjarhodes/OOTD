@@ -19,6 +19,7 @@ import {
   placeOf,
   shownColour,
   tickedColours,
+  visibleColours,
   type Choice,
   type DeckAction,
   type DeckState,
@@ -265,7 +266,7 @@ export default function StartPage() {
 
   return (
     <>
-      <div className="page-head">
+      <div className="page-head swipe-head">
         <span className="eyebrow">Quick start · {done ? "done" : place ? `${place.at} of ${place.total}` : "…"}</span>
         <h1 className="display page-title">Swipe your wardrobe</h1>
       </div>
@@ -348,8 +349,8 @@ export default function StartPage() {
                     {ticked.length ? `You have ${ticked.length}` : owned.length ? "Any other colours you own?" : "Your colours: tap every one you own"}
                   </legend>
                   <div className="colour-chips">
-                    {/* The card's own colours, then any others owned or picked from the sheet. */}
-                    {colourOptions(card, owned, ticked).map((c) =>
+                    {/* The card's own colours (four at most, so it fits a small phone), then any others owned or picked. The rest are in the sheet. */}
+                    {visibleColours(colourOptions(card, owned, ticked), owned, ticked).map((c) =>
                       owned.includes(c) ? (
                         <button key={c} type="button" className="colour-chip owned" aria-pressed="true" disabled>
                           <span className="colour-dot" style={{ background: PALETTE[c].hex }} aria-hidden="true" />
@@ -372,6 +373,17 @@ export default function StartPage() {
             </div>
           </div>
 
+          <div className="swipe-foot">
+            <span className="label">
+              {counts.have} in your wardrobe · {counts.want} on your wishlist
+            </span>
+            {last && (
+              <button type="button" className="text-link swipe-undo" onClick={() => void undo()} aria-label={`Undo: ${last.name}`}>
+                Undo
+              </button>
+            )}
+          </div>
+          {/* Last on the page, so nothing sits beneath the buttons when they are pinned above the tab bar. */}
           <div className="swipe-actions">
             <button type="button" className="swipe-btn" onClick={() => decide("skip")} aria-keyshortcuts="ArrowLeft">
               <span aria-hidden="true">✕</span> Not mine
@@ -382,16 +394,6 @@ export default function StartPage() {
             <button type="button" className="swipe-btn have" onClick={() => decide("have")} aria-keyshortcuts="ArrowRight">
               <span aria-hidden="true">✓</span> {chosen.length === 0 ? "Next" : chosen.length > 1 ? `I have ${chosen.length}` : "I have it"}
             </button>
-          </div>
-          <div className="swipe-foot">
-            <span className="label">
-              {counts.have} in your wardrobe · {counts.want} on your wishlist
-            </span>
-            {last && (
-              <button type="button" className="text-link swipe-undo" onClick={() => void undo()} aria-label={`Undo: ${last.name}`}>
-                Undo
-              </button>
-            )}
           </div>
         </div>
       )}

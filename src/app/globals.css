@@ -1284,7 +1284,7 @@ li[data-done] .first-run-tick {
 }
 .swipe {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   max-width: 420px;
   margin: 0 auto;
 }
@@ -1380,17 +1380,14 @@ li[data-done] .first-run-tick {
 .swipe-stack[data-dragging] .swipe-next {
   transition: none;
 }
+/* The drawing gives way first: the card, the counts line and the three buttons have to fit the screen
+   (about 590 px of everything else on a phone), so it takes what is left, between 56 and 280 px. */
 .swipe-art {
-  height: min(24vh, 280px);
+  height: clamp(56px, calc(100vh - 590px), 280px);
+  height: clamp(56px, calc(100dvh - 590px), 280px);
   display: grid;
   place-items: center;
   border-radius: 0;
-}
-/* Short phones: keep the swipe buttons above the tab bar. */
-@media (max-height: 820px) {
-  .swipe-art {
-    height: 19vh;
-  }
 }
 .swipe-art .garment-svg {
   width: 72%;
@@ -1402,20 +1399,26 @@ li[data-done] .first-run-tick {
   gap: 4px;
   padding: 12px 18px 16px;
 }
-@media (max-width: 819px) {
-  .swipe-name {
-    font-size: 23px;
-  }
-}
 .swipe-name {
   font-family: var(--display);
   font-size: 26px;
   line-height: 1.15;
   color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
+/* Two lines at most, so a long note can't push the colours off the card. */
 .swipe-note {
   font-size: 15px;
   color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 .colour-picks {
   border: 0;
@@ -1734,7 +1737,8 @@ li[data-done] .first-run-tick {
 .swipe-foot {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  min-height: 44px;
 }
 .swipe-undo {
   min-height: 44px;
@@ -1743,6 +1747,62 @@ li[data-done] .first-run-tick {
 .swipe-done {
   display: grid;
   gap: 28px;
+}
+/* The swipe's colour chips are 44 px tall (the shared chip stays 36 px for Type a list), and tighter around them. */
+.swipe .colour-chips {
+  gap: 6px;
+}
+.swipe .colour-chip {
+  min-height: 44px;
+  padding: 3px 10px 3px 5px;
+  gap: 5px;
+  font-size: 13px;
+}
+.swipe .colour-chip.more {
+  padding-left: 12px;
+}
+.swipe .colour-dot {
+  width: 20px;
+  height: 20px;
+}
+/* Phones: the tab bar is fixed, so the whole page is tightened to fit the card and the buttons above it. */
+@media (max-width: 819px) {
+  .swipe-head {
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .swipe-head .page-title {
+    font-size: 28px;
+  }
+  .swipe {
+    gap: 8px;
+    /* The page's bottom padding is taller than the tab bar; take that spare back so the page doesn't scroll. */
+    margin-bottom: -34px;
+  }
+  .swipe-text {
+    padding: 10px 14px 12px;
+  }
+  .swipe-name {
+    font-size: 21px;
+  }
+  .swipe-note {
+    font-size: 14px;
+    line-height: 1.35;
+  }
+  .colour-picks {
+    margin-top: 6px;
+    gap: 4px;
+  }
+  .colour-picks legend {
+    margin-bottom: 4px;
+  }
+  .swipe-actions {
+    padding: 6px 0;
+  }
+  .swipe-btn {
+    min-height: 52px;
+    padding: 6px 4px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .swipe-card,

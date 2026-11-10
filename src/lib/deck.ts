@@ -127,6 +127,21 @@ export function chosenColours(s: DeckState): ColorName[] {
   return ticked.length ? ticked : shown && !owned.includes(shown) ? [shown] : [];
 }
 
+/**
+ * The swatches to draw on a card: at most `max`, the rest folded into "+ Other colour" so the card
+ * fits a small phone. A colour already owned or ticked is always drawn, so a tick is never hidden.
+ */
+export function visibleColours(
+  options: readonly ColorName[],
+  owned: readonly ColorName[],
+  ticked: readonly ColorName[],
+  max = 4,
+): ColorName[] {
+  const must = (c: ColorName) => owned.includes(c) || ticked.includes(c);
+  let room = Math.max(0, max - options.filter(must).length);
+  return options.filter((c) => must(c) || room-- > 0);
+}
+
 export function countsOf(history: Decision[]): { have: number; want: number } {
   return {
     have: history.reduce((n, d) => n + d.itemIds.length, 0),

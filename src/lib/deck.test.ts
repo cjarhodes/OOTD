@@ -12,6 +12,7 @@ import {
   placeOf,
   shownColour,
   tickedColours,
+  visibleColours,
   type DeckAction,
   type DeckState,
 } from "./deck";
@@ -244,5 +245,30 @@ describe("fast tapping", () => {
       ["tee", "have"],
       [jeans.id, "want"],
     ]);
+  });
+});
+
+describe("colours drawn on a small card", () => {
+  const five = ["Navy", "Brown", "Forest", "Red", "Black"] as const;
+
+  it("draws at most four and folds the rest into Other colour", () => {
+    expect(visibleColours(five, [], [])).toEqual(["Navy", "Brown", "Forest", "Red"]);
+    expect(visibleColours(five.slice(0, 4), [], [])).toEqual(["Navy", "Brown", "Forest", "Red"]);
+    expect(visibleColours(["White", "Black"], [], [])).toEqual(["White", "Black"]);
+  });
+
+  it("always draws a colour that is ticked or owned, keeping the card's order", () => {
+    expect(visibleColours(five, [], ["Black"])).toEqual(["Navy", "Brown", "Forest", "Black"]);
+    expect(visibleColours(five, ["Black"], [])).toEqual(["Navy", "Brown", "Forest", "Black"]);
+    expect(visibleColours(five, ["Red"], ["Black"])).toEqual(["Navy", "Brown", "Red", "Black"]);
+  });
+
+  it("draws every picked colour even when that is more than four", () => {
+    const all = visibleColours(five, ["Navy", "Brown", "Forest"], ["Red", "Black"]);
+    expect(all).toEqual([...five]);
+  });
+
+  it("keeps an extra colour owned from elsewhere", () => {
+    expect(visibleColours([...five, "Grey"], ["Grey"], [])).toEqual(["Navy", "Brown", "Forest", "Grey"]);
   });
 });
