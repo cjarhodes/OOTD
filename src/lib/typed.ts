@@ -195,12 +195,16 @@ function colourIn(text: string): { color: ColorName | null } | null {
   return found ? { color: found.color } : null;
 }
 
-export function parsePiece(line: string): TypedPiece | null {
-  const name = line
+/** The text of a line without its bullet or number, tidied. */
+function cleanLine(line: string): string {
+  return line
     .replace(/^\s*(?:[-*•·]|\d+[.)])\s*/, "")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 80);
+    .trim();
+}
+
+function parsePieceText(line: string): TypedPiece | null {
+  const name = cleanLine(line).slice(0, 80);
   if (!name) return null;
   const text = name.toLowerCase();
   // Garment words first, brands second, except for the models that contain a garment word.
@@ -226,12 +230,236 @@ export function parsePiece(line: string): TypedPiece | null {
   };
 }
 
-/** One piece per line, or per comma (commas inside brackets don't split). */
+export function parsePiece(line: string): TypedPiece | null {
+  return parsePieceText(line);
+}
+
+// ---------------------------------------------------------------------------
+// Counts and colour lists: "3 white tees", "white, black and grey tees",
+// "Quarter zip, navy". One line can become several pieces.
+// ---------------------------------------------------------------------------
+
+/** Never more pieces than this from one segment. */
+const MAX_COUNT = 10;
+
+const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+
+/** A leading number ("3 ", "2x ", "two ", "4 pairs of ") or a trailing "x2" / "(x2)", taken off the text. */
+function takeCount(text: string): { count: number; text: string } {
+  const lead = /^(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)(?:\s*[x×]\s+|\s+(?:pairs?\s+of\s+)?)(?=\S)/i.exec(text);
+  const trail = lead ? null : /\s+\(?[x×]\s*(\d{1,2})\)?$/i.exec(text);
+  if (!lead && !trail) return { count: 1, text };
+  const digits = (lead ?? trail)?.[1] ?? "1";
+  const n = NUMBER_WORDS[digits.toLowerCase()] ?? Number(digits);
+  const rest = lead ? text.slice(lead[0].length) : text.slice(0, trail?.index);
+  return { count: Math.min(MAX_COUNT, Math.max(1, n)), text: rest.trim() || text };
+}
+
+/** Every colour the parser knows, as sticky matchers, to read a run of colours off the front of a segment. */
+const COLOUR_MATCHERS: RegExp[] = [
+  ...COLOR_NAMES.map((c) => new RegExp(`\\b${c.toLowerCase()}\\b`, "y")),
+  ...COLOUR_WORDS.map(([re]) => new RegExp(re.source, "y")),
+];
+
+/** Where the longest colour word that starts at `pos` ends, or -1. */
+function colourEnd(s: string, pos: number): number {
+  let end = -1;
+  for (const re of COLOUR_MATCHERS) {
+    re.lastIndex = pos;
+    const m = re.exec(s);
+    if (m && m[0].length > 0 && pos + m[0].length > end) end = pos + m[0].length;
+  }
+  return end;
+}
+
+const JOINER = /^(?:\s*[/&,]\s*|\s+and\s+)/;
+/** What follows a colour list when it is describing the piece's trim, not listing pieces. */
+const TRIM_WORD = /^(?:accent|accents|accented|trim|trimmed|trimming|details?|stripes?|soles?|laces?|logos?)\b/;
+
+/**
+ * Colours at the start of a segment, joined by "/", "&", "and" or commas:
+ * "white/black/grey tees" gives three groups and the rest "tees". Adjacent
+ * colour words ("navy blue", "grey marl") are one group. `null` when the text
+ * doesn't start with a colour, or the colours run into punctuation
+ * ("Green/taupe? Bostons") or a trim word ("white/cream accented sambas").
+ */
+function readRun(s: string): { groups: string[]; rest: string } | null {
+  const groups: string[] = [];
+  let pos = 0;
+  let end = 0;
+  for (;;) {
+    let gEnd = colourEnd(s, pos);
+    if (gEnd < 0) break;
+    for (;;) {
+      const gap = /^[\s-]+/.exec(s.slice(gEnd));
+      if (!gap) break;
+      const e = colourEnd(s, gEnd + gap[0].length);
+      if (e < 0) break;
+      gEnd = e;
+    }
+    groups.push(s.slice(pos, gEnd));
+    end = gEnd;
+    const join = JOINER.exec(s.slice(gEnd));
+    if (!join) break;
+    pos = gEnd + join[0].length;
+  }
+  if (groups.length === 0) return null;
+  const rest = s.slice(end);
+  if (rest !== "" && !/^\s/.test(rest)) return null;
+  const trimmed = rest.trim();
+  if (TRIM_WORD.test(trimmed)) return null;
+  return { groups, rest: trimmed };
+}
+
+interface Seg {
+  /** The segment without bullet or count. */
+  text: string;
+  count: number;
+  /** Colours the segment starts with, as typed. */
+  groups: string[];
+  /** The text after those colours (all of it when there are none). */
+  rest: string;
+  /** Nothing but colours: "grey", "black and white". */
+  only: boolean;
+  /** Colours that belong to this segment from colour-only neighbours. */
+  before: string[];
+  after: string[];
+}
+
+function analyse(raw: string): Seg | null {
+  const cleaned = cleanLine(raw);
+  if (!cleaned) return null;
+  const { count, text } = takeCount(cleaned);
+  const run = readRun(text);
+  return {
+    text,
+    count,
+    groups: run?.groups ?? [],
+    rest: run ? run.rest : text,
+    only: run !== null && run.rest === "",
+    before: [],
+    after: [],
+  };
+}
+
+/** The segment names a garment OOTD has a type for. */
+function isThing(seg: Seg): boolean {
+  const p = parsePieceText(seg.text);
+  return p !== null && p.kind !== null;
+}
+
+function hasColour(seg: Seg): boolean {
+  return seg.only || seg.groups.length > 0 || seg.before.length > 0 || seg.after.length > 0 || colourIn(seg.text.toLowerCase()) !== null;
+}
+
+/** Plural-only garments keep their s: "black jeans" is not "black jean". */
+const PLURAL_ONLY = /^(?:jeans|chinos|trousers|pants|shorts|joggers|sweats|sweatpants|cords|corduroys|khakis|cargos|slacks|bottoms|leggings)$/i;
+
+/** "White tees" to "White tee", for pieces made from a list or a count. Shoes are pairs and keep their s. */
+function singular(p: TypedPiece): TypedPiece {
+  if (!p.kind || KINDS[p.kind].slot === "shoes") return p;
+  const words = p.name.split(" ");
+  const last = words.pop() ?? "";
+  if (!/[^sS]s$/.test(last) || PLURAL_ONLY.test(last)) return p;
+  words.push(last.slice(0, -1));
+  return { ...p, name: words.join(" ") };
+}
+
+function pluralNonShoe(rest: string): boolean {
+  const p = parsePieceText(rest);
+  if (!p || !p.kind || KINDS[p.kind].slot === "shoes") return false;
+  const last = rest.split(" ").pop() ?? "";
+  return /[^sS]s$/.test(last);
+}
+
+/** The pieces one segment becomes, once colour-only neighbours have been attached to it. */
+function expand(seg: Seg): TypedPiece[] {
+  const attached = seg.before.length > 0 || seg.after.length > 0;
+  let colours: string[] = [];
+  let body = seg.text;
+  if (attached) {
+    colours = [...seg.before, ...seg.groups, ...seg.after];
+    if (seg.groups.length > 0) body = seg.rest;
+  } else if (seg.groups.length >= 3 || (seg.groups.length === 2 && pluralNonShoe(seg.rest))) {
+    // A list of colours in front of a type: "white/black/grey tees", "navy and grey crewnecks".
+    // Two colours with a singular type ("black and white tee", "red and black check shirt") are one piece.
+    colours = seg.groups;
+    body = seg.rest;
+  }
+  const make = (colour: string | null) => parsePieceText(colour ? `${colour} ${body}` : body);
+  const first = make(colours[0] ?? null);
+  if (!first) return [];
+  // A thing OOTD can't type (or won't plan) is one row, whatever the count or the colours.
+  if (first.kind === null) return [first];
+  const many = colours.length > 1 || seg.count > 1;
+  const out: TypedPiece[] = [];
+  for (const c of colours.length > 0 ? colours : [null]) {
+    const p = make(c);
+    if (!p) continue;
+    for (let i = 0; i < seg.count && out.length < MAX_COUNT; i++) out.push(many ? singular(p) : p);
+  }
+  return out;
+}
+
+/**
+ * "tees in white, black and grey" says the same as "white, black and grey
+ * tees", so turn it round and let the one rule handle both.
+ */
+function turnRound(line: string): string {
+  const m = /^(.+?)\s+in\s+(.+)$/i.exec(line);
+  const head = m?.[1]?.trim();
+  const colours = m?.[2]?.trim();
+  if (!head || !colours || head.includes(",")) return line;
+  const run = readRun(colours);
+  if (!run || run.rest !== "" || run.groups.length < 2) return line;
+  return parsePieceText(head)?.kind ? `${colours} ${head}` : line;
+}
+
+/**
+ * Colour-only segments ("grey", "black and white") belong to a garment next to them.
+ * Forward, to the next segment that names a garment, when the segment before
+ * already has a colour or there isn't one ("navy crewneck, grey, black jeans":
+ * grey jeans and black jeans). Otherwise backward, to the segment before when
+ * it names a garment and has no colour yet ("Quarter zip, navy"). A colour that
+ * fits neither stays as a row of its own, for the person to place.
+ */
+function attach(segs: Seg[]): Set<Seg> {
+  const orphans = new Set<Seg>();
+  segs.forEach((s, i) => {
+    if (!s.only) return;
+    const prev = segs[i - 1];
+    const next = segs.slice(i + 1).find((x) => !x.only);
+    const prevColoured = prev ? hasColour(prev) : false;
+    if (next && isThing(next) && (!prev || prevColoured)) {
+      next.before.push(...s.groups);
+    } else if (prev && !prev.only && isThing(prev) && !prevColoured) {
+      prev.after.push(...s.groups);
+    } else {
+      orphans.add(s);
+    }
+  });
+  return orphans;
+}
+
+function parseLine(line: string): TypedPiece[] {
+  const segs = turnRound(cleanLine(line))
+    .split(/,(?![^(]*\))/)
+    .map(analyse)
+    .filter((s): s is Seg => s !== null);
+  const orphans = attach(segs);
+  return segs.flatMap((s) => {
+    if (s.only) return orphans.has(s) ? [parsePieceText(s.text)].filter((p): p is TypedPiece => p !== null) : [];
+    return expand(s);
+  });
+}
+
+/**
+ * One piece per line or comma, but a count ("3 white tees") or a list of
+ * colours ("white, black and grey tees") makes several, and a colour after a
+ * comma ("Quarter zip, navy") belongs to the piece before it.
+ */
 export function parseList(text: string): TypedPiece[] {
-  return text
-    .split(/\n|,(?![^(]*\))|;/)
-    .map(parsePiece)
-    .filter((p): p is TypedPiece => p !== null);
+  return text.split(/\n|;/).flatMap(parseLine);
 }
 
 /** The piece a typed line becomes, once it has a kind. */
