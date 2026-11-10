@@ -12,7 +12,7 @@ The record for `docs/LOOP.md`. Append only: add rows and entries, never rewrite 
 | F3 | done | loop/wardrobe-entry | 2026-11-10 |
 | F4 | blocked | loop/wardrobe-entry (workflow change not pushed) | 2026-11-10 |
 | T1 | done | loop/wardrobe-entry | 2026-11-10 |
-| T2 | todo | | |
+| T2 | done | loop/wardrobe-entry | 2026-11-10 |
 | T3 | todo | | |
 | T4 | todo | | |
 | T5 | todo | | |
@@ -74,6 +74,11 @@ For the next agent: `SOURCE_URL` in `src/components/CloudBackup.tsx` still point
 What changed: every Appendix B table 1 word now maps to its type in `src/lib/typed.ts`. The parser now tries, in order: `HINTS` (shoe models and the longer garment phrases), then the type's own name (`KIND_WORDS`), then a new `WEAK_HINTS` list of generic words (jumper, sweater, pullover, coat, shirt, oxford, pants). The generic words were moved out of `HINTS` so that a more specific name in the same line wins ("quarter zip sweater" is a quarter-zip, "polo shirt" a polo, "chore coat" a chore coat rather than an overcoat). Cargo pants are cargos, a puffer vest is a gilet, and "oxfords" (plural, no "shirt") are leather loafers per owner decision 5. `khakis` carries usual colour Khaki; `chambray` carries Sky. New `src/lib/typed.vocab.test.ts` has a row for every table 1 word. Existing tests are unchanged.
 Scorecard: types 97/132, colours 65/92, white guesses 55/132, tests 152. Floors raised to types 97, colours 65.
 For the next agent: the remaining type misses are brands and models (T2), the unsupported lines (T6), the colour-list and count lines (T4), "breton top" (T5 pattern word, not in table 1, so I left it) and four lines where a colour trails after a comma ("Quarter zip, navy", "rugby shirt, green", "Adidas Sambas, black", "North Face puffer jacket, black"): `parseList` splits on commas, so these become two pieces. T4's rule for colour-only segments should cover them (attach to the previous segment when the segment before has a garment and no colour). Singular "chino pants" is not matched by the chinos label (`chinoss?`), which I left alone.
+
+### T2 · 2026-11-10
+What changed: the Appendix B table 2 brands and models are in `src/lib/typed.ts`. Order of attempts is now: `MODEL_HINTS`, `HINTS`, the type's own name, `WEAK_HINTS`, then `BRAND_HINTS`. So a garment word beats a brand ("Patagonia rain jacket" is a rain shell, "Moncler sweater" a crewneck, "Brooks Brothers shirt" an oxford). `MODEL_HINTS` holds only the models whose names contain a garment word and so need to go first: Better Sweater, Synchilla, Retro-X, Snap-T (fleece), Down Sweater (puffer), ABC pants, double knees and Dickies 874 (chinos, canvas), Nike Blazers, Chuck 70 high. Everything else (Levi's, 501 to 514, Barbour, Dunks, Jordans, Allbirds, Docs, Timberlands, Uggs and so on) is in `BRAND_HINTS`, with the usual colours and materials from the table. New tests in `src/lib/typed.vocab.test.ts` cover every table 2 row.
+Scorecard: types 114/132, colours 71/92, white guesses 49/132, tests 155. Floors raised to types 114, colours 71.
+For the next agent: the table says Carhartt double knee and Dickies 874 are "fit relaxed"; `TypedPiece` has no fit until T5, so I set only the material. T5 should add `fit: "relaxed"` to those two hints (`Hint` will need a `fit` field). Usual colours from the table (Indigo, Olive, Black, Camel, Brown) are set on the hints and only apply when the brand hint is what matched the type; T3 adds the per-type usual colour for everything else. Remaining type misses: colour-list and count lines (T4), unsupported lines (T6), "breton top" (T5), and four lines with a trailing colour after a comma (see T1).
 
 ## For Alex to try on his phone
 

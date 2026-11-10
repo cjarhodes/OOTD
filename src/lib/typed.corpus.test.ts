@@ -6,8 +6,8 @@ import { parseList, type TypedPiece } from "./typed";
  * Floors: how many corpus lines the parser must get right. They are set to
  * what the parser achieves today and only ever go UP; a floor never goes down.
  */
-const FLOOR_TYPES = 97;
-const FLOOR_COLOURS = 65;
+const FLOOR_TYPES = 114;
+const FLOOR_COLOURS = 71;
 
 /**
  * Scoring rules (one point per corpus line):

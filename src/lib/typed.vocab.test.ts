@@ -170,3 +170,103 @@ describe("everyday garment words (table 1)", () => {
     expectKinds([["white oxford shirts", "oxford"]]);
   });
 });
+
+describe("brands and models (table 2)", () => {
+  it("jeans, trousers and jackets", () => {
+    expectKinds([
+      ["Levi's", "jeans"],
+      ["Levis", "jeans"],
+      ["501", "jeans"],
+      ["511", "jeans"],
+      ["505", "jeans"],
+      ["514", "jeans"],
+      ["Lululemon ABC", "chinos"],
+      ["ABC pants", "chinos"],
+      ["Bonobos", "chinos"],
+      ["Barbour", "waxed-jacket"],
+      ["Bedale", "waxed-jacket"],
+      ["Beaufort", "waxed-jacket"],
+      ["Ashby", "waxed-jacket"],
+      ["Better Sweater", "fleece"],
+      ["Synchilla", "fleece"],
+      ["Retro-X", "fleece"],
+      ["Snap-T", "fleece"],
+      ["Nano Puff", "puffer"],
+      ["Micro Puff", "puffer"],
+      ["Down Sweater", "puffer"],
+      ["Canada Goose", "puffer"],
+      ["Moncler", "puffer"],
+      ["Arc'teryx", "rain-shell"],
+      ["Arcteryx", "rain-shell"],
+      ["Beta", "rain-shell"],
+      ["Torrentshell", "rain-shell"],
+      ["Gore-Tex jacket", "rain-shell"],
+      ["Carhartt jacket", "chore-coat"],
+      ["Detroit jacket", "chore-coat"],
+      ["Carhartt double knee", "chinos"],
+      ["Dickies 874", "chinos"],
+    ]);
+    expect(parsePiece("Levi's 501")).toMatchObject({ color: "Indigo", colorGuessed: true });
+    expect(parsePiece("Barbour Bedale")).toMatchObject({ color: "Olive", colorGuessed: true });
+    expect(parsePiece("Dickies 874")).toMatchObject({ material: "canvas" });
+    // "Down Sweater" and "Better Sweater" are not sweaters.
+    expect(parsePiece("Patagonia better sweater")).toMatchObject({ kind: "fleece" });
+  });
+
+  it("shoes", () => {
+    expectKinds([
+      ["Dunks", "sneakers"],
+      ["Air Max", "sneakers"],
+      ["Nike Blazers", "sneakers"],
+      ["Jordan lows", "sneakers"],
+      ["Jordan 1s", "high-tops"],
+      ["Jordans", "high-tops"],
+      ["Chuck 70 high", "high-tops"],
+      ["Ultraboost", "runners"],
+      ["Pegasus", "runners"],
+      ["On Cloud", "runners"],
+      ["Cloudmonster", "runners"],
+      ["Allbirds", "runners"],
+      ["Brooks", "runners"],
+      ["Saucony", "runners"],
+      ["990", "runners"],
+      ["2002R", "runners"],
+      ["1906", "runners"],
+      ["Doc Martens", "boots"],
+      ["Docs", "boots"],
+      ["Dr Martens", "boots"],
+      ["1460", "boots"],
+      ["Timberlands", "boots"],
+      ["Timbs", "boots"],
+      ["Blundstones", "boots"],
+      ["Blunnies", "boots"],
+      ["Red Wings", "boots"],
+      ["Iron Rangers", "boots"],
+      ["Wallabees", "boots"],
+      ["Clarks", "boots"],
+      ["Uggs", "boots"],
+      ["Sperrys", "canvas"],
+      ["Top-Siders", "canvas"],
+    ]);
+    expect(parsePiece("Jordans")).toMatchObject({ material: "leather" });
+    expect(parsePiece("Nike Dunks")).toMatchObject({ material: "leather" });
+    expect(parsePiece("Doc Martens")).toMatchObject({ color: "Black", material: "leather", colorGuessed: true });
+    expect(parsePiece("Timberlands")).toMatchObject({ color: "Camel" });
+    expect(parsePiece("Blundstones")).toMatchObject({ color: "Brown" });
+    expect(parsePiece("Uggs")).toMatchObject({ color: "Camel", material: "suede" });
+    expect(parsePiece("Sperrys")).toMatchObject({ color: "Brown", material: "leather" });
+  });
+
+  it("lets a garment word beat the brand", () => {
+    expectKinds([
+      ["Patagonia rain jacket", "rain-shell"],
+      ["Levi's denim jacket", "denim-jacket"],
+      ["Barbour waxed jacket", "waxed-jacket"],
+      ["Moncler sweater", "crewneck"],
+      ["Nike hoodie", "hoodie"],
+      ["Canada Goose parka", "puffer"],
+      ["Brooks Brothers shirt", "oxford"],
+      ["Carhartt hoodie", "hoodie"],
+    ]);
+  });
+});

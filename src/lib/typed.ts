@@ -25,6 +25,38 @@ interface Hint {
   color?: ColorName;
 }
 
+/**
+ * Specific models whose names contain a garment word ("Better Sweater" is a
+ * fleece, "Chuck 70 high" a high-top, "Nike Blazers" a sneaker). Tried before
+ * everything else; every other brand waits until the garment words have failed.
+ */
+const MODEL_HINTS: Hint[] = [
+  { re: /\bbetter sweater\b|\bsynchilla\b|\bretro[- ]?x\b|\bsnap[- ]?t\b/, kind: "fleece" },
+  { re: /\bdown sweater\b/, kind: "puffer" },
+  { re: /\babc pants\b|\blululemon abc\b/, kind: "chinos" },
+  { re: /\bcarhartt double[- ]?knees?\b|\bdouble[- ]?knees?\b|\bdickies 874\b/, kind: "chinos", material: "canvas" },
+  { re: /\bnike blazers?\b/, kind: "sneakers", material: "leather" },
+  { re: /\bchuck 70 high\b/, kind: "high-tops", material: "canvas" },
+];
+
+/** Brands and models with no garment word in them, tried after the garment words. */
+const BRAND_HINTS: Hint[] = [
+  { re: /\blevi'?s\b|\b(?:501|511|505|514)s?\b/, kind: "jeans", color: "Indigo" },
+  { re: /\bbonobos\b/, kind: "chinos" },
+  { re: /\bbarbour\b|\bbedale\b|\bbeaufort\b|\bashby\b/, kind: "waxed-jacket", color: "Olive" },
+  { re: /\bnano puff\b|\bmicro puff\b|\bcanada goose\b|\bmoncler\b/, kind: "puffer" },
+  { re: /\barc'?teryx\b|\bbeta\b|\btorrentshell\b|\bgore[- ]?tex jackets?\b/, kind: "rain-shell" },
+  { re: /\bcarhartt (?:detroit )?jackets?\b|\bdetroit jackets?\b/, kind: "chore-coat" },
+  { re: /\bjordan lows?\b|\bdunks?\b|\bair ?max\b/, kind: "sneakers", material: "leather" },
+  { re: /\bjordans?\b|\bjordan 1s?\b/, kind: "high-tops", material: "leather" },
+  { re: /\bultra ?boosts?\b|\bpegasus\b|\bon clouds?\b|\bcloudmonsters?\b|\ballbirds\b|\bbrooks\b(?! brothers)|\bsaucony\b|\b990(?:v\d)?s?\b|\b2002rs?\b|\b1906s?\b/, kind: "runners" },
+  { re: /\bdoc martens\b|\bdocs\b|\bdr\.? martens\b|\b1460s?\b/, kind: "boots", material: "leather", color: "Black" },
+  { re: /\btimberlands?\b|\btimbs\b/, kind: "boots", color: "Camel" },
+  { re: /\bblundstones?\b|\bblunnies\b|\bred wings?\b|\biron rangers?\b|\bwallabees\b|\bclarks\b/, kind: "boots", color: "Brown" },
+  { re: /\buggs?\b/, kind: "boots", material: "suede", color: "Camel" },
+  { re: /\bsperrys?\b|\btop[- ]?siders?\b/, kind: "canvas", material: "leather", color: "Brown" },
+];
+
 /** First match wins, so specific models come before the words they contain. */
 const HINTS: Hint[] = [
   { re: /\bbostons?\b|\bclogs?\b/, kind: "clogs", material: "suede" },
@@ -149,9 +181,13 @@ export function parsePiece(line: string): TypedPiece | null {
     .slice(0, 80);
   if (!name) return null;
   const text = name.toLowerCase();
-  const strong = HINTS.find((h) => h.re.test(text));
+  // Garment words first, brands second, except for the models that contain a garment word.
+  const model = MODEL_HINTS.find((h) => h.re.test(text));
+  const strong = model ?? HINTS.find((h) => h.re.test(text));
   const named = strong ? undefined : KIND_WORDS.find(([re]) => re.test(text))?.[1];
-  const hint = strong ?? (named ? undefined : WEAK_HINTS.find((h) => h.re.test(text)));
+  const hint =
+    strong ??
+    (named ? undefined : (WEAK_HINTS.find((h) => h.re.test(text)) ?? BRAND_HINTS.find((h) => h.re.test(text))));
   const kind = hint?.kind ?? named ?? null;
   const material = MATERIAL_HINTS.find(([re]) => re.test(text))?.[1] ?? hint?.material;
   const said = colourIn(text);
