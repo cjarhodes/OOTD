@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
+import { AddRoutes } from "@/components/AddRoutes";
+import { AddSheet } from "@/components/AddSheet";
 import { ItemFields, type Draft } from "@/components/ItemFields";
 import { NextBuys } from "@/components/NextBuys";
 import { QuickAdd } from "@/components/QuickAdd";
@@ -182,6 +184,7 @@ export default function WardrobePage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
   const [quick, setQuick] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<number | null>(null);
   const personal = mode === "personal";
 
@@ -232,18 +235,8 @@ export default function WardrobePage() {
           <p className="display" style={{ fontSize: 28, color: "var(--ink)" }}>
             Nothing here yet
           </p>
-          <p>Swipe through the basics most men own and keep what you have, or photograph your own pieces.</p>
-          <div className="actions">
-            <Link href="/start" className="btn">
-              Swipe your wardrobe
-            </Link>
-            <Link href="/add" className="btn alt">
-              Add photos
-            </Link>
-            <button type="button" className="btn alt" onClick={() => setTyping(true)}>
-              Type a list
-            </button>
-          </div>
+          <p>Add what you own. Most ways need no photo.</p>
+          <AddRoutes onPick={{ quick: () => setQuick(true), list: () => setTyping(true) }} />
         </div>
       ) : (
         <>
@@ -267,24 +260,9 @@ export default function WardrobePage() {
               </button>
             )}
             {personal && (
-              <button type="button" className="chip chip-add" onClick={() => setQuick(true)}>
-                Quick add
+              <button type="button" className="chip chip-add" aria-haspopup="dialog" onClick={() => setAdding(true)}>
+                + Add
               </button>
-            )}
-            {personal && (
-              <Link href="/add" className="chip chip-add">
-                + Add pieces
-              </Link>
-            )}
-            {personal && (
-              <button type="button" className="chip chip-add" onClick={() => setTyping(true)}>
-                Type a list
-              </button>
-            )}
-            {personal && (
-              <Link href="/start" className="chip chip-add">
-                Swipe the basics
-              </Link>
             )}
           </div>
           {added !== null && (
@@ -365,6 +343,21 @@ export default function WardrobePage() {
             setTyping(false);
             setFilter("all");
             setAdded(count);
+          }}
+        />
+      )}
+      {adding && (
+        <AddSheet
+          onClose={() => setAdding(false)}
+          onPick={{
+            quick: () => {
+              setAdding(false);
+              setQuick(true);
+            },
+            list: () => {
+              setAdding(false);
+              setTyping(true);
+            },
           }}
         />
       )}

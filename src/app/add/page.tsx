@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AddRoutes } from "@/components/AddRoutes";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ItemFields, type Draft } from "@/components/ItemFields";
@@ -185,16 +186,9 @@ export default function AddPage() {
         <section className="add-intro">
           <div className="banner add-swipe">
             <span>
-              <strong>No photos to hand?</strong> Swipe through the basics most men own and keep what you have, in a minute, or type a list.
+              <strong>No photos to hand?</strong> Four ways to add pieces. The first three need none.
             </span>
-            <span className="add-swipe-links">
-              <Link href="/start" className="text-link">
-                Swipe your wardrobe
-              </Link>
-              <Link href="/wardrobe?add=list" className="text-link">
-                Type a list
-              </Link>
-            </span>
+            <AddRoutes />
           </div>
           <div className="steps">
             <div>

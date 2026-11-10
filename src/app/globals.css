@@ -1676,15 +1676,9 @@ li[data-done] .first-run-tick {
 .add-swipe {
   flex-wrap: wrap;
 }
-.add-swipe-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-}
-.add-swipe-links .text-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
+.add-swipe {
+  display: grid;
+  gap: 12px;
 }
 
 .wishlist {
@@ -1815,5 +1809,43 @@ li[data-done] .first-run-tick {
 .quick-have {
   font-size: 12px;
   font-weight: 400;
+  color: var(--label);
+}
+
+/* ---------- the four ways to add ---------- */
+
+.add-routes {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+.add-route {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--wall);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.add-route:hover {
+  border-color: var(--ink);
+}
+.add-route-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+.add-route-note {
+  font-size: 13px;
   color: var(--label);
 }
