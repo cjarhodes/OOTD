@@ -36,7 +36,7 @@ export function FirstRun() {
     <div className="first-run">
       <p className="display first-run-title">{personalCount === 0 ? "Let’s set up your wardrobe" : `${left} more ${left === 1 ? "piece" : "pieces"} for a first look`}</p>
       <p className="first-run-note">
-        Quickest: swipe through the basics most men own and keep what you have. Or photograph your own pieces; OOTD removes the background.
+        Quickest: swipe through the basics most men own and keep what you have. Or type a list of what you own, or photograph your pieces; OOTD removes the background.
       </p>
       <ol className="first-run-steps">
         {steps.map((s) => (
@@ -58,6 +58,9 @@ export function FirstRun() {
         </Link>
         <Link href="/add" className="btn alt">
           Add photos
+        </Link>
+        <Link href="/wardrobe?add=list" className="btn alt">
+          Type a list
         </Link>
         <button type="button" className="btn quiet" onClick={() => setMode("sample")}>
           Try the sample wardrobe

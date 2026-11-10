@@ -183,6 +183,20 @@ export default function WardrobePage() {
   const [added, setAdded] = useState<number | null>(null);
   const personal = mode === "personal";
 
+  // /wardrobe?add=list opens Type a list. Read it once the wardrobe has loaded, then take it out of the address.
+  const router = useRouter();
+  const openedFromLink = useRef(false);
+  useEffect(() => {
+    if (!ready || openedFromLink.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("add") !== "list") return;
+    openedFromLink.current = true;
+    params.delete("add");
+    const rest = params.toString();
+    router.replace(rest ? `/wardrobe?${rest}` : "/wardrobe", { scroll: false });
+    if (personal) setTyping(true);
+  }, [ready, personal, router]);
+
   const counts = useMemo(() => {
     const m = new Map<string, number>();
     for (const w of wears) for (const id of w.itemIds) m.set(id, (m.get(id) ?? 0) + 1);

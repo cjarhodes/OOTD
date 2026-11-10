@@ -1674,8 +1674,17 @@ li[data-done] .first-run-tick {
 }
 
 .add-swipe {
-  text-decoration: none;
-  color: inherit;
+  flex-wrap: wrap;
+}
+.add-swipe-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.add-swipe-links .text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .wishlist {

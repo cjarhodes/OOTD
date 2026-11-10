@@ -183,12 +183,19 @@ export default function AddPage() {
 
       {!current && (
         <section className="add-intro">
-          <Link href="/start" className="banner add-swipe">
+          <div className="banner add-swipe">
             <span>
-              <strong>No photos to hand?</strong> Swipe through the basics most men own and keep what you have, in a minute.
+              <strong>No photos to hand?</strong> Swipe through the basics most men own and keep what you have, in a minute, or type a list.
             </span>
-            <span className="text-link">Swipe your wardrobe</span>
-          </Link>
+            <span className="add-swipe-links">
+              <Link href="/start" className="text-link">
+                Swipe your wardrobe
+              </Link>
+              <Link href="/wardrobe?add=list" className="text-link">
+                Type a list
+              </Link>
+            </span>
+          </div>
           <div className="steps">
             <div>
               <span className="label">Lay it out, take the photo</span>
