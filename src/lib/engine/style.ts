@@ -184,10 +184,10 @@ export function shoeScore(p: Pieces, occasion: Occasion, needs?: DayNeeds): numb
   else if (idea === "weight" || idea === "easy" || idea === "tone") score += 0.3;
   // Boots weigh down a light, dry look with nothing heavy in it.
   if (s.kind === "boots" && idea !== "weight") score -= 0.4;
-  // Sweatpants are sporty: trainers only, never boots or loafers. And they're an
+  // Sweatpants are sporty: trainers only, never boots, loafers, clogs or sandals. And they're an
   // occasional weekend choice, not the default bottom.
   if (p.bottom.kind === "sweatpants") {
-    score -= s.kind === "boots" || s.kind === "loafers" ? 4 : 0.3;
+    score -= ["sneakers", "runners", "canvas"].includes(s.kind) ? 0.3 : 4;
     if (s.kind === "runners" || s.kind === "canvas") score += 0.3;
   }
   // Runners read too casual for a client.

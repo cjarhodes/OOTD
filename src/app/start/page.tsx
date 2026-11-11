@@ -206,7 +206,7 @@ export default function StartPage() {
               </div>
               <div className="swipe-text">
                 <span className="label">
-                  {card.tag === "Now" ? "On trend" : "Essential"} · {SLOT_LABEL[KINDS[card.kind].slot]}
+                  {card.tag === "Now" ? "On trend" : card.tag} · {SLOT_LABEL[KINDS[card.kind].slot]}
                 </span>
                 <p className="swipe-name">{preview.name}</p>
                 <p className="swipe-note">{card.note}</p>
