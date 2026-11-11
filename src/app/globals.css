@@ -1895,13 +1895,10 @@ li[data-done] .first-run-tick {
 .setup-dot[aria-pressed="true"] .colour-dot {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent), 0 0 0 2px var(--plinth), 0 0 0 4px var(--ink);
 }
-/* Already in the wardrobe: ticked, but faded and with no ring, since it can't be changed here. */
-.setup-dot.owned {
-  cursor: default;
-}
-.setup-dot.owned .colour-dot {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent);
-  opacity: 0.55;
+.setup-going {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: line-through;
 }
 .setup-more {
   margin-left: 2px;

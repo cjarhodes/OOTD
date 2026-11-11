@@ -56,3 +56,20 @@ export function piecesFor(picked: Picked, items: Item[]): Item[] {
 export function countPicked(picked: Picked, items: Item[]): number {
   return piecesFor(picked, items).length;
 }
+
+/**
+ * The swiped pieces the unticks take out of the wardrobe: one per card and
+ * colour that is really there. Only pieces from this list are ever removed;
+ * typed and photographed pieces are left alone.
+ */
+export function removalsFor(removed: Picked, items: Item[]): Item[] {
+  const out: Item[] = [];
+  for (const card of STARTER_DECK) {
+    for (const colour of removed[card.id] ?? []) {
+      const id = starterItem(card, colour).id;
+      const piece = items.find((i) => i.id === id);
+      if (piece && !out.includes(piece)) out.push(piece);
+    }
+  }
+  return out;
+}
