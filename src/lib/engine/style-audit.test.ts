@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SAMPLE_ITEMS } from "../sample";
 import { STARTER_DECK, starterItem } from "../starter";
 import type { ColorName } from "../palette";
-import type { DayWeather, Look, Occasion, Tier } from "../types";
+import type { DayWeather, Item, Look, Occasion, Tier } from "../types";
 import { generateLooks, idsOf, lookFromIds } from "./generate";
 import { fitOf } from "../kinds";
 import { PALETTE } from "../palette";
@@ -269,8 +269,14 @@ const CLASSICS: [string, ColorName[]][] = [
   ["chelsea", ["Black", "Brown"]],
 ];
 
-describe("style audit, a wardrobe with the classics", () => {
-  const items = CLASSICS.flatMap(([id, colours]) => colours.map((c) => starterItem(STARTER_DECK.find((card) => card.id === id)!, c)));
+const WARDROBES: [string, () => Item[]][] = [
+  ["a wardrobe with the classics", () => CLASSICS.flatMap(([id, colours]) => colours.map((c) => starterItem(STARTER_DECK.find((card) => card.id === id)!, c)))],
+  // Every card on the tick list, in the colour shown: what someone who ticks everything owns.
+  ["the whole tick list", () => STARTER_DECK.map((c) => starterItem(c))],
+];
+
+describe.each(WARDROBES)("style audit, %s", (_name, build) => {
+  const items = build();
   const rows = runAudit(items);
   const looks = rows.filter((r): r is AuditRow & { look: Look } => r.look !== null);
   const on = (...days: string[]) => looks.filter((r) => days.includes(r.day));

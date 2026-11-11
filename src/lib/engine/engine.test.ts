@@ -236,16 +236,17 @@ describe("generateLooks", () => {
     for (const l of all) expect(l!.warning).toMatch(/Add a jacket or coat/);
   });
 
-  it("dresses the weekend in the casual pieces, and keeps sweatpants off work and dinner", () => {
+  it("dresses the weekend casually, and keeps sweatpants off work and dinner", () => {
     const deck = STARTER_DECK.map((c) => starterItem(c));
-    const casual = new Set(["long-sleeve", "flannel", "rugby", "fleece", "denim-jacket", "cargos", "sweatpants", "canvas", "high-tops", "trail", "sandals", "clogs"]);
+
     const days = [day(18, 24, 20), day(10, 15, 12), day(1, 5, 2), day(8, 11, 9, 85)];
-    let casualPieces = 0;
+    // Dress level 1 is the most casual: tees, jeans, hoodies, trainers. 4 and up is tailoring.
+    const worn: number[] = [];
     for (const weather of days) {
       const weekend = generateLooks({ ...base, items: deck, occasion: "weekend", weather });
       for (const l of [weekend.easy, weekend.fresh, weekend.bold]) {
         const ps = [...upperLayers(l!.pieces), l!.pieces.bottom, l!.pieces.shoes];
-        casualPieces += ps.filter((i) => casual.has(i.kind)).length;
+        worn.push(...ps.map((i) => i.formality));
         // Sweatpants go with trainers, never boots or loafers.
         if (l!.pieces.bottom.kind === "sweatpants") expect(["sneakers", "runners", "canvas"]).toContain(l!.pieces.shoes.kind);
       }
@@ -254,7 +255,9 @@ describe("generateLooks", () => {
         for (const l of [looks.easy, looks.fresh, looks.bold]) if (l) expect(l.pieces.bottom.kind).not.toBe("sweatpants");
       }
     }
-    expect(casualPieces).toBeGreaterThanOrEqual(8);
+    // With the whole deck owned, the weekend is dressed from its most casual pieces and never from tailoring.
+    expect(worn.filter((f) => f <= 1).length / worn.length).toBeGreaterThanOrEqual(0.5);
+    expect(worn.filter((f) => f >= 4)).toEqual([]);
   });
 
   it("keeps sandals to warm, dry days off work, and suede clogs out of the rain", () => {

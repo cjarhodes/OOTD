@@ -79,8 +79,12 @@ export function pairingScore(p: Pieces): number {
     // Fleece under a boxy jacket over roomy trousers is all bulk and no shape.
     if (outer && VOLUME[fitOf(outer)] >= 2.5 && VOLUME[fitOf(p.bottom)] >= 2) score -= 2;
   }
-  // Sweatpants are for a tee and trainers: not a collar, a coat or a jacket.
-  if (p.bottom.kind === "sweatpants" && (COLLARED_BASES.has(base.kind) || (outer && ["overcoat", "blazer", "chore-coat"].includes(outer.kind)))) score -= 4;
+  // Sweatpants are for a tee, a sweatshirt and trainers: not a shirt (buttoned or open), a coat or a leather jacket.
+  if (p.bottom.kind === "sweatpants") {
+    const shirt = COLLARED_BASES.has(base.kind) || (mid && COLLARED_BASES.has(mid.kind));
+    const smartOuter = outer && (["overcoat", "blazer", "chore-coat", "waxed-jacket"].includes(outer.kind) || outer.material === "leather" || outer.material === "suede");
+    if (shirt || smartOuter) score -= 4;
+  }
   // A rugby shirt's stripes are the point; a jumper hides them.
   if (base.kind === "rugby" && mid && mid.front === "closed") score -= 1.5;
   // Workwear trousers under a tailored coat look like two outfits.
@@ -134,6 +138,12 @@ export function fabricScore(p: Pieces, needs: DayNeeds): number {
   }
   // Jeans are heavy in real heat.
   if (p.bottom.kind === "jeans" && needs.warmest >= 27) score -= 1.5;
+  // Heavy cloth on the top half in warm weather: a wool shirt jacket, a tweed jacket, a thick cardigan.
+  for (const i of [p.mid, p.outer]) {
+    if (i && (i.material === "wool" || i.material === "fleece") && i.warmth >= 3 && needs.warmest >= 20) score -= needs.warmest >= 24 ? 6 : 4;
+  }
+  // Suede is for dry days, jackets as much as shoes.
+  if (needs.wet && p.outer?.material === "suede") score -= 6;
   // A winter coat on a mild day, or a puffer when it isn't properly cold.
   if (p.outer && p.outer.warmth >= 5) score -= needs.warmest >= 17 ? 3 : needs.warmest >= 13.5 ? 1.5 : 0;
   // And in real cold the coat is what keeps him warm: a bomber or chore coat won't, and no coat at all is a mistake.

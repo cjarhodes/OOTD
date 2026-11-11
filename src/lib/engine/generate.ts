@@ -111,9 +111,9 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
   const feedback = input.feedback ?? {};
   const out: Candidate[] = [];
   const smart = input.occasion === "office" || input.occasion === "client" || input.occasion === "dinner";
-  // Somewhere smart to be in the rain: a waxed jacket does it. With only technical
-  // shells to choose from, a wool overcoat is the better answer.
-  const coatForRain = smart && !pool.outer.some((i) => i.waterproof && i.formality >= 2);
+  // Somewhere smart to be in the rain: a waxed jacket or a mac does it. With only technical
+  // shells to choose from, or when it's too cold for a raincoat alone, a wool overcoat is the better answer.
+  const coatForRain = smart && (needs.coldest <= 6 || !pool.outer.some((i) => i.waterproof && i.formality >= 2));
   // In the rain, shoes that rain ruins stay home whenever there's a pair that survives it.
   const dryShoes = !ignoreWeather && needs.wet && pool.shoes.some((i) => !rainRuins(i));
   // Each piece is a little more or less appealing on a given day, so the same
