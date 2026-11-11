@@ -7,7 +7,7 @@ import { ColourSheet } from "@/components/ColourSheet";
 import { NextBuys } from "@/components/NextBuys";
 import { SLOT_LABEL, KINDS } from "@/lib/kinds";
 import { PALETTE, type ColorName } from "@/lib/palette";
-import { alreadyHas, STARTER_DECK, starterItem, type StarterCard } from "@/lib/starter";
+import { alreadyHas, starterItem, SWIPE_DECK, type StarterCard } from "@/lib/starter";
 import { wishFromItem } from "@/lib/wishlist";
 import { useWardrobe } from "@/state/wardrobe";
 
@@ -34,7 +34,7 @@ export default function StartPage() {
   // Fix the deck when the page opens, so pieces added while swiping don't reshuffle it.
   const [deck, setDeck] = useState<StarterCard[] | null>(null);
   useEffect(() => {
-    if (ready && !deck) setDeck(STARTER_DECK.filter((c) => !alreadyHas(c, items)));
+    if (ready && !deck) setDeck(SWIPE_DECK.filter((c) => !alreadyHas(c, items)));
   }, [ready, deck, items]);
 
   const [index, setIndex] = useState(0);
