@@ -70,7 +70,7 @@ const COLLARED_BASES = new Set(["oxford", "polo", "rugby", "flannel", "camp-shir
 export function pairingScore(p: Pieces): number {
   let score = 0;
   const { base, mid, outer } = p;
-  if (mid && FLEECE_MIDS.has(mid.kind)) {
+  if (mid && (FLEECE_MIDS.has(mid.kind) || mid.material === "fleece")) {
     // A shirt buried under a sweatshirt adds bulk and shows nothing; a tee belongs there. Worse for a dress shirt.
     if (COLLARED_BASES.has(base.kind)) score -= base.formality >= 4 ? 5 : 4;
     // Boxy fleece breaks a blazer's line. Under a long coat a hoodie can work; a sweatshirt rarely does.
@@ -89,6 +89,19 @@ export function pairingScore(p: Pieces): number {
   if (base.kind === "rugby" && mid && mid.front === "closed") score -= 1.5;
   // Workwear trousers under a tailored coat look like two outfits.
   if (outer && outer.formality >= 4 && p.bottom.formality <= 1 && (p.bottom.kind === "cargos" || VOLUME[fitOf(p.bottom)] >= 3)) score -= 1.5;
+  // A tailored jacket sits over one thin layer: not a cardigan, a gilet or a chunky knit.
+  if (outer?.kind === "blazer" && mid && (mid.kind === "cardigan" || mid.kind === "gilet" || mid.thickness >= 4)) score -= 3;
+  // The same cloth head to toe: a corduroy overshirt over cords.
+  if (p.bottom.material === "corduroy" && [mid, outer].some((i) => i?.material === "corduroy")) score -= 6;
+  // Dress levels that are too far apart look like two outfits: Oxford shoes with jeans or linen,
+  // suit trousers with trainers or under a parka, hiking boots with wool trousers.
+  // (Loafers with jeans or workwear trousers are fine: it's shoes far too casual, or far too formal, that jar.)
+  if (p.bottom.formality - p.shoes.formality >= 3) score -= 3;
+  if (p.shoes.formality >= 5 && p.bottom.formality < 4) score -= 3;
+  if (p.bottom.formality >= 5 && ((outer && outer.formality <= 1) || (mid && (FLEECE_MIDS.has(mid.kind) || mid.material === "fleece")))) score -= 3;
+  // Linen goes with other light things, not under or beside heavy ones.
+  const linenTop = [base, mid, outer].some((i) => i?.material === "linen");
+  if (linenTop && [mid, outer].some((i) => i && i.material !== "linen" && i.warmth >= 3)) score -= 2;
   // Linen is for showing, not for layering under a jumper.
   if (base.material === "linen" && mid && mid.front === "closed") score -= 1.5;
   // An overshirt is a jacket: under a coat, blazer or chore coat it is one jacket too many.
@@ -136,6 +149,9 @@ export function fabricScore(p: Pieces, needs: DayNeeds): number {
     // Denim on the top half is heavy in real heat.
     if (i.slot !== "bottom" && (i.material === "denim" || i.kind === "denim-jacket") && needs.warmest >= 27) score -= 2;
   }
+  // So are wool trousers, and a long-sleeved knit next to the skin.
+  if (p.bottom.material === "wool" && needs.warmest >= 27) score -= 2;
+  if (p.base.material === "knit" && p.base.warmth >= 2 && needs.warmest >= 27) score -= 1.5;
   // Jeans are heavy in real heat.
   if (p.bottom.kind === "jeans" && needs.warmest >= 27) score -= 1.5;
   // Heavy cloth on the top half in warm weather: a wool shirt jacket, a tweed jacket, a thick cardigan.
@@ -147,7 +163,7 @@ export function fabricScore(p: Pieces, needs: DayNeeds): number {
   // A winter coat on a mild day, or a puffer when it isn't properly cold.
   if (p.outer && p.outer.warmth >= 5) score -= needs.warmest >= 17 ? 3 : needs.warmest >= 13.5 ? 1.5 : 0;
   // And in real cold the coat is what keeps him warm: a bomber or chore coat won't, and no coat at all is a mistake.
-  if (needs.coldest <= 5 && p.outer && p.outer.warmth < 5) score -= 3;
+  if (needs.coldest <= 5 && p.outer && p.outer.warmth < 5) score -= needs.coldest <= 0 ? 5 : 3;
   if (needs.coldest <= 12 && needs.warmest < 17 && !p.outer) score -= 3;
   // A blazer is no coat in a cold wind.
   if (p.outer?.kind === "blazer" && needs.windy && needs.coldest < 10) score -= 2;
@@ -228,6 +244,8 @@ export function occasionScore(p: Pieces, occasion: Occasion, needs?: DayNeeds): 
     // Jeans are fine at the office and at dinner; cargos aren't, and a customer gets proper trousers.
     if (p.bottom.kind === "cargos") score -= 3 * weight;
     else if (p.bottom.formality <= 1 && occasion === "client") score -= 2;
+    // Fatigues, drawstring and carpenter trousers are for days off.
+    else if (p.bottom.formality <= 1 && p.bottom.kind !== "jeans") score -= occasion === "office" ? 2 : 1.5;
     if (p.bottom.kind === "shorts") score -= occasion === "dinner" ? 2 : 6;
     // Shoes clearly paler than the trousers pull the eye down; white trainers are the exception.
     if (p.shoes.kind !== "sneakers" && PALETTE[p.shoes.color].lightness - PALETTE[p.bottom.color].lightness > 0.15) score -= 0.6;

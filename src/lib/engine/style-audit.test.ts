@@ -328,6 +328,20 @@ describe.each(WARDROBES)("style audit, %s", (_name, build) => {
     expect(looks.filter((r) => r.look.pieces.mid?.kind === "overshirt" && ["overcoat", "blazer", "chore-coat"].includes(r.look.pieces.outer?.kind ?? "")).map(named)).toEqual([]);
   });
 
+  it("keeps dress levels together", () => {
+    // Oxford shoes with jeans, suit trousers with trainers, hiking boots with wool trousers: two outfits in one.
+    // Loafers with jeans are fine; it is shoes far too casual, or the most formal shoes with casual trousers, that jar.
+    expect(looks.filter(({ look: { pieces: p } }) => p.bottom.formality - p.shoes.formality >= 3 || (p.shoes.formality >= 5 && p.bottom.formality < 4)).map(named)).toEqual([]);
+    // Suit trousers never go under a parka, a puffer or a shell.
+    expect(looks.filter(({ look: { pieces: p } }) => p.bottom.formality >= 5 && (p.outer?.formality ?? 5) <= 1).map(named)).toEqual([]);
+    // A tailored jacket sits over one thin layer, and cloth isn't repeated head to toe.
+    expect(looks.filter(({ look: { pieces: p } }) => p.outer?.kind === "blazer" && (p.mid?.kind === "cardigan" || p.mid?.kind === "gilet")).map(named)).toEqual([]);
+    expect(looks.filter(({ look: { pieces: p } }) => p.bottom.material === "corduroy" && [p.mid, p.outer].some((i) => i?.material === "corduroy")).map(named)).toEqual([]);
+    // Fatigues, drawstring and cargo trousers stay out of the office and customer meetings.
+    const work = looks.filter((r) => r.occasion === "office" || r.occasion === "client");
+    expect(work.filter(({ look: { pieces: p } }) => p.bottom.formality <= 1 && p.bottom.kind !== "jeans").map(named)).toEqual([]);
+  });
+
   it("offers three looks that really differ", () => {
     for (const day of new Set(rows.map((r) => r.day))) {
       for (const occasion of OCCASIONS) {
