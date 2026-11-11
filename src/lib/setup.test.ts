@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeItem } from "./kinds";
-import { countPicked, ownedColours, piecesFor, SETUP_SECTIONS } from "./setup";
+import { countPicked, ownedColours, piecesFor, removalsFor, SETUP_SECTIONS } from "./setup";
 import { STARTER_DECK, starterItem } from "./starter";
 
 const card = (id: string) => STARTER_DECK.find((c) => c.id === id)!;
@@ -56,5 +56,17 @@ describe("the one-page setup", () => {
   it("adds nothing when nothing is ticked", () => {
     expect(piecesFor({}, [])).toEqual([]);
     expect(piecesFor({ tee: [] }, [])).toEqual([]);
+  });
+
+  it("removes only the swiped pieces that were unticked and are really there", () => {
+    const whiteTee = starterItem(card("tee"), "White");
+    const blackTee = starterItem(card("tee"), "Black");
+    // A photographed white tee is the person's own piece: unticking the card never touches it.
+    const photographed = makeItem({ id: "photo-1", name: "White tee", kind: "tee", color: "White" });
+    const items = [whiteTee, blackTee, photographed];
+    expect(removalsFor({ tee: ["White"] }, items)).toEqual([whiteTee]);
+    // A colour that isn't in the wardrobe, and a repeat, remove nothing extra.
+    expect(removalsFor({ tee: ["White", "White", "Grey"] }, items)).toEqual([whiteTee]);
+    expect(removalsFor({}, items)).toEqual([]);
   });
 });
