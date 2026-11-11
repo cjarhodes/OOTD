@@ -36,7 +36,11 @@
   - Lengths stay in a sensible order.
   - Necklines must be compatible: a camp collar goes only under open layers, a hood only under an open front.
   - Only one busy pattern per outfit.
-  - One colour at a time: two colours that fight (sage under red) are a last resort.
+  - Cloth has a season: corduroy for the cold, linen for the heat, neither in the rain. A winter coat stays home on a mild day.
+  - Shoes survive the day: nothing rain ruins when it's wet, boots when it's properly cold.
+  - Dressed for where you're going: a customer gets a shirt, proper shoes and a blazer or coat, never fleece, cargos or sporty shoes.
+  - What goes under what: no sweatshirt under a blazer, no shirt buried under a sweatshirt, no overshirt under a coat.
+  - One colour at a time: one coloured piece is an accent, two compete, and two that fight (sage under red) are a last resort.
   - A rain shell goes over a knit when it's wet or windy.
   - A warmth budget across the day, plus a strip test: whatever is left after a layer comes off must still suit the warmest part of the day.
   - Rain handling, and a sense of season: no shells on dry days, no knits or boots in a heatwave, camp collars kept for warm weather.
@@ -44,7 +48,7 @@
 - **Modern layering moves.** A shirt worn open over a tee, a hoodie or sweatshirt under a coat or blazer, a roll neck under tailoring, tonal dressing (cream, grey, brown, blue) and a one-colour column. Bold looks always carry one of these ideas, and muddy dark-on-dark stacks are scored down.
 - **Fit and proportion.** Every piece has a cut (slim, regular, relaxed, boxy or wide). The engine favours modern silhouettes, such as a slim knit over wide trousers, a roomy top over relaxed trousers, or a cropped boxy layer over a longer one, and scores down skinny-on-skinny or a layer squeezed over a roomier one. `src/lib/engine/style-audit.test.ts` runs 150 looks across ten kinds of day and holds the engine to it.
 - **Lookbook:** every look you loved or wore, as flat-lays: loved, most worn, and favourites you haven’t worn lately, each one tap from being today’s plan.
-- **Three looks a day:** Easy, Fresh and Bold, each named after its recipe and labelled like a museum piece. Swap or pin a piece, favourite or skip a look, plan ahead and log what you wore.
+- **Three looks a day:** Easy, Fresh and Bold, each named after its recipe and labelled like a museum piece. The three share at most one piece where the wardrobe allows. Swap or pin a piece, favourite or skip a look, plan ahead and log what you wore.
 - **Live weather:** a 16-day forecast split into morning, midday and evening.
 - **Week view,** with looks that vary from day to day.
 - **Trips and capsules.** Pick a destination, dates and the kind of trip. OOTD packs a small capsule that dresses every day in that city's weather:

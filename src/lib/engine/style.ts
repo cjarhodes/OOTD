@@ -152,8 +152,8 @@ export function fabricScore(p: Pieces, needs: DayNeeds): number {
   }
   // Open or thin shoes in the cold.
   if (needs.coldest < 8) {
-    if (s.kind === "clogs" || isBoatShoe(s)) score -= 3;
-    else if (s.kind === "canvas" || s.kind === "high-tops") score -= needs.coldest < 3 ? 3 : 1.5;
+    if (s.kind === "clogs" || isBoatShoe(s)) score -= 6;
+    else if (s.kind === "canvas" || s.kind === "high-tops") score -= needs.coldest < 3 ? 4 : 2;
     else if (s.kind === "loafers" && needs.coldest < 5) score -= 1.5;
   }
   // Below about 5° it's boots: trainers, knit and canvas are thin, and suede trainers suffer.
