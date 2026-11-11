@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ItemFields, type Draft } from "@/components/ItemFields";
+import { TypeList } from "@/components/TypeList";
 import { makeItem } from "@/lib/kinds";
 import type { CutoutFailure } from "@/lib/cutout";
 import { isOwned, KINDS } from "@/lib/kinds";
@@ -48,6 +49,7 @@ export default function AddPage() {
   const { mode, setMode, addPieces, storageError, personalCount, items } = useWardrobe();
   const ai = useAI();
   const router = useRouter();
+  const [typing, setTyping] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const [queue, setQueue] = useState<Pending[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -183,12 +185,25 @@ export default function AddPage() {
 
       {!current && (
         <section className="add-intro">
-          <Link href="/start" className="banner add-swipe">
-            <span>
-              <strong>No photos to hand?</strong> Swipe through the basics most men own and keep what you have, in a minute.
-            </span>
-            <span className="text-link">Swipe your wardrobe</span>
-          </Link>
+          <div className="add-ways">
+            <button type="button" className="add-way" onClick={() => setTyping(true)}>
+              <strong>Type it</strong>
+              <span>
+                {ai.canTag
+                  ? "Write or paste what you own, any way you like. AI reads it, brands and all."
+                  : "Write or paste what you own, one piece per line. The quickest way to add a lot."}
+              </span>
+            </button>
+            <Link href="/start" className="add-way">
+              <strong>Swipe it</strong>
+              <span>Flick through the basics most men own and keep what you have.</span>
+            </Link>
+            <button type="button" className="add-way" onClick={() => input.current?.click()}>
+              <strong>Photograph it</strong>
+              <span>One piece per photo. The background is removed on your phone.</span>
+            </button>
+          </div>
+          {typing && <TypeList onClose={() => setTyping(false)} onAdded={() => router.push("/wardrobe")} />}
           <div className="steps">
             <div>
               <span className="label">Lay it out, take the photo</span>

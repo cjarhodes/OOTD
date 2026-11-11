@@ -5,7 +5,7 @@ import { parseArchive, parseForecast } from "./forecast";
 import { makeItem, tidyName } from "./kinds";
 import { nearestColor } from "./palette";
 import { alphaInfo, dominantColor, isCutout } from "./pixels";
-import { applyTags, validateTags } from "./tagging";
+import { applyTags, validateTagList, validateTags } from "./tagging";
 
 function image(width: number, height: number, fill: (x: number, y: number) => [number, number, number, number]) {
   const data = new Uint8ClampedArray(width * height * 4);
@@ -194,5 +194,18 @@ describe("names", () => {
     expect(tidyName("White white leather sneakers")).toBe("White leather sneakers");
     expect(tidyName("White leather sneakers")).toBe("White leather sneakers");
     expect(tidyName("Black blackwatch scarf")).toBe("Black blackwatch scarf");
+  });
+});
+
+describe("a typed list read by AI", () => {
+  const tee = { name: "White tee", kind: "tee", color: "White", material: "jersey", pattern: "solid", fit: "boxy", formality: 1, boldness: 0 };
+  it("keeps the usable pieces and drops the rest", () => {
+    const got = validateTagList({ pieces: [tee, { name: "Mystery", kind: "cape", color: "White" }, { ...tee, name: "Navy tee", color: "Navy" }] });
+    expect(got?.map((t) => t.name)).toEqual(["White tee", "Navy tee"]);
+  });
+  it("is null when nothing usable came back", () => {
+    expect(validateTagList({ pieces: [] })).toBeNull();
+    expect(validateTagList({ pieces: [{ kind: "cape" }] })).toBeNull();
+    expect(validateTagList("tee")).toBeNull();
   });
 });

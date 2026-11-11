@@ -241,7 +241,7 @@ button {
   bottom: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   background: color-mix(in srgb, var(--wall) 92%, transparent);
   backdrop-filter: saturate(1.4) blur(14px);
   -webkit-backdrop-filter: saturate(1.4) blur(14px);
@@ -1703,4 +1703,40 @@ li[data-done] .first-run-tick {
   margin-left: 4px;
   font-size: 12px;
   color: var(--label);
+}
+
+/* The three ways to add pieces, as large targets. */
+.add-ways {
+  display: grid;
+  gap: 10px;
+}
+.add-way {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--wall);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.add-way strong {
+  font-size: 17px;
+}
+.add-way span {
+  color: var(--ink-2);
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+.add-way:first-child {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.type-list-ai {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
