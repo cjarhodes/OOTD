@@ -106,6 +106,7 @@ export function pairingScore(p: Pieces): number {
 
 /** Shoes that rain ruins. */
 const RAIN_FRAGILE = new Set(["suede", "canvas", "knit"]);
+export const rainRuins = (shoes: Item) => RAIN_FRAGILE.has(shoes.material);
 const SMART: Occasion[] = ["office", "client", "dinner"];
 const isBoatShoe = (i: Item) => i.kind === "loafers" && i.formality <= 2;
 
@@ -142,12 +143,12 @@ export function fabricScore(p: Pieces, needs: DayNeeds): number {
   if (p.outer?.kind === "blazer" && needs.windy && needs.coldest < 10) score -= 2;
   if (p.outer && p.outer.warmth >= 7 && needs.coldest >= 9) score -= 6;
   // Pale trousers show every splash.
-  if (needs.wet && PALETTE[p.bottom.color].lightness >= 0.8) score -= 1;
+  if (needs.wet && PALETTE[p.bottom.color].lightness >= 0.7) score -= 2;
 
   const s = p.shoes;
   if (needs.wet) {
     if (RAIN_FRAGILE.has(s.material)) score -= 6;
-    else if (PALETTE[s.color].lightness >= 0.85 && s.kind !== "trail") score -= 1;
+    else if (PALETTE[s.color].lightness >= 0.85 && s.kind !== "trail") score -= 2.5;
   }
   // Open or thin shoes in the cold.
   if (needs.coldest < 8) {
@@ -202,7 +203,7 @@ export function occasionScore(p: Pieces, occasion: Occasion, needs?: DayNeeds): 
     if (p.mid && FLEECE_MIDS.has(p.mid.kind)) score -= 5 * weight;
     if (p.outer) {
       // A technical or sporty jacket, unless it's there for the rain.
-      if (p.outer.formality <= 1) score -= (needs?.wet && p.outer.waterproof && occasion === "office" ? 1.5 : 3) * weight;
+      if (p.outer.formality <= 1) score -= 3 * weight;
       // A customer gets a blazer or a proper coat; a chore coat is workwear. Dinner is looser.
       else if (p.outer.formality <= 2) score -= occasion === "client" ? 3 : occasion === "dinner" ? 1 : 0;
       // A bright jacket is a weekend piece.

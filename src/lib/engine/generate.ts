@@ -14,7 +14,7 @@ import type {
 import { suitsOccasion } from "../kinds";
 import { lookName, lookNotes, recipeOf, tonalFamily } from "./describe";
 import { layersAreValid, layersFitWeather, lowerFitsWeather, patternsWork, stackIsValid, upperLayers, warmthOf, weatherFit } from "./rules";
-import { accentScore, asOpenShirt, creativityScore, occasionScore, OPEN_SHIRT_KINDS, openShirtFits, seasonScore, shoeScore, trendScore } from "./style";
+import { accentScore, asOpenShirt, creativityScore, occasionScore, OPEN_SHIRT_KINDS, openShirtFits, rainRuins, seasonScore, shoeScore, trendScore } from "./style";
 import {
   buildHistory,
   colourScore,
@@ -114,6 +114,8 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
   // Somewhere smart to be in the rain: a waxed jacket does it. With only technical
   // shells to choose from, a wool overcoat is the better answer.
   const coatForRain = smart && !pool.outer.some((i) => i.waterproof && i.formality >= 2);
+  // In the rain, shoes that rain ruins stay home whenever there's a pair that survives it.
+  const dryShoes = !ignoreWeather && needs.wet && pool.shoes.some((i) => !rainRuins(i));
   // Each piece is a little more or less appealing on a given day, so the same
   // favourites don't win every morning. Fixed per day and occasion.
   const moods = new Map<string, number>();
@@ -143,6 +145,7 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
         const pinnedAbove = Boolean(input.pin && [base, mid, outer].some((i) => i?.id === input.pin));
         for (const bottom of pool.bottom) {
           for (const shoes of pool.shoes) {
+            if (dryShoes && rainRuins(shoes)) continue;
             const pieces: Pieces = { base, mid, outer, bottom, shoes };
             if (input.pin && !pinnedAbove && bottom.id !== input.pin && shoes.id !== input.pin) continue;
             if (!patternsWork(pieces)) continue;

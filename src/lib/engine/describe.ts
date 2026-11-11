@@ -188,7 +188,7 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
       notes.push(`The ${lower(mid!)} adds warmth without hiding the ${lower(base)}.`);
       break;
     case "two-layer":
-      notes.push(`Keep the ${lower(outer!)} open over the ${lower(base)}.`);
+      notes.push(wet ? `The ${lower(outer!)} goes over the ${lower(base)}; do it up when the rain starts.` : `Keep the ${lower(outer!)} open over the ${lower(base)}.`);
       break;
     case "layered":
       notes.push(
@@ -247,6 +247,8 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
     );
   } else if (wet && outer?.waterproof) {
     notes.unshift(outer.kind === "puffer" ? `Rain is likely. The ${lower(outer)} will shed a shower.` : `Rain is likely. The ${lower(outer)} has it covered.`);
+  } else if (wet && outer) {
+    notes.unshift(`Rain is likely: the ${lower(outer)} will take a shower, but carry an umbrella.`);
   }
   return notes.slice(0, 3);
 }

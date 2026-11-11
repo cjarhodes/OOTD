@@ -45,7 +45,7 @@ export function layersAreValid(p: Pick<Pieces, "base" | "mid" | "outer">): boole
     const inner = layers[i - 1]!;
     const over = layers[i]!;
     // A rain shell is cut roomy to go over a knit, so it's the one layer that may be thinner than what's under it.
-    const shellOverKnit = over.kind === "rain-shell" && inner.thickness <= 3;
+    const shellOverKnit = over.kind === "rain-shell" && inner.thickness <= 4;
     if (inner.thickness > over.thickness && !shellOverKnit) return false;
     // A layer may hang a little below the next (a shirt hem peeking), but not by much,
     // unless the layer over it is cut cropped and boxy to show off a light shirt or tee.
