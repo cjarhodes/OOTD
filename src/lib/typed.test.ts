@@ -61,4 +61,35 @@ describe("typed pieces", () => {
     const item = typedItem({ ...parsePiece("Rothy’s slip on sandals")!, kind: "sandals" }, "t1");
     expect(item).toMatchObject({ id: "t1", name: "Rothy’s slip on sandals", slot: "shoes", material: "knit", status: "available" });
   });
+
+  it("reads everyday wardrobe words, not only the app's own names", () => {
+    const kinds = (list: string) => parseList(list).map((p) => p.kind);
+    expect(kinds("black levi's 501\nbarbour jacket\nstriped breton top\nlinen shirt white\nblack leather jacket\nnavy peacoat\ngreen parka")).toEqual([
+      "jeans",
+      "waxed-jacket",
+      "long-sleeve",
+      "oxford",
+      "bomber",
+      "overcoat",
+      "puffer",
+    ]);
+    expect(kinds("black dr martens, brown brogues, black dress shoes, nike air max 90 white, white nikes")).toEqual(["boots", "loafers", "loafers", "runners", "sneakers"]);
+    expect(kinds("blue denim shirt, checked shirt red, burgundy v neck jumper, black polo neck, grey crew neck jumper")).toEqual(["oxford", "flannel", "v-neck", "turtleneck", "crewneck"]);
+    // A looser word never overrides a garment named outright.
+    expect(kinds("ecru chore coat, navy rugby shirt, white long sleeve tee, grey fleece hoodie, grey flannel trousers")).toEqual(["chore-coat", "rugby", "long-sleeve", "hoodie", "trousers"]);
+    expect(parsePiece("linen shirt white")).toMatchObject({ material: "linen", color: "White" });
+    expect(parsePiece("black leather jacket")).toMatchObject({ material: "leather" });
+  });
+
+  it("reads washes and shades, and a colour after a comma", () => {
+    expect(parsePiece("light wash jeans")).toMatchObject({ color: "Denim", colorGuessed: false });
+    expect(parsePiece("desert boots sand")).toMatchObject({ kind: "boots", color: "Oatmeal" });
+    expect(parsePiece("dark green corduroy trousers")).toMatchObject({ color: "Forest" });
+    expect(parseList("patagonia fleece, cream\nnavy chinos").map((p) => [p.name, p.kind, p.color])).toEqual([
+      ["Patagonia fleece, cream", "fleece", "Ecru"],
+      ["Navy chinos", "chinos", "Navy"],
+    ]);
+    // A colour on the next line is its own (unknown) piece, not the last one's colour.
+    expect(parseList("hoodie\ncream")).toHaveLength(2);
+  });
 });

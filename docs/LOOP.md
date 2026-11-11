@@ -20,13 +20,14 @@ Baseline measured on 11 November 2026. Targets are proposals; change them before
 | B2 | Swipes to a first look | 3 | 3 (hold) |
 | B3 | Swipes until all of Easy, Fresh and Bold fill on a mild weekend | 7 | 6 |
 | B4 | Looks carrying a "not warm enough" warning after 8 swipes | 60 of 120 | 0 of 150 |
-| B5 | Typed list: type recognised correctly (40 everyday pieces, list below) | 24 of 40 | 36 of 40 |
-| B6 | Typed list: a stated colour lost or wrong | 3 | 0 |
+| B5 | Typed list: type recognised correctly (40 everyday pieces, list below) | 40 of 40 (was 24) | 36 of 40 |
+| B6 | Typed list: a stated colour lost or wrong | 0 (was 3) | 0 |
 | B7 | Photos: pieces saved without a correction | Not measured yet | Set after first measurement |
+| B8 | Changing a saved piece's colour on a phone | 2 taps, no scrolling (was 4 taps and two screens of scrolling) | 2 taps |
 
 B4 is the gap between "a look" and "a look you'd wear". After tee, jeans and sneakers, Today shows a tee and jeans on a 9° morning with a warning, because the first jacket is card 10 of 44.
 
-B5 misses, as typed: Levi's 501, Barbour jacket, breton top, Patagonia fleece, linen shirt, leather jacket, Dr Martens, brogues, peacoat, denim shirt, parka, Air Max 90, checked shirt, dress shoes. Two were read as the wrong type: polo neck (as a polo) and v-neck jumper (as a crewneck). B6: "light wash jeans" and "desert boots sand" came out white, and "Patagonia fleece, cream" split into two pieces.
+B5 misses at the baseline, as typed: Levi's 501, Barbour jacket, breton top, Patagonia fleece, linen shirt, leather jacket, Dr Martens, brogues, peacoat, denim shirt, parka, Air Max 90, checked shirt, dress shoes. Two were read as the wrong type: polo neck (as a polo) and v-neck jumper (as a crewneck). B6: "light wash jeans" and "desert boots sand" came out white, and "Patagonia fleece, cream" split into two pieces.
 
 ### Style of the looks
 
@@ -77,6 +78,7 @@ The baseline came from a one-off script. Before round 1, put the scorecard in th
 | Round | Date | Measure | Before | After | What changed |
 | --- | --- | --- | --- | --- | --- |
 | Baseline | 11 Nov 2026 | All | | | First measurement |
+| 1 | 11 Nov 2026 | B5, B6, B8 | 24 of 40; 3; 4 taps | 40 of 40; 0; 2 taps | Type a list reads everyday words, washes and a colour after a comma. The piece editor leads with a one-screen colour grid that saves on tap. Add actions sit under the Wardrobe title. The 40-piece list was used to find the gaps, so it now needs new lines from real use to mean anything |
 
 ## The typed list
 

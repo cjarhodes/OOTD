@@ -39,6 +39,16 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
   const [status, setStatus] = useState<Status>(item.status);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cutting, setCutting] = useState<"idle" | "working" | "failed">("idle");
+  const [colourSaved, setColourSaved] = useState(false);
+
+  // A colour is the commonest fix, so it saves the moment it's tapped; the rest waits for Save changes.
+  const change = (next: Draft) => {
+    setDraft(next);
+    if (next.color !== draft.color) {
+      updateItem({ ...item, color: next.color, name: next.name || item.name });
+      setColourSaved(true);
+    }
+  };
 
   // Illustrated pieces (from the starter deck) can get a real photo, background removed.
   const photoInput = useRef<HTMLInputElement>(null);
@@ -106,7 +116,7 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
             {cutting === "working" ? "Preparing photo…" : "Add a photo"}
           </button>
           <span className="setting-note">
-            {cutting === "failed" ? "That photo couldn’t be read. Try a JPEG or PNG." : "Drawn for now. A photo of your own piece makes your looks yours."}
+            {cutting === "failed" ? "That photo couldn’t be read. Try a JPEG or PNG." : "Drawn for now."}
           </span>
           <input
             ref={photoInput}
@@ -130,6 +140,7 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
           {cutting === "failed" && <span className="hint">Couldn’t separate this piece from its background. A new photo on a plain floor or wall will.</span>}
         </div>
       )}
+      <ItemFields value={draft} onChange={change} idPrefix={`edit-${item.id}`} colourNote={colourSaved ? "Saved" : undefined} />
       <p className="label">{worn ? `Worn ${worn}×` : "Not worn yet"}</p>
       <div className="segmented" role="group" aria-label="Status" style={{ ["--count" as string]: 3 }}>
         {(Object.keys(STATUS_LABEL) as Status[]).map((s) => (
@@ -138,7 +149,6 @@ function ItemSheet({ item, worn, onClose }: { item: Item; worn: number; onClose:
           </button>
         ))}
       </div>
-      <ItemFields value={draft} onChange={setDraft} idPrefix={`edit-${item.id}`} />
       <div className="actions">
         <button type="button" className="btn" onClick={save}>
           Save changes
@@ -204,6 +214,19 @@ export default function WardrobePage() {
         </span>
         <h1 className="display page-title">Wardrobe</h1>
         <div className="head-actions">
+          {personal && (
+            <>
+              <button type="button" className="chip chip-add" onClick={() => setTyping(true)}>
+                + Type a list
+              </button>
+              <Link href="/add" className="chip chip-add">
+                + Photos
+              </Link>
+              <Link href="/start" className="chip chip-add">
+                + Swipe the basics
+              </Link>
+            </>
+          )}
           <Link href="/lookbook" className="chip chip-add">
             Lookbook
           </Link>
@@ -248,21 +271,6 @@ export default function WardrobePage() {
               <button type="button" className="chip" aria-pressed={filter === "archived"} onClick={() => setFilter("archived")}>
                 Archived
               </button>
-            )}
-            {personal && (
-              <Link href="/add" className="chip chip-add">
-                + Add pieces
-              </Link>
-            )}
-            {personal && (
-              <button type="button" className="chip chip-add" onClick={() => setTyping(true)}>
-                Type a list
-              </button>
-            )}
-            {personal && (
-              <Link href="/start" className="chip chip-add">
-                Swipe the basics
-              </Link>
             )}
           </div>
           {added !== null && (

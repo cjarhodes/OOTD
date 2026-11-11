@@ -282,6 +282,7 @@ export default function AddPage() {
                   </div>
                 )}
                 <ItemFields
+                  key={current.id}
                   value={current.draft}
                   idPrefix={current.id}
                   onChange={(draft) => update(current.id, (p) => ({ draft, colorChosen: p.colorChosen || draft.color !== p.draft.color }))}
