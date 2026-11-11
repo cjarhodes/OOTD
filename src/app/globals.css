@@ -1740,3 +1740,209 @@ li[data-done] .first-run-tick {
   align-items: center;
   gap: 10px;
 }
+
+/* ---------- tick what you own (laptop) ---------- */
+
+.setup-desktop {
+  display: none;
+}
+.setup-phone {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+}
+.setup-help {
+  max-width: 62ch;
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.setup-phone .page-head {
+  margin-bottom: 0;
+}
+.add-way-laptop,
+.chip-laptop {
+  display: none;
+}
+
+@media (min-width: 820px) {
+  .setup-desktop {
+    display: block;
+  }
+  .setup-phone {
+    display: none;
+  }
+  .add-way-laptop {
+    display: grid;
+  }
+  .chip-laptop {
+    display: inline-block;
+  }
+  /* The add choices sit side by side on a laptop. */
+  .add-ways {
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    grid-auto-flow: column;
+    align-items: stretch;
+  }
+  .add-way {
+    align-content: start;
+  }
+}
+
+.setup-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+.setup-section {
+  margin-top: 28px;
+}
+.setup-heading {
+  font-size: 26px;
+}
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  padding: 0;
+  list-style: none;
+}
+.setup-tile {
+  position: relative;
+  grid-template-rows: auto;
+  align-content: start;
+  gap: 6px;
+  border: 1px solid transparent;
+}
+.setup-tile.on {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.setup-tick {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-size: 13px;
+  line-height: 1;
+}
+.setup-main {
+  display: grid;
+  gap: 4px;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.setup-main:disabled {
+  cursor: default;
+}
+.setup-art {
+  display: block;
+}
+.setup-note {
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.setup-caption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.setup-ticked {
+  color: var(--ink);
+  font-weight: 600;
+}
+.setup-dots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+.setup-dot,
+.setup-more {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.setup-dot .colour-dot {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  /* An outline in the text colour, so black and navy dots still show on the dark theme. */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent);
+}
+.setup-dot[aria-pressed="true"] .colour-dot {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent), 0 0 0 2px var(--plinth), 0 0 0 4px var(--ink);
+}
+/* Already in the wardrobe: ticked, but faded and with no ring, since it can't be changed here. */
+.setup-dot.owned {
+  cursor: default;
+}
+.setup-dot.owned .colour-dot {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent);
+  opacity: 0.55;
+}
+.setup-more {
+  margin-left: 2px;
+  color: var(--ink-2);
+  font-size: 16px;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.setup-more:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.setup-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 28px;
+  padding: 12px 0;
+  background: var(--wall);
+  border-top: 1px solid var(--line);
+}
+.setup-count {
+  font-weight: 600;
+}
+.setup-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.setup-done {
+  justify-items: start;
+  text-align: left;
+}
+/* Tick it is hidden on a phone, so the highlight moves to the first choice left. */
+@media (max-width: 819px) {
+  .add-way-laptop + .add-way {
+    border-color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--ink);
+  }
+}

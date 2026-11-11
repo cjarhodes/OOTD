@@ -186,6 +186,10 @@ export default function AddPage() {
       {!current && (
         <section className="add-intro">
           <div className="add-ways">
+            <Link href="/setup" className="add-way add-way-laptop">
+              <strong>Tick it</strong>
+              <span>See every basic on one page and tick the ones you own. Made for a laptop.</span>
+            </Link>
             <button type="button" className="add-way" onClick={() => setTyping(true)}>
               <strong>Type it</strong>
               <span>
@@ -200,7 +204,7 @@ export default function AddPage() {
             </Link>
             <button type="button" className="add-way" onClick={() => input.current?.click()}>
               <strong>Photograph it</strong>
-              <span>One piece per photo. The background is removed on your phone.</span>
+              <span>One piece per photo. The background is removed on your device.</span>
             </button>
           </div>
           {typing && <TypeList onClose={() => setTyping(false)} onAdded={() => router.push("/wardrobe")} />}

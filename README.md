@@ -57,6 +57,7 @@
   - It gives you a packing checklist.
   - Trips beyond the forecast use last year's weather on the same dates.
 - **Swipe your wardrobe** (`/start`): a deck of 67 menswear pieces in three kinds. Essentials most men own (tee, jeans, oxford, chinos). Classics (corduroy, wool and linen trousers, piqué polo, linen and denim shirts, V-neck, Shetland and cable-knit jumpers, Breton top, leather jacket, Harrington, trench, peacoat, parka, field jacket, desert boots, derbies, penny loafers, work boots, boat shoes). And what's current (wide pleated trousers, knit polos, suede loafers, chore coats, zip fleece, cargos, clogs). Swipe right for "I have it", left for "not mine", up for "want it". Tap every colour you own before swiping (three tees in white, black and grey is one swipe), or "+ Other colour" for one the card doesn't list (a sheet with every colour, grouped by family, that scrolls like a page); with nothing tapped, the colour shown is the one meant. Pieces you have go straight into the wardrobe as illustrations, so Today can dress you in a minute; add real photos later from each piece.
+- **Tick what you own** (`/setup`, laptops). The whole starter deck on one page, grouped as shirts, knitwear, coats, trousers and shoes. Tick the pieces and colours you own, then add them all at once. Colours already in your wardrobe show as owned. Phones are sent to the swipe deck instead.
 - **Add** has its own tab: type it, swipe it or photograph it.
 - **Type a list** (Add, or Wardrobe): paste pieces one per line or separated by commas ("White Converse high tops, brown Birkenstock Arizonas, Black Salewa Wildfires"). Each is matched to a type, colour and material from its words, including common shoe models (`src/lib/typed.ts`); a colour in an aside like "(with grey accents)" is ignored. Check or correct each one, then add them all, drawn until a photo is added. Everyday words are read too ("leather jacket", "brogues", "light wash jeans", "Patagonia fleece, cream"). With AI switched on, **Read with AI** reads anything: whole sentences, brands and models ("a couple of heavy tees in white and black, and my brown R.M. Williams boots").
 - **Change a colour in two taps**: tap a piece, tap its colour. Every colour is on one screen, and the change is saved at once.
@@ -105,7 +106,7 @@ npm run check      # typecheck, then tests and a production build
 `.npmrc` sets `legacy-peer-deps` to work around an npm resolver bug with Vitest's optional browser peer dependencies. In `npm run dev`, sign-in emails are printed to the terminal instead of sent. To try accounts without a Blob store, set `OOTD_FAKE_BLOB_DIR` to an empty folder: storage then goes to files there (local testing only).
 
 ```
-src/app/              routes: / (Today), /wardrobe, /week, /trips, /add, /settings, /api/auth/*, /api/wardrobe, /api/photos/*, /api/tag
+src/app/              routes: / (Today), /wardrobe, /week, /trips, /add, /setup, /settings, /api/auth/*, /api/wardrobe, /api/photos/*, /api/tag
 src/components/       app shell, flat-lay composer, museum label, garment illustrations, sign-in and account panels
 src/lib/engine/       layering rules, weather budget, scoring, naming, generation, capsule packing (+ tests)
 src/lib/              types, palette, garment defaults, sample wardrobe, dates, export ZIP (archive.ts), sync rules (sync.ts), account helpers
