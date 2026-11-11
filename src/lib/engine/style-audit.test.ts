@@ -1,6 +1,8 @@
 import { writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SAMPLE_ITEMS } from "../sample";
+import { STARTER_DECK, starterItem } from "../starter";
+import type { ColorName } from "../palette";
 import type { DayWeather, Look, Occasion, Tier } from "../types";
 import { generateLooks, idsOf, lookFromIds } from "./generate";
 import { fitOf } from "../kinds";
@@ -161,5 +163,61 @@ describe("style audit", () => {
     });
     expect(rebuilt?.recipe).toBe("open-shirt");
     expect(rebuilt?.pieces.mid?.front).toBe("open");
+  });
+});
+
+/**
+ * A wardrobe swiped from the starter deck by someone who owns some colour: a
+ * sage overshirt, mustard knits, a red rain shell. The sample wardrobe has
+ * few of these, so its audit never saw them meet.
+ */
+const SWIPED: [string, ColorName[]][] = [
+  ["tee", ["White"]],
+  ["oxford", ["White", "Sage"]],
+  ["knit-polo", ["Ecru"]],
+  ["rollneck", ["Black"]],
+  ["long-sleeve", ["White"]],
+  ["crew", ["Navy", "Grey", "Mustard"]],
+  ["overshirt", ["Sage"]],
+  ["sweat", ["Mustard"]],
+  // More jackets than the search keeps per day, so the black shell can't be assumed to make the cut.
+  ["chore", ["Black", "Ecru", "Grey", "Red"]],
+  ["overcoat", ["Black", "Camel"]],
+  ["bomber", ["Black", "Olive"]],
+  ["blazer", ["Navy"]],
+  ["shell", ["Black", "Red"]],
+  ["jeans", ["Denim"]],
+  ["chinos", ["Khaki", "Navy"]],
+  ["carpenter", ["Stone"]],
+  ["sneakers", ["White"]],
+  ["chukka", ["Chocolate"]],
+  ["chelsea", ["Black"]],
+];
+
+describe("style audit, swiped wardrobe with colour", () => {
+  const items = SWIPED.flatMap(([id, colours]) => colours.map((c) => starterItem(STARTER_DECK.find((card) => card.id === id)!, c)));
+  const looks = runAudit(items).filter((r): r is AuditRow & { look: Look } => r.look !== null);
+  const coloured = (r: { look: Look }) => {
+    const p = r.look.pieces;
+    return new Set([p.base, p.mid, p.outer, p.bottom, p.shoes].filter((i) => i && !PALETTE[i.color].neutral).map((i) => PALETTE[i!.color].family));
+  };
+  const named = (r: AuditRow & { look: Look }) => `${r.day} ${r.occasion} ${r.tier}: ${[r.look.pieces.base, r.look.pieces.mid, r.look.pieces.outer].filter(Boolean).map((i) => i!.name).join(" / ")}`;
+
+  it("never puts two colours that fight in one look", () => {
+    expect(looks.filter((r) => coloured(r).size > 1).map(named)).toEqual([]);
+  });
+
+  it("layers a knit under the rain shell, so a wet day still has three different looks", () => {
+    const wet = looks.filter((r) => r.day === "wet-mild");
+    expect(wet.some((r) => r.look.pieces.outer?.kind === "rain-shell" && r.look.pieces.mid?.kind === "crewneck")).toBe(true);
+    for (const occasion of OCCASIONS) {
+      const tops = wet.filter((r) => r.occasion === occasion).map(({ look: { pieces: p } }) => [p.base, p.mid, p.outer].map((i) => i?.id ?? "").join(">"));
+      expect(new Set(tops).size, occasion).toBe(tops.length);
+    }
+  });
+
+  it("keeps easy looks quiet", () => {
+    const easy = looks.filter((r) => r.tier === "easy");
+    expect(easy.filter((r) => coloured(r).size > 0).length / easy.length).toBeLessThanOrEqual(0.25);
   });
 });

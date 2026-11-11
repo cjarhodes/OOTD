@@ -18,6 +18,7 @@ import {
   selectDatabase,
   type PersonalState,
 } from "@/lib/db";
+import { tidyName } from "@/lib/kinds";
 import type { City } from "@/lib/forecast";
 import { hashBlob, photoUrl } from "@/lib/photo";
 import { wishToItem } from "@/lib/wishlist";
@@ -287,7 +288,10 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
       if (isPersonal) updatePersonal((s) => ({ ...s, ...fn({ ...s, trips: s.trips ?? [] }) }));
       else updateSample((s) => ({ ...s, ...fn(s) }));
     };
-    const personalItems = personal.items.map((i) => (imageUrls.has(i.id) ? { ...i, image: imageUrls.get(i.id) } : i));
+    const personalItems = personal.items.map((i) => {
+      const name = tidyName(i.name);
+      return imageUrls.has(i.id) || name !== i.name ? { ...i, name, ...(imageUrls.has(i.id) ? { image: imageUrls.get(i.id) } : {}) } : i;
+    });
     const active = isPersonal ? personal : sample;
     const trips = (isPersonal ? personal.trips : sample.trips) ?? [];
 

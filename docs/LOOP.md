@@ -79,6 +79,7 @@ The baseline came from a one-off script. Before round 1, put the scorecard in th
 | --- | --- | --- | --- | --- | --- |
 | Baseline | 11 Nov 2026 | All | | | First measurement |
 | 1 | 11 Nov 2026 | B5, B6, B8 | 24 of 40; 3; 4 taps | 40 of 40; 0; 2 taps | Type a list reads everyday words, washes and a colour after a comma. The piece editor leads with a one-screen colour grid that saves on tap. Add actions sit under the Wardrobe title. The 40-piece list was used to find the gaps, so it now needs new lines from real use to mean anything |
+| 2 | 11 Nov 2026 | Style on a real 42-piece swiped wardrobe | 8 clashing looks; 20 of 50 Easy looks with a bright; 82% bold with an idea | 0; 6 of 50; 86% | A rain shell can go over a knit on wet or windy days (it was barred for being thinner). Two non-neutral colours in a look are a last resort. On a wet day every waterproof layer stays in the search. Easy prefers a neutral look. A swiped wardrobe with colour now runs in the style audit. Still open: on cold wet days that wardrobe has one top half warm enough, so the three looks share it; and one pair of boots is in 92 of 150 looks because it has three pairs of shoes |
 
 ## The typed list
 

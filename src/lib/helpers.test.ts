@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { budgetConfig, costOf, monthKey, reserve, settle } from "@/server/budget";
 import { parseBackup } from "./backup";
 import { parseArchive, parseForecast } from "./forecast";
-import { makeItem } from "./kinds";
+import { makeItem, tidyName } from "./kinds";
 import { nearestColor } from "./palette";
 import { alphaInfo, dominantColor, isCutout } from "./pixels";
 import { applyTags, validateTags } from "./tagging";
@@ -186,5 +186,13 @@ describe("trip weather from last year", () => {
       midday: { feels: 6, rain: 70, wind: 20 },
       evening: { feels: 3, rain: 10, wind: 12 },
     });
+  });
+});
+
+describe("names", () => {
+  it("reads a doubled colour once, and leaves other names alone", () => {
+    expect(tidyName("White white leather sneakers")).toBe("White leather sneakers");
+    expect(tidyName("White leather sneakers")).toBe("White leather sneakers");
+    expect(tidyName("Black blackwatch scarf")).toBe("Black blackwatch scarf");
   });
 });

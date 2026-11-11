@@ -36,6 +36,8 @@
   - Lengths stay in a sensible order.
   - Necklines must be compatible: a camp collar goes only under open layers, a hood only under an open front.
   - Only one busy pattern per outfit.
+  - One colour at a time: two colours that fight (sage under red) are a last resort.
+  - A rain shell goes over a knit when it's wet or windy.
   - A warmth budget across the day, plus a strip test: whatever is left after a layer comes off must still suit the warmest part of the day.
   - Rain handling, and a sense of season: no shells on dry days, no knits or boots in a heatwave, camp collars kept for warm weather.
   - When nothing is warm enough, it shows the closest look and says what to add.
