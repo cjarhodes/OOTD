@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ColourSheet } from "@/components/ColourSheet";
+import { ColourGrid } from "@/components/ColourSheet";
 import { FIT_LABEL, fitsFor, KINDS, MATERIAL_LABEL, SLOT_LABEL } from "@/lib/kinds";
-import { PALETTE, type ColorName } from "@/lib/palette";
 import { KIND_LIST, MATERIALS, PATTERNS, type Tags } from "@/lib/tagging";
 import type { Kind, Slot } from "@/lib/types";
 
@@ -17,8 +16,22 @@ export interface Draft extends Omit<Tags, "kind"> {
   nameEdited: boolean;
 }
 
-export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChange: (d: Draft) => void; idPrefix: string }) {
-  const [picking, setPicking] = useState(false);
+export function ItemFields({
+  value,
+  onChange,
+  idPrefix,
+  colourNote,
+}: {
+  value: Draft;
+  onChange: (d: Draft) => void;
+  idPrefix: string;
+  /** Shown beside the colour's name, e.g. "Saved". */
+  colourNote?: string;
+}) {
+  // A piece that already has a type leads with its colour and keeps the long
+  // list of types folded away; a new photo asks what it is first.
+  const [typeFirst] = useState(value.kind === null);
+  const [choosing, setChoosing] = useState(value.kind === null);
   const set = (patch: Partial<Draft>) => {
     const next = { ...value, ...patch };
     // Keep the suggested name in step until it has been typed over.
@@ -29,8 +42,8 @@ export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChan
     onChange(next);
   };
 
-  return (
-    <div className="fields">
+  const type =
+    choosing || !value.kind ? (
       <fieldset className="field">
         <legend className="label">What is it?</legend>
         {SLOTS.map((slot) => (
@@ -43,14 +56,15 @@ export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChan
                   type="button"
                   className="chip small"
                   aria-pressed={value.kind === k}
-                  onClick={() =>
+                  onClick={() => {
                     set({
                       kind: k,
                       material: value.kind === k ? value.material : KINDS[k].material,
                       fit: value.kind === k ? value.fit : KINDS[k].fit,
                       formality: value.kind === k ? value.formality : KINDS[k].formality,
-                    })
-                  }
+                    });
+                    if (!typeFirst) setChoosing(false);
+                  }}
                 >
                   {KINDS[k].label}
                 </button>
@@ -59,20 +73,31 @@ export function ItemFields({ value, onChange, idPrefix }: { value: Draft; onChan
           </div>
         ))}
       </fieldset>
-
+    ) : (
       <div className="field">
-        <span className="label" id={`${idPrefix}-colour`}>
-          Colour
+        <span className="label" id={`${idPrefix}-type`}>
+          What is it?
         </span>
-        <button type="button" className="colour-chip colour-current" aria-labelledby={`${idPrefix}-colour ${idPrefix}-colour-name`} aria-haspopup="dialog" onClick={() => setPicking(true)}>
-          <span className="colour-dot" style={{ background: PALETTE[value.color].hex }} aria-hidden="true" />
-          <span id={`${idPrefix}-colour-name`}>{value.color}</span>
-          <span className="colour-change">Change</span>
+        <button type="button" className="colour-chip chip-current" aria-labelledby={`${idPrefix}-type ${idPrefix}-type-name`} onClick={() => setChoosing(true)}>
+          <span id={`${idPrefix}-type-name`}>{KINDS[value.kind].label.charAt(0).toUpperCase() + KINDS[value.kind].label.slice(1)}</span>
+          <span className="chip-change">Change</span>
         </button>
-        {picking && (
-          <ColourSheet title="Colour" single picked={[value.color]} onToggle={(c) => set({ color: c })} onClose={() => setPicking(false)} />
-        )}
       </div>
+    );
+  const colour = (
+    <div className="field">
+      <span className="label">
+        Colour · {value.color}
+        {colourNote && <span role="status"> · {colourNote}</span>}
+      </span>
+      <ColourGrid label="Colour" picked={[value.color]} onToggle={(c) => set({ color: c })} />
+    </div>
+  );
+
+  return (
+    <div className="fields">
+      {typeFirst ? type : colour}
+      {typeFirst ? colour : type}
 
       <label className="field" htmlFor={`${idPrefix}-name`}>
         <span className="label">Name</span>

@@ -144,3 +144,8 @@ export function fitsFor(slot: Slot): Fit[] {
   if (slot === "bottom") return ["slim", "regular", "relaxed", "wide"];
   return ["slim", "regular", "relaxed", "boxy"];
 }
+
+/** An early starter deck saved names like "White white leather sneakers"; read them as "White leather sneakers". */
+export function tidyName(name: string): string {
+  return name.replace(/^(\p{L}+) \1\b/iu, "$1");
+}

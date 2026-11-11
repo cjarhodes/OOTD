@@ -80,6 +80,7 @@ function rng(seed: number) {
 function pools(input: GenerateInput, random: () => number): Record<Slot, Item[]> {
   const target = OCCASION_FORMALITY[input.occasion];
   const available = input.items.filter((i) => i.status === "available" && suitsOccasion(i, input.occasion));
+  const wet = dayNeeds(input.weather, input.comfort).wet;
   const bySlot: Record<Slot, Item[]> = { base: [], mid: [], outer: [], bottom: [], shoes: [] };
   for (const i of available) bySlot[i.slot].push(i);
   for (const slot of Object.keys(bySlot) as Slot[]) {
@@ -87,7 +88,8 @@ function pools(input: GenerateInput, random: () => number): Record<Slot, Item[]>
       .map((i) => ({ i, r: -Math.abs(i.formality - target) + random() * 1.5 }))
       .sort((a, b) => b.r - a.r)
       .map((x) => x.i);
-    const keep = (i: Item) => i.id === input.pin || Boolean(input.prefer?.has(i.id));
+    // On a wet day every waterproof layer stays in, so the one shell left is never the one that clashes.
+    const keep = (i: Item) => i.id === input.pin || Boolean(input.prefer?.has(i.id)) || (wet && slot === "outer" && i.waterproof);
     const kept = ranked.filter(keep);
     bySlot[slot] = [...kept, ...ranked.filter((i) => !keep(i)).slice(0, Math.max(0, POOL - kept.length))];
   }
@@ -112,6 +114,8 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
       for (const outer of [undefined, ...pool.outer]) {
         // Settle everything that depends only on the top half once, not for every trousers and shoes.
         const upper = { base, mid, outer };
+        // A shell over a knit is for rain or wind; on a calm, dry day nobody reaches for it.
+        if (outer?.kind === "rain-shell" && !needs.wet && !needs.windy && (mid ?? base).thickness > outer.thickness) continue;
         if (!layersAreValid(upper)) continue;
         const fit = ignoreWeather ? { ok: true, shed: undefined, backOn: false } : layersFitWeather(upper, needs, rainLayerAvailable);
         if (!fit.ok) continue;
@@ -288,6 +292,7 @@ export function swapPiece(
 ): Look | null {
   const needs = dayNeeds(input.weather, input.comfort);
   const available = input.items.filter((i) => i.status === "available" && suitsOccasion(i, input.occasion));
+  const wet = dayNeeds(input.weather, input.comfort).wet;
   const rainLayerAvailable = available.some((i) => i.slot === "outer" && i.waterproof);
   const history = buildHistory(input.wears ?? [], input.date);
   const feedback = input.feedback ?? {};

@@ -241,7 +241,7 @@ button {
   bottom: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   background: color-mix(in srgb, var(--wall) 92%, transparent);
   backdrop-filter: saturate(1.4) blur(14px);
   -webkit-backdrop-filter: saturate(1.4) blur(14px);
@@ -999,7 +999,7 @@ select.input {
   padding: 16px;
 }
 .sheet-photo .garment-svg {
-  height: 200px;
+  height: 116px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1436,61 +1436,54 @@ li[data-done] .first-run-tick {
   border-radius: 50%;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
-.colour-current {
+.chip-current {
   justify-self: start;
   min-height: 44px;
+  padding-left: 14px;
 }
-.colour-change {
+.chip-change {
   margin-left: 6px;
   color: var(--label);
   font-size: 13px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-/* Every colour, grouped: a sheet that scrolls like a page. */
+/* Every colour on one screen: swatch over name, five across. */
 .colour-sheet {
   align-content: start;
 }
-.colour-group {
+.colour-swatches {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+}
+.colour-swatch {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 5px;
+  min-height: 60px;
+  padding: 7px 0 5px;
   border: 0;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 8px;
-}
-.colour-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 8px;
-}
-.colour-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 6px 12px 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--wall);
-  color: var(--ink);
+  border-radius: 10px;
+  background: none;
+  color: var(--ink-2);
   font: inherit;
-  font-size: 15px;
-  text-align: left;
+  font-size: 12px;
+  line-height: 1.2;
   cursor: pointer;
 }
-.colour-option .colour-dot {
-  width: 28px;
-  height: 28px;
-  flex: none;
+.colour-swatch .colour-dot {
+  width: 32px;
+  height: 32px;
 }
-.colour-option[aria-pressed="true"] {
-  border-color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--ink);
+.colour-swatch[aria-pressed="true"] {
+  background: var(--plinth);
+  color: var(--ink);
   font-weight: 600;
 }
-.colour-option[aria-pressed="true"]::after {
-  content: "✓";
-  margin-left: auto;
+.colour-swatch[aria-pressed="true"] .colour-dot {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15), 0 0 0 2px var(--wall), 0 0 0 4px var(--ink);
 }
 .colour-done {
   position: sticky;
@@ -1710,4 +1703,40 @@ li[data-done] .first-run-tick {
   margin-left: 4px;
   font-size: 12px;
   color: var(--label);
+}
+
+/* The three ways to add pieces, as large targets. */
+.add-ways {
+  display: grid;
+  gap: 10px;
+}
+.add-way {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--wall);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.add-way strong {
+  font-size: 17px;
+}
+.add-way span {
+  color: var(--ink-2);
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+.add-way:first-child {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.type-list-ai {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }

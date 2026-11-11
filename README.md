@@ -26,7 +26,7 @@
 
   OOTD restores from that ZIP on any device.
 - **No tracking or ads.** There's no analytics. Your email is used only to sign you in, and sign-in codes are stored only as keyed hashes.
-- **AI tagging is optional.** It sends one small copy of a photo to Claude only when you tap **Tag with AI**, with a monthly allowance per person.
+- **AI is optional.** It sends one small copy of a photo to Claude only when you tap **Tag with AI**, or the text you typed only when you tap **Read with AI**, with a monthly allowance per person.
 - **Weather** comes from [Open-Meteo](https://open-meteo.com), which is sent only the coordinates of the city you choose. Your location is never requested.
 
 ## What it does
@@ -36,6 +36,8 @@
   - Lengths stay in a sensible order.
   - Necklines must be compatible: a camp collar goes only under open layers, a hood only under an open front.
   - Only one busy pattern per outfit.
+  - One colour at a time: two colours that fight (sage under red) are a last resort.
+  - A rain shell goes over a knit when it's wet or windy.
   - A warmth budget across the day, plus a strip test: whatever is left after a layer comes off must still suit the warmest part of the day.
   - Rain handling, and a sense of season: no shells on dry days, no knits or boots in a heatwave, camp collars kept for warm weather.
   - When nothing is warm enough, it shows the closest look and says what to add.
@@ -51,7 +53,9 @@
   - It gives you a packing checklist.
   - Trips beyond the forecast use last year's weather on the same dates.
 - **Swipe your wardrobe** (`/start`): a deck of 44 menswear pieces most men own, plus what's current (wide pleated trousers, knit polos, suede loafers, chore coats) and the casual weekend staples (zip fleece, flannel worn open, rugby shirt, denim jacket, cargos, heavyweight sweatpants, canvas sneakers, high-tops, trail shoes, two-strap sandals and suede clogs). Swipe right for "I have it", left for "not mine", up for "want it". Tap every colour you own before swiping (three tees in white, black and grey is one swipe), or "+ Other colour" for one the card doesn't list (a sheet with every colour, grouped by family, that scrolls like a page); with nothing tapped, the colour shown is the one meant. Pieces you have go straight into the wardrobe as illustrations, so Today can dress you in a minute; add real photos later from each piece.
-- **Type a list** (Wardrobe): paste pieces one per line or separated by commas ("White Converse high tops, brown Birkenstock Arizonas, Black Salewa Wildfires"). Each is matched to a type, colour and material from its words, including common shoe models (`src/lib/typed.ts`); a colour in an aside like "(with grey accents)" is ignored. Check or correct each one, then add them all, drawn until a photo is added.
+- **Add** has its own tab: type it, swipe it or photograph it.
+- **Type a list** (Add, or Wardrobe): paste pieces one per line or separated by commas ("White Converse high tops, brown Birkenstock Arizonas, Black Salewa Wildfires"). Each is matched to a type, colour and material from its words, including common shoe models (`src/lib/typed.ts`); a colour in an aside like "(with grey accents)" is ignored. Check or correct each one, then add them all, drawn until a photo is added. Everyday words are read too ("leather jacket", "brogues", "light wash jeans", "Patagonia fleece, cream"). With AI switched on, **Read with AI** reads anything: whole sentences, brands and models ("a couple of heavy tees in white and black, and my brown R.M. Williams boots").
+- **Change a colour in two taps**: tap a piece, tap its colour. Every colour is on one screen, and the change is saved at once.
 - **Wishlist**: wanted pieces are tracked on their own (`PersonalState.wishlist`, `src/lib/wishlist.ts`), never in the wardrobe, so looks only use clothes you can wear. Wardrobe → Wishlist lists them; "Got it" moves one into the wardrobe. Older backups that stored wanted pieces as items are moved across on load and import.
 - **Best next buys**: OOTD adds each wishlist piece (and pieces from the deck you don't have) to your wardrobe in turn and runs the outfit engine across warm, mild, cold and wet days, at work and at the weekend. It suggests the pieces that go into the most looks, and especially the ones that make new looks possible, one per category (`src/lib/recommend.ts`).
 - **Adding pieces** from ordinary phone photos. OOTD removes the background on the device (`src/lib/cutout.ts`): it learns the floor, bed or wall from the photo's corners and edges, grows it inwards, clears background showing through gaps (matched on colour and grain, so prints stay), and refuses rather than guesses when the background is too busy or the piece fills the frame. It runs in a Web Worker, with no model to download and nothing uploaded until you save. Cut-outs are stored as WebP. You can keep the background for any photo, and remove it later from a piece's sheet. Photos already cut out (Lift Subject) are kept as they are. Colour is read from the garment alone and matched in Lab.
@@ -75,7 +79,7 @@ Once it's deployed, open Settings and sign in with your email. The **Account** s
 - **The session:** a signed, HttpOnly cookie that lasts 180 days.
 - **The signing key:** generated on first use and kept in the private store, unless you set `OOTD_SESSION_SECRET` yourself.
 
-**AI tagging (optional).** This fills in a piece's details from its photo with Claude, against a monthly spending cap. Add these to the Production environment:
+**AI (optional).** This fills in a piece's details from its photo, and reads a typed description of what you own into pieces, with Claude, against a monthly spending cap. A typed list counts as one tag, however many pieces it holds. Add these to the Production environment:
 
 - `ANTHROPIC_API_KEY`: from a dedicated Anthropic Console workspace with its own spend limit, as a hard backstop.
 - Upstash Redis from Vercel → Storage (Marketplace). It sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`, which the spend tracker and the per-person allowance use.

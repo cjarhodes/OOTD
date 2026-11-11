@@ -200,7 +200,8 @@ export function shoeScore(p: Pieces, occasion: Occasion, needs?: DayNeeds): numb
 /** One deliberate colour against neutrals: a styling idea for fresh and bold looks. */
 export function accentScore(p: Pieces, tier: Tier): number {
   if (!accentPiece(p)) return 0;
-  return tier === "fresh" ? 0.35 : tier === "bold" ? 0.4 : 0;
+  // Easy is the quiet look: given the choice, it reaches for the navy knit, not the mustard one.
+  return tier === "fresh" ? 0.35 : tier === "bold" ? 0.4 : -0.8;
 }
 
 export const CREATIVE_RECIPES = new Set<RecipeId>(["open-shirt", "high-low", "roll-neck"]);

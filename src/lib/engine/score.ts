@@ -41,8 +41,9 @@ export function colourScore(p: Pieces): number {
   const accentFamilies = new Set(pieces.filter((i) => !PALETTE[i.color].neutral).map((i) => PALETTE[i.color].family));
   if (accentFamilies.size === 0) score += 1;
   else if (accentFamilies.size === 1) score += 1.4;
-  else if (accentFamilies.size === 2) score -= 1;
-  else score -= 2.5;
+  // Two colours that aren't neutrals fight (sage under red): only ever the last resort.
+  else if (accentFamilies.size === 2) score -= 6;
+  else score -= 8;
 
   // Tonal is a good idea, not a default: creativityScore also credits it.
   if (tonalFamily(p)) score += 0.6;

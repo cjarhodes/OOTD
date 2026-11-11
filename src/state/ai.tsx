@@ -54,5 +54,25 @@ export function useAI() {
     [user],
   );
 
-  return { status, left, canTag, refresh, requestTags };
+  /** Read a typed description of clothes ("a couple of white tees, my brown Chelsea boots") into pieces. Uses one tag. */
+  const requestList = useCallback(
+    async (text: string): Promise<{ pieces: Tags[] } | { error: string }> => {
+      if (!user) return { error: "Sign in to use AI." };
+      try {
+        const res = await fetch("/api/tag", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        const json = (await res.json()) as { pieces?: Tags[]; error?: string };
+        if (!res.ok || !json.pieces?.length) return { error: json.error ?? "That list couldn’t be read." };
+        return { pieces: json.pieces };
+      } catch {
+        return { error: "Couldn’t reach the server." };
+      }
+    },
+    [user],
+  );
+
+  return { status, left, canTag, refresh, requestTags, requestList };
 }

@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GarmentTile } from "@/components/art/Garment";
 import { ColourSheet } from "@/components/ColourSheet";
-import { KINDS, SLOT_LABEL } from "@/lib/kinds";
+import { KINDS, makeItem, SLOT_LABEL } from "@/lib/kinds";
 import { PALETTE, type ColorName } from "@/lib/palette";
-import { KIND_LIST } from "@/lib/tagging";
+import { applyTags, KIND_LIST, MAX_LIST_CHARS, type Tags } from "@/lib/tagging";
 import { parseList, typedItem, type TypedPiece } from "@/lib/typed";
 import type { Kind, Slot } from "@/lib/types";
+import { useAI } from "@/state/ai";
 import { newId, useWardrobe } from "@/state/wardrobe";
 
 const SLOTS: Slot[] = ["base", "mid", "outer", "bottom", "shoes"];
@@ -31,15 +32,45 @@ export function TypeList({ onClose, onAdded }: { onClose: () => void; onAdded: (
   const [fixes, setFixes] = useState<Record<string, { kind?: Kind; color?: ColorName }>>({});
   const [picking, setPicking] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // What AI made of the text, kept only while the text is unchanged.
+  const ai = useAI();
+  const [read, setRead] = useState<{ text: string; pieces: Tags[] } | null>(null);
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState<string | null>(null);
+  const byAI = read?.text === text ? read.pieces : null;
 
-  const rows: TypedPiece[] = useMemo(() => parseList(text).map((p) => ({ ...p, ...fixes[p.name], colorGuessed: p.colorGuessed && !fixes[p.name]?.color })), [text, fixes]);
+  const rows: (TypedPiece & { tags?: Tags })[] = useMemo(() => {
+    const parsed: (TypedPiece & { tags?: Tags })[] = byAI
+      ? byAI.map((t) => ({ name: t.name, kind: t.kind, color: t.color, material: t.material, colorGuessed: false, tags: t }))
+      : parseList(text);
+    return parsed.map((p) => ({ ...p, ...fixes[p.name], colorGuessed: p.colorGuessed && !fixes[p.name]?.color }));
+  }, [text, fixes, byAI]);
+
+  async function readWithAI() {
+    if (reading || !text.trim()) return;
+    setReading(true);
+    setReadNote(null);
+    const result = await ai.requestList(text);
+    setReading(false);
+    if ("error" in result) return setReadNote(result.error);
+    setRead({ text, pieces: result.pieces });
+    setReadNote(`Read by Claude: ${result.pieces.length} ${result.pieces.length === 1 ? "piece" : "pieces"}. Check them over.`);
+    void ai.refresh();
+  }
   const missing = rows.filter((r) => !r.kind).length;
   const fix = (name: string, patch: { kind?: Kind; color?: ColorName }) => setFixes((f) => ({ ...f, [name]: { ...f[name], ...patch } }));
 
   async function add() {
     if (!rows.length || missing || saving) return;
     setSaving(true);
-    await addPieces(rows.map((r) => ({ item: typedItem({ ...r, kind: r.kind! }, newId()) })));
+    await addPieces(
+      rows.map((r) => {
+        const id = newId();
+        // AI's details (fit, dress level, pattern) hold as long as its type wasn't corrected.
+        if (r.tags && r.tags.kind === r.kind) return { item: applyTags(makeItem({ id, name: r.name, kind: r.tags.kind, color: r.color }), { ...r.tags, color: r.color }) };
+        return { item: typedItem({ ...r, kind: r.kind! }, id) };
+      }),
+    );
     onAdded(rows.length);
   }
 
@@ -65,16 +96,34 @@ export function TypeList({ onClose, onAdded }: { onClose: () => void; onAdded: (
         </button>
       </div>
       <label className="field" htmlFor="type-list-text">
-        <span className="label">One piece per line, or separated by commas</span>
+        <span className="label">{ai.canTag ? "Write what you own, any way you like" : "One piece per line, or separated by commas"}</span>
         <textarea
           id="type-list-text"
           className="input type-list-text"
           rows={4}
+          maxLength={MAX_LIST_CHARS}
           value={text}
           placeholder={"White Converse high tops\nBrown Birkenstock Arizonas\nNavy merino crewneck"}
           onChange={(e) => setText(e.target.value)}
         />
       </label>
+
+      {ai.canTag && (
+        <div className="type-list-ai">
+          <button type="button" className="btn alt" onClick={() => void readWithAI()} disabled={reading || !text.trim() || byAI !== null}>
+            {reading ? "Reading…" : byAI ? "Read by AI" : "Read with AI"}
+          </button>
+          <span className="setting-note" role="status">
+            {readNote ?? (missing > 0 ? "Some lines weren’t recognised. AI can read brands, models and whole sentences." : "For brands, models or whole sentences.")}
+            {ai.left !== null && !readNote ? ` ${ai.left} of ${ai.status.limit} left this month.` : ""}
+          </span>
+        </div>
+      )}
+      {!ai.canTag && readNote && (
+        <p className="setting-note" role="status">
+          {readNote}
+        </p>
+      )}
 
       {rows.length > 0 && (
         <ul className="typed-rows" aria-label="Pieces to add">

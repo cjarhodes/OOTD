@@ -54,6 +54,29 @@ export const TAG_SCHEMA = {
   },
 } as const;
 
+/** The most pieces one typed list may hold. */
+export const MAX_LIST_PIECES = 60;
+/** The longest typed list sent for reading, in characters. */
+export const MAX_LIST_CHARS = 4000;
+
+/** JSON schema for a typed list read by AI: one set of tags per garment. */
+export const LIST_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["pieces"],
+  properties: {
+    pieces: { type: "array", description: "One entry per garment, in the order written.", items: TAG_SCHEMA },
+  },
+} as const;
+
+/** Validate an untrusted list of tags, dropping entries that aren't usable. Null if there are none. */
+export function validateTagList(value: unknown): Tags[] | null {
+  const raw = value && typeof value === "object" ? (value as { pieces?: unknown }).pieces : null;
+  if (!Array.isArray(raw)) return null;
+  const pieces = raw.map(validateTags).filter((t): t is Tags => t !== null).slice(0, MAX_LIST_PIECES);
+  return pieces.length ? pieces : null;
+}
+
 /** Validate untrusted tag JSON (from the model or a client) into Tags, or null. */
 export function validateTags(value: unknown): Tags | null {
   if (!value || typeof value !== "object") return null;
