@@ -96,11 +96,18 @@ export function lowerFitsWeather(p: Pick<Pieces, "bottom" | "shoes">, needs: Day
 }
 
 /** The upper layers against the day's warmth and rain. Independent of trousers and shoes. */
-export function layersFitWeather(p: Pick<Pieces, "base" | "mid" | "outer">, needs: DayNeeds, rainLayerAvailable: boolean): WeatherFit {
+export function layersFitWeather(
+  p: Pick<Pieces, "base" | "mid" | "outer">,
+  needs: DayNeeds,
+  rainLayerAvailable: boolean,
+  /** Somewhere smart to be: a wool overcoat does for the rain, where a technical shell would look wrong. */
+  coatForRain = false,
+): WeatherFit {
   const layers = [p.base, p.mid, p.outer].filter((i): i is Item => Boolean(i));
   const fail: WeatherFit = { ok: false, backOn: false };
   if (needs.wet) {
-    if (rainLayerAvailable && !p.outer?.waterproof) return fail;
+    const woolCoat = coatForRain && p.outer?.kind === "overcoat" && p.outer.material === "wool";
+    if (rainLayerAvailable && !p.outer?.waterproof && !woolCoat) return fail;
     if (p.outer && p.outer.delicate) return fail;
   }
 

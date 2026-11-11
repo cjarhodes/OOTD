@@ -221,3 +221,128 @@ describe("style audit, swiped wardrobe with colour", () => {
     expect(easy.filter((r) => coloured(r).size > 0).length / easy.length).toBeLessThanOrEqual(0.25);
   });
 });
+
+/**
+ * A fuller wardrobe with the classics in it: cords, linen, a puffer and a
+ * rain shell, wool coats, sweatshirts, and shoes for every kind of day. A
+ * review of 150 looks from a wardrobe like this found the engine had no sense
+ * of season or occasion; these are the rules that review produced.
+ */
+const CLASSICS: [string, ColorName[]][] = [
+  ["tee", ["White"]],
+  ["long-sleeve", ["White"]],
+  ["oxford", ["White", "Sky", "Sage"]],
+  ["poplin", ["White"]],
+  ["linen-shirt", ["White"]],
+  ["denim-shirt", ["Denim"]],
+  ["knit-polo", ["Ecru"]],
+  ["rollneck", ["Black"]],
+  ["crew", ["Navy", "Grey"]],
+  ["shetland", ["Mustard"]],
+  ["hoodie", ["Grey"]],
+  ["sweat", ["Ecru"]],
+  ["overshirt", ["Olive"]],
+  ["chore", ["Black", "Ecru"]],
+  ["blazer", ["Navy"]],
+  ["overcoat", ["Camel", "Black"]],
+  ["peacoat", ["Navy"]],
+  ["bomber", ["Black"]],
+  ["puffer", ["Black"]],
+  ["shell", ["Black"]],
+  ["jeans", ["Indigo"]],
+  ["relaxed-jeans", ["Black"]],
+  ["chinos", ["Khaki", "Navy", "Stone"]],
+  ["cords", ["Brown", "Olive"]],
+  ["wool-trousers", ["Grey"]],
+  ["linen-trousers", ["Ecru"]],
+  ["cargos", ["Olive"]],
+  ["shorts", ["Khaki", "Navy"]],
+  ["sneakers", ["White"]],
+  ["canvas", ["White"]],
+  ["runners", ["Grey"]],
+  ["trail", ["Black"]],
+  ["clogs", ["Stone"]],
+  ["sandals", ["Brown"]],
+  ["boat", ["Brown"]],
+  ["penny", ["Brown"]],
+  ["chukka", ["Chocolate"]],
+  ["chelsea", ["Black", "Brown"]],
+];
+
+describe("style audit, a wardrobe with the classics", () => {
+  const items = CLASSICS.flatMap(([id, colours]) => colours.map((c) => starterItem(STARTER_DECK.find((card) => card.id === id)!, c)));
+  const rows = runAudit(items);
+  const looks = rows.filter((r): r is AuditRow & { look: Look } => r.look !== null);
+  const on = (...days: string[]) => looks.filter((r) => days.includes(r.day));
+  const worn = (r: { look: Look }) => [r.look.pieces.base, r.look.pieces.mid, r.look.pieces.outer, r.look.pieces.bottom, r.look.pieces.shoes].filter((i) => i !== null && i !== undefined);
+  const named = (r: AuditRow & { look: Look }) => `${r.day} ${r.occasion} ${r.tier}: ${worn(r).map((i) => i.name).join(" / ")}`;
+  const fleece = (r: { look: Look }) => ["hoodie", "sweatshirt", "fleece"].includes(r.look.pieces.mid?.kind ?? "");
+
+  it("dresses every day and occasion", () => {
+    expect(rows.filter((r) => !r.look || r.look.warning)).toEqual([]);
+  });
+
+  it("keeps cloth to its season: no corduroy in the heat, no linen in the cold or the rain", () => {
+    expect(on("hot", "warm").filter((r) => worn(r).some((i) => i.material === "corduroy")).map(named)).toEqual([]);
+    const coolOrWet = on("mild", "swingy", "cool", "cold", "freezing", "wet-mild", "wet-cold", "windy");
+    expect(coolOrWet.filter((r) => worn(r).some((i) => i.material === "linen")).map(named)).toEqual([]);
+    // And it does reach for linen when it's hot.
+    expect(on("hot").some((r) => worn(r).some((i) => i.material === "linen"))).toBe(true);
+  });
+
+  it("keeps a winter coat for winter", () => {
+    expect(on("hot", "warm", "mild").filter((r) => (r.look.pieces.outer?.warmth ?? 0) >= 5).map(named)).toEqual([]);
+    expect(on("wet-mild").filter((r) => r.look.pieces.outer?.kind === "puffer").map(named)).toEqual([]);
+  });
+
+  it("wears shoes that survive the day", () => {
+    const fragile = on("wet-mild", "wet-cold").filter((r) => ["suede", "canvas", "knit"].includes(r.look.pieces.shoes.material));
+    expect(fragile.map(named)).toEqual([]);
+    const bare = on("cold", "freezing", "wet-cold", "windy").filter(({ look: { pieces: p } }) => ["clogs", "sandals", "canvas"].includes(p.shoes.kind) || p.shoes.id.startsWith("st-boat-"));
+    expect(bare.map(named)).toEqual([]);
+  });
+
+  it("dresses for a customer: no sporty shoes, fleece, cargos or technical jackets when there's a coat", () => {
+    const client = looks.filter((r) => r.occasion === "client");
+    expect(client.filter((r) => ["clogs", "sandals", "trail", "runners", "canvas"].includes(r.look.pieces.shoes.kind)).map(named)).toEqual([]);
+    expect(client.filter(fleece).map(named)).toEqual([]);
+    expect(client.filter((r) => r.look.pieces.bottom.kind === "cargos" || r.look.pieces.bottom.kind === "shorts").map(named)).toEqual([]);
+    // In cold rain he owns wool coats: the puffer and shell stay home.
+    const coldRain = client.filter((r) => r.day === "wet-cold");
+    expect(coldRain.filter((r) => r.look.pieces.outer?.kind === "puffer" || r.look.pieces.outer?.kind === "rain-shell").map(named)).toEqual([]);
+    // The office is looser, but not clogs or trail shoes.
+    expect(looks.filter((r) => r.occasion === "office" && ["clogs", "sandals", "trail"].includes(r.look.pieces.shoes.kind)).map(named)).toEqual([]);
+  });
+
+  it("layers things that belong together", () => {
+    // No fleece under a blazer, and no collared shirt buried under a sweatshirt or hoodie.
+    expect(looks.filter((r) => fleece(r) && r.look.pieces.outer?.kind === "blazer").map(named)).toEqual([]);
+    expect(looks.filter((r) => fleece(r) && ["oxford", "polo", "rugby", "flannel"].includes(r.look.pieces.base.kind)).map(named)).toEqual([]);
+    // An overshirt is a jacket, not something to wear under a coat or blazer.
+    expect(looks.filter((r) => r.look.pieces.mid?.kind === "overshirt" && ["overcoat", "blazer", "chore-coat"].includes(r.look.pieces.outer?.kind ?? "")).map(named)).toEqual([]);
+  });
+
+  it("offers three looks that really differ", () => {
+    for (const day of new Set(rows.map((r) => r.day))) {
+      for (const occasion of OCCASIONS) {
+        const cell = looks.filter((r) => r.day === day && r.occasion === occasion);
+        for (let i = 0; i < cell.length; i++) {
+          for (let j = i + 1; j < cell.length; j++) {
+            const ids = new Set(worn(cell[i]!).map((p) => p.id));
+            expect(worn(cell[j]!).filter((p) => ids.has(p.id)).length, `${day} ${occasion}`).toBeLessThanOrEqual(3);
+          }
+        }
+      }
+    }
+  });
+
+  it("says only what is true", () => {
+    const notes = (r: { look: Look }) => r.look.notes.join(" ");
+    // "Tailoring" is wool trousers, a blazer or an overcoat.
+    const tailoring = looks.filter((r) => /tailoring/.test(notes(r)));
+    const tailored = ({ look: { pieces: p } }: { look: Look }) => p.outer?.kind === "blazer" || p.outer?.kind === "overcoat" || (p.bottom.kind === "trousers" && p.bottom.material === "wool");
+    expect(tailoring.filter((r) => !tailored(r)).map(named)).toEqual([]);
+    // Nobody takes a rain jacket off at midday in the rain.
+    expect(on("wet-mild", "wet-cold").filter((r) => /Take the .*(shell|puffer).* off/.test(notes(r))).map(named)).toEqual([]);
+  });
+});
