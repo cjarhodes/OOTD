@@ -45,7 +45,7 @@ export function layersAreValid(p: Pick<Pieces, "base" | "mid" | "outer">): boole
     const inner = layers[i - 1]!;
     const over = layers[i]!;
     // A rain shell is cut roomy to go over a knit, so it's the one layer that may be thinner than what's under it.
-    const shellOverKnit = over.kind === "rain-shell" && inner.thickness <= 3;
+    const shellOverKnit = over.kind === "rain-shell" && inner.thickness <= 4;
     if (inner.thickness > over.thickness && !shellOverKnit) return false;
     // A layer may hang a little below the next (a shirt hem peeking), but not by much,
     // unless the layer over it is cut cropped and boxy to show off a light shirt or tee.
@@ -96,11 +96,18 @@ export function lowerFitsWeather(p: Pick<Pieces, "bottom" | "shoes">, needs: Day
 }
 
 /** The upper layers against the day's warmth and rain. Independent of trousers and shoes. */
-export function layersFitWeather(p: Pick<Pieces, "base" | "mid" | "outer">, needs: DayNeeds, rainLayerAvailable: boolean): WeatherFit {
+export function layersFitWeather(
+  p: Pick<Pieces, "base" | "mid" | "outer">,
+  needs: DayNeeds,
+  rainLayerAvailable: boolean,
+  /** Somewhere smart to be: a wool overcoat does for the rain, where a technical shell would look wrong. */
+  coatForRain = false,
+): WeatherFit {
   const layers = [p.base, p.mid, p.outer].filter((i): i is Item => Boolean(i));
   const fail: WeatherFit = { ok: false, backOn: false };
   if (needs.wet) {
-    if (rainLayerAvailable && !p.outer?.waterproof) return fail;
+    const woolCoat = coatForRain && p.outer?.kind === "overcoat" && p.outer.material === "wool";
+    if (rainLayerAvailable && !p.outer?.waterproof && !woolCoat) return fail;
     if (p.outer && p.outer.delicate) return fail;
   }
 

@@ -45,6 +45,10 @@ export function colourScore(p: Pieces): number {
   else if (accentFamilies.size === 2) score -= 6;
   else score -= 8;
 
+  // One coloured piece is an accent; two compete, even in the same family (a red jacket and burgundy trainers).
+  const coloured = pieces.filter((i) => !PALETTE[i.color].neutral).length;
+  if (coloured >= 2 && !tonalFamily(p)) score -= 1.5 * (coloured - 1);
+
   // Tonal is a good idea, not a default: creativityScore also credits it.
   if (tonalFamily(p)) score += 0.6;
 

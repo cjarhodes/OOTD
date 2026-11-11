@@ -14,7 +14,7 @@ import type {
 import { suitsOccasion } from "../kinds";
 import { lookName, lookNotes, recipeOf, tonalFamily } from "./describe";
 import { layersAreValid, layersFitWeather, lowerFitsWeather, patternsWork, stackIsValid, upperLayers, warmthOf, weatherFit } from "./rules";
-import { accentScore, asOpenShirt, creativityScore, OPEN_SHIRT_KINDS, openShirtFits, seasonScore, shoeScore } from "./style";
+import { accentScore, asOpenShirt, creativityScore, occasionScore, OPEN_SHIRT_KINDS, openShirtFits, rainRuins, seasonScore, shoeScore, trendScore } from "./style";
 import {
   buildHistory,
   colourScore,
@@ -54,6 +54,9 @@ const POOL = 9;
 /** Candidates considered for the three tiers, best first (see generateLooks). */
 const SHORTLIST = 1500;
 
+/** How far the day's mood moves a bold look, so one statement piece doesn't carry every bold look. */
+const SPARK = 2;
+
 export interface Candidate {
   pieces: Pieces;
   base: number;
@@ -64,6 +67,8 @@ export interface Candidate {
   hist?: Record<Tier, number>;
   recipe?: RecipeId;
   tonal?: boolean;
+  /** How much the top half's pieces appeal today: it rotates which piece a bold look is built around. */
+  spark?: number;
 }
 
 function rng(seed: number) {
@@ -105,6 +110,24 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
   const history = buildHistory(input.wears ?? [], input.date);
   const feedback = input.feedback ?? {};
   const out: Candidate[] = [];
+  const smart = input.occasion === "office" || input.occasion === "client" || input.occasion === "dinner";
+  // Somewhere smart to be in the rain: a waxed jacket does it. With only technical
+  // shells to choose from, a wool overcoat is the better answer.
+  const coatForRain = smart && !pool.outer.some((i) => i.waterproof && i.formality >= 2);
+  // In the rain, shoes that rain ruins stay home whenever there's a pair that survives it.
+  const dryShoes = !ignoreWeather && needs.wet && pool.shoes.some((i) => !rainRuins(i));
+  // Each piece is a little more or less appealing on a given day, so the same
+  // favourites don't win every morning. Fixed per day and occasion.
+  const moods = new Map<string, number>();
+  const mood = (i?: Item) => {
+    if (!i) return 0;
+    let m = moods.get(i.id);
+    if (m === undefined) {
+      m = ((hash(`${seed}|${i.id}`) % 1000) / 1000 - 0.5) * 0.9;
+      moods.set(i.id, m);
+    }
+    return m;
+  };
 
   // Shirts can also go on open over a tee, as a light layer.
   const openShirts = pool.base.filter((i) => OPEN_SHIRT_KINDS.has(i.kind)).map(asOpenShirt);
@@ -117,11 +140,12 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
         // A shell over a knit is for rain or wind; on a calm, dry day nobody reaches for it.
         if (outer?.kind === "rain-shell" && !needs.wet && !needs.windy && (mid ?? base).thickness > outer.thickness) continue;
         if (!layersAreValid(upper)) continue;
-        const fit = ignoreWeather ? { ok: true, shed: undefined, backOn: false } : layersFitWeather(upper, needs, rainLayerAvailable);
+        const fit = ignoreWeather ? { ok: true, shed: undefined, backOn: false } : layersFitWeather(upper, needs, rainLayerAvailable, coatForRain);
         if (!fit.ok) continue;
         const pinnedAbove = Boolean(input.pin && [base, mid, outer].some((i) => i?.id === input.pin));
         for (const bottom of pool.bottom) {
           for (const shoes of pool.shoes) {
+            if (dryShoes && rainRuins(shoes)) continue;
             const pieces: Pieces = { base, mid, outer, bottom, shoes };
             if (input.pin && !pinnedAbove && bottom.id !== input.pin && shoes.id !== input.pin) continue;
             if (!patternsWork(pieces)) continue;
@@ -136,10 +160,13 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
               textureScore(pieces) +
               formalityScore(pieces, input.occasion) +
               shoeScore(pieces, input.occasion, ignoreWeather ? undefined : needs) +
+              occasionScore(pieces, input.occasion, ignoreWeather ? undefined : needs) +
+              trendScore(pieces, input.occasion, ignoreWeather ? undefined : needs) +
+              mood(base) + mood(mid) + mood(outer) + mood(bottom) + mood(shoes) +
               hist.fresh * 0.5 +
               (ignoreWeather ? 0 : seasonScore(pieces, needs)) +
-              (random() - 0.5) * 1.0;
-            out.push({ pieces, base: score, boldness, shed: fit.shed, backOn: fit.backOn, hist });
+              (random() - 0.5) * 0.9;
+            out.push({ pieces, base: score, boldness, shed: fit.shed, backOn: fit.backOn, hist, spark: mood(base) + mood(mid) + mood(outer) });
           }
         }
       }
@@ -228,16 +255,17 @@ export function generateLooks(input: GenerateInput): Looks {
     const top = Math.max(...pool.map(warmth));
     if (top < needs.needCold) pool = pool.filter((c) => warmth(c) >= top);
   }
-  // First pass: each tier is a different look, never the same top half with new
-  // trousers. A small wardrobe can't always manage that, so a second pass fills
-  // any empty tier with any other valid look rather than leaving it blank.
-  for (const strict of [true, false]) {
+  // Each tier is a different look, never the same top half with new trousers.
+  // First ask for looks that share at most one piece, then two, then three. A small
+  // wardrobe can't always manage that, so a last pass fills any empty tier
+  // with any other valid look rather than leaving it blank.
+  for (const shared of [1, 2, 3, null]) {
     const taken = new Set(chosen.map(signatureOf));
     for (const tier of order) {
       if (result[tier]) continue;
       let best: { c: Candidate; s: number } | null = null;
       for (const c of pool) {
-        if (strict ? chosen.some((p) => overlap(p, c.pieces) > 3 || upperShared(p, c.pieces) > 1) : taken.has(signatureOf(c.pieces))) continue;
+        if (shared !== null ? chosen.some((p) => overlap(p, c.pieces) > shared || upperShared(p, c.pieces) > 1) : taken.has(signatureOf(c.pieces))) continue;
         c.recipe ??= recipeOf(c.pieces);
         c.tonal ??= tonalFamily(c.pieces) !== null;
         const s =
@@ -245,6 +273,7 @@ export function generateLooks(input: GenerateInput): Looks {
           tierScore(c.boldness, tier) +
           creativityScore(c.pieces, c.recipe, c.tonal, tier) +
           accentScore(c.pieces, tier) +
+          (tier === "bold" ? (c.spark ?? 0) * SPARK : 0) +
           (c.hist ?? historyScores(c.pieces, history, feedback))[tier] * 0.5;
         if (!best || s > best.s) best = { c, s };
       }

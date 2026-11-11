@@ -57,9 +57,11 @@ export function recipeOf(p: Pieces): RecipeId {
   if (!mid && !outer) return "single";
   if (isOpenShirtLayer(p)) return "open-shirt";
   // High-low is sporty under smart. A hood under a bomber, puffer or shell is just streetwear.
-  if (mid?.kind === "hoodie" && outer && !SPORTY_OUTERS.has(outer.kind)) return "high-low";
-  if (mid?.kind === "sweatshirt" && outer && (outer.neckline === "lapel" || outer.kind === "overcoat")) return "high-low";
-  if ((base.neckline === "turtle" || base.neckline === "mock") && outer?.neckline === "lapel" && (!mid || mid.front === "open")) {
+  // High-low is sporty under smart. A hood under a bomber, puffer or shell is just streetwear,
+  // and a sweatshirt needs real tailoring (a blazer or an overcoat) to play against.
+  if (mid?.kind === "hoodie" && outer && !SPORTY_OUTERS.has(outer.kind) && outer.kind !== "chore-coat") return "high-low";
+  if (mid?.kind === "sweatshirt" && (outer?.kind === "blazer" || outer?.kind === "overcoat")) return "high-low";
+  if ((base.neckline === "turtle" || base.neckline === "mock") && (outer?.kind === "blazer" || outer?.kind === "overcoat") && (!mid || mid.front === "open")) {
     return "roll-neck";
   }
   if (outer?.kind === "blazer" && !mid) return "smart-soft";
@@ -156,10 +158,18 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
       notes.push(`Leave the ${lower(mid!)} open so the ${lower(base)} shows.`);
       break;
     case "three-layer":
-      notes.push(`Three layers, thickest on the outside: ${lower(base)}, ${lower(mid!)}, ${lower(outer!)}.`);
+      notes.push(
+        outer!.thickness >= mid!.thickness
+          ? `Three layers, thickest on the outside: ${lower(base)}, ${lower(mid!)}, ${lower(outer!)}.`
+          : `Three layers: ${lower(base)}, ${lower(mid!)}, and the ${lower(outer!)} over the top.`,
+      );
       break;
     case "high-low":
-      notes.push(`${AOrAn(mid!)} under ${aOrAn(outer!)} keeps the tailoring relaxed.`);
+      notes.push(
+        outer!.kind === "blazer" || outer!.kind === "overcoat"
+          ? `${AOrAn(mid!)} under ${aOrAn(outer!)} keeps the tailoring relaxed.`
+          : `${AOrAn(mid!)} under ${aOrAn(outer!)}: sporty under smart, on purpose.`,
+      );
       break;
     case "open-shirt":
       notes.push(
@@ -169,7 +179,7 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
       );
       break;
     case "roll-neck":
-      notes.push(`${AOrAn(base)} under the ${lower(outer!)} does the job of a shirt and tie, quieter.`);
+      notes.push(`${AOrAn(base)} under the ${lower(outer!)} is as smart as a shirt, and simpler.`);
       break;
     case "smart-soft":
       notes.push(`${AOrAn(base)} under ${aOrAn(outer!)} looks sharp without a tie.`);
@@ -178,7 +188,7 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
       notes.push(`The ${lower(mid!)} adds warmth without hiding the ${lower(base)}.`);
       break;
     case "two-layer":
-      notes.push(`Keep the ${lower(outer!)} open over the ${lower(base)}.`);
+      notes.push(wet ? `The ${lower(outer!)} goes over the ${lower(base)}; do it up when the rain starts.` : `Keep the ${lower(outer!)} open over the ${lower(base)}.`);
       break;
     case "layered":
       notes.push(
@@ -195,10 +205,13 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
   const tonal = tonalFamily(p);
   const column = columnOf(p);
   const accents = [...upperLayers(p), p.bottom, p.shoes].filter((i) => !PALETTE[i.color].neutral);
-  if (tonal) notes.push(`All ${FAMILY_WORD[tonal]} tones, a different depth on each layer.`);
+  const accent = accents.length === 1 ? accents[0]! : null;
+  if (tonal) notes.push(`The layers are all ${FAMILY_WORD[tonal]} tones, a different depth on each.`);
   else if (column) notes.push(`The ${lower(column)} and ${lower(p.bottom)} make one long line${outer ? `, framed by the ${lower(outer)}` : ""}.`);
-  else if (accents.length === 1) notes.push(`One colour does the talking: the ${lower(accents[0]!)}.`);
-  else if (accents.length === 0) notes.push("Neutrals throughout, so the texture carries it.");
+  else if (accent?.slot === "shoes") notes.push(`The ${lower(accent)} are the one bit of colour; everything else stays quiet.`);
+  else if (accent && outer && accent !== outer) notes.push(`The ${lower(accent)} is the one colour, showing under the ${lower(outer)}.`);
+  else if (accent) notes.push(`One colour does the talking: the ${lower(accent)}.`);
+  else if (accents.length === 0) notes.push(textureContrast(p) ? "Neutrals throughout, so the texture carries it." : "Neutrals throughout: quiet and easy.");
 
   const idea = proportionIdea(p);
   if (idea && notes.length < 3) {
@@ -213,7 +226,9 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
     const s = lower(p.shoes);
     if (shoe === "lift") notes.push(`The ${s} lift all that dark; they keep it from feeling heavy.`);
     else if (shoe === "tailored") notes.push(`The ${s} finish the tailoring where trainers would undercut it.`);
-    else if (shoe === "weight") notes.push(`The ${s} have the weight to carry the heavier pieces.`);
+    else if (shoe === "weight" && p.shoes.kind === "trail") {
+      if (wet) notes.push(`The ${s} have the grip for a wet day.`);
+    } else if (shoe === "weight") notes.push(`The ${s} have the weight to carry the heavier pieces.`);
     else if (shoe === "easy") notes.push(`The ${s} keep the relaxed line easy.`);
     else notes.push(`The ${s} pick up the ${lower(p.outer && PALETTE[p.shoes.color].family === PALETTE[p.outer.color].family ? p.outer : p.bottom)}, so the look holds together.`);
   }
@@ -223,14 +238,17 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
     notes.push(`${MATERIAL_LABEL[contrast[0].material]} against ${MATERIAL_LABEL[contrast[1].material].toLowerCase()} adds texture.`);
   }
 
-  if (shed) {
+  // Nobody takes a rain jacket off at midday in the rain.
+  if (shed && !(wet && shed.layer.waterproof) && occasion !== "dinner") {
     notes.unshift(
       shed.backOn
         ? `Take the ${lower(shed.layer)} off around midday and put it back on after 5.`
         : `Take the ${lower(shed.layer)} off around midday.`,
     );
   } else if (wet && outer?.waterproof) {
-    notes.unshift(`Rain is likely. The ${lower(outer)} has it covered.`);
+    notes.unshift(outer.kind === "puffer" ? `Rain is likely. The ${lower(outer)} will shed a shower.` : `Rain is likely. The ${lower(outer)} has it covered.`);
+  } else if (wet && outer) {
+    notes.unshift(`Rain is likely: the ${lower(outer)} will take a shower, but carry an umbrella.`);
   }
   return notes.slice(0, 3);
 }
