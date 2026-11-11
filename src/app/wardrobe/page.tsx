@@ -214,6 +214,9 @@ export default function WardrobePage() {
         </span>
         <h1 className="display page-title">Wardrobe</h1>
         <div className="head-actions">
+          <Link href="/setup" className="chip chip-add chip-laptop">
+            + Tick what you own
+          </Link>
           {personal && (
             <>
               <button type="button" className="chip chip-add" onClick={() => setTyping(true)}>

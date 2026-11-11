@@ -23,7 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const cloud = useCloud();
   const auth = useAuth();
   // Your own wardrobe needs an account; the sample wardrobe never does.
-  const needsSignIn = auth.ready && !auth.user && path !== "/settings" && (mode === "personal" || path === "/add" || path === "/start");
+  const needsSignIn = auth.ready && !auth.user && path !== "/settings" && (mode === "personal" || path === "/add" || path === "/start" || path === "/setup");
   const [unsaved, setUnsaved] = useState(false);
   const [dismissed, setDismissed] = useState(true);
   useEffect(() => {
@@ -39,8 +39,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     setUnsaved(personalCount > (lastExport()?.pieces ?? 0));
   }, [ready, auth.configured, personalCount, path]);
   const attention = ["restore-available", "conflict", "shrink"].includes(cloud.status.phase);
-  // Swiping the basics is one of the ways to add, so it sits under Add.
-  const current = (href: string) => (href === "/" ? path === "/" : path.startsWith(href) || (href === "/add" && path.startsWith("/start"))) ? "page" : undefined;
+  // Swiping or ticking the basics are ways to add, so they sit under Add.
+  const current = (href: string) => (href === "/" ? path === "/" : path.startsWith(href) || (href === "/add" && (path.startsWith("/start") || path.startsWith("/setup")))) ? "page" : undefined;
   return (
     <div className="shell">
       <a className="skip-link" href="#main">
