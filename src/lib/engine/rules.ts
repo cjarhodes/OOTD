@@ -1,6 +1,6 @@
 import { fitOf, KINDS } from "../kinds";
 import type { Item, Pieces } from "../types";
-import { COLD_CEILING, COOL_SLACK, WARM_SLACK, type DayNeeds } from "./weather";
+import { COLD_CEILING, COOL_SLACK, SHED_SLACK, WARM_SLACK, type DayNeeds } from "./weather";
 
 /** Upper-body layers from the inside out. */
 export function upperLayers(p: Pieces): Item[] {
@@ -123,6 +123,12 @@ export function layersFitWeather(
   if (!removable) return fail;
   const remaining = all - removable.warmth;
   if (remaining > needs.needWarm + WARM_SLACK) return fail;
-  if (remaining < needs.needWarm - COOL_SLACK) return fail;
-  return { ok: true, shed: removable, backOn: remaining < needs.needEvening - COOL_SLACK / 2 };
+  if (remaining < needs.needWarm - SHED_SLACK) return fail;
+  return { ok: true, shed: removable, backOn: remaining < needs.needEvening - 0.5 };
+}
+
+/** Being a little under-dressed for the coldest hour is allowed, never preferred. */
+export function warmthScore(p: Pick<Pieces, "base" | "mid" | "outer">, needs: DayNeeds): number {
+  const short = needs.needCold - warmthOf(upperLayers(p as Pieces));
+  return short > 0 ? -0.9 * short : 0;
 }

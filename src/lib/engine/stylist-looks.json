@@ -1,0 +1,402 @@
+[
+ {
+  "day": "cool",
+  "occasion": "office",
+  "base": "b-oxford-sky",
+  "mid": "m-crew-rust",
+  "outer": "o-chore-indigo",
+  "bottom": "p-chinos-khaki",
+  "shoes": "s-boots-chocolate",
+  "idea": "Rust knit over sky oxford, indigo chore coat on top"
+ },
+ {
+  "day": "cool",
+  "occasion": "office",
+  "base": "b-polo-ecru",
+  "mid": "m-crew-navy",
+  "outer": "o-waxed-loden",
+  "bottom": "p-trousers-charcoal",
+  "shoes": "s-loafers-brown",
+  "idea": "Ecru polo and navy knit under loden waxed jacket"
+ },
+ {
+  "day": "cool",
+  "occasion": "client",
+  "base": "b-oxford-white",
+  "mid": "m-crew-oat",
+  "outer": "o-blazer-navy",
+  "bottom": "p-trousers-charcoal",
+  "shoes": "s-loafers-brown",
+  "idea": "Oatmeal merino softens the navy blazer and white oxford"
+ },
+ {
+  "day": "cool",
+  "occasion": "client",
+  "base": "b-turtle-black",
+  "mid": null,
+  "outer": "o-overcoat-camel",
+  "bottom": "p-trousers-black",
+  "shoes": "s-boots-chocolate",
+  "idea": "Black roll neck and trousers under a camel overcoat"
+ },
+ {
+  "day": "cool",
+  "occasion": "weekend",
+  "base": "b-tee-ecru",
+  "mid": "m-hoodie-grey",
+  "outer": "o-bomber-black",
+  "bottom": "p-jeans-indigo",
+  "shoes": "s-sneakers-white",
+  "idea": "Grey hoodie under black bomber, indigo denim, white sneakers"
+ },
+ {
+  "day": "cool",
+  "occasion": "weekend",
+  "base": "b-tee-white",
+  "mid": "m-qzip-sage",
+  "outer": "o-waxed-loden",
+  "bottom": "p-carpenter-stone",
+  "shoes": "s-runners-grey",
+  "idea": "Tonal greens and stone, relaxed wide carpenters"
+ },
+ {
+  "day": "cool",
+  "occasion": "dinner",
+  "base": "b-mock-charcoal",
+  "mid": null,
+  "outer": "o-blazer-navy",
+  "bottom": "p-jeans-ecru",
+  "shoes": "s-loafers-brown",
+  "idea": "Charcoal mock neck, navy blazer, ecru jeans, suede loafers"
+ },
+ {
+  "day": "cool",
+  "occasion": "dinner",
+  "base": "b-henley-oat",
+  "mid": "m-cardigan-charcoal",
+  "outer": "o-overcoat-camel",
+  "bottom": "p-jeans-indigo",
+  "shoes": "s-boots-chocolate",
+  "idea": "Cardigan and camel coat dressed down with denim and chukkas"
+ },
+ {
+  "day": "cool",
+  "occasion": "travel",
+  "base": "b-tee-navy",
+  "mid": "m-sweat-ecru",
+  "outer": "o-bomber-black",
+  "bottom": "p-carpenter-stone",
+  "shoes": "s-sneakers-white",
+  "idea": "Easy layers: ecru sweatshirt, bomber, wide stone trousers"
+ },
+ {
+  "day": "cool",
+  "occasion": "travel",
+  "base": "b-henley-oat",
+  "mid": "m-overshirt-olive",
+  "outer": "o-chore-indigo",
+  "bottom": "p-chinos-khaki",
+  "shoes": "s-runners-grey",
+  "idea": "Earthy oat, olive, khaki with an indigo chore coat"
+ },
+ {
+  "day": "mild",
+  "occasion": "office",
+  "base": "b-oxford-white",
+  "mid": "m-crew-navy",
+  "outer": null,
+  "bottom": "p-chinos-khaki",
+  "shoes": "s-loafers-brown",
+  "idea": "Navy crew over white oxford, khaki, suede loafers"
+ },
+ {
+  "day": "mild",
+  "occasion": "office",
+  "base": "b-polo-ecru",
+  "mid": null,
+  "outer": "o-blazer-navy",
+  "bottom": "p-trousers-charcoal",
+  "shoes": "s-sneakers-white",
+  "idea": "Knit polo under unstructured blazer, white sneakers"
+ },
+ {
+  "day": "mild",
+  "occasion": "client",
+  "base": "b-oxford-sky",
+  "mid": null,
+  "outer": "o-blazer-navy",
+  "bottom": "p-trousers-charcoal",
+  "shoes": "s-loafers-brown",
+  "idea": "Sky oxford, navy blazer, pleated charcoal, suede loafers"
+ },
+ {
+  "day": "mild",
+  "occasion": "client",
+  "base": "b-oxford-white",
+  "mid": "m-cardigan-charcoal",
+  "outer": null,
+  "bottom": "p-trousers-black",
+  "shoes": "s-boots-chocolate",
+  "idea": "White oxford under charcoal cardigan, wide black trousers"
+ },
+ {
+  "day": "mild",
+  "occasion": "weekend",
+  "base": "b-tee-white",
+  "mid": "m-overshirt-olive",
+  "outer": null,
+  "bottom": "p-jeans-indigo",
+  "shoes": "s-sneakers-white",
+  "idea": "Olive overshirt open over boxy white tee and denim"
+ },
+ {
+  "day": "mild",
+  "occasion": "weekend",
+  "base": "b-camp-stripe",
+  "mid": null,
+  "outer": "o-chore-indigo",
+  "bottom": "p-jeans-ecru",
+  "shoes": "s-runners-grey",
+  "idea": "Forest camp collar, indigo chore coat, ecru jeans"
+ },
+ {
+  "day": "mild",
+  "occasion": "dinner",
+  "base": "b-henley-oat",
+  "mid": null,
+  "outer": "o-blazer-navy",
+  "bottom": "p-chinos-olive",
+  "shoes": "s-loafers-brown",
+  "idea": "Oatmeal henley, navy blazer, olive trousers, loafers"
+ },
+ {
+  "day": "mild",
+  "occasion": "dinner",
+  "base": "b-tee-black",
+  "mid": "m-crew-rust",
+  "outer": null,
+  "bottom": "p-trousers-black",
+  "shoes": "s-sneakers-white",
+  "idea": "Rust knit against black, white sneakers for lift"
+ },
+ {
+  "day": "mild",
+  "occasion": "travel",
+  "base": "b-tee-ecru",
+  "mid": "m-hoodie-grey",
+  "outer": null,
+  "bottom": "p-carpenter-stone",
+  "shoes": "s-runners-grey",
+  "idea": "Soft grey, ecru and stone, all comfort"
+ },
+ {
+  "day": "mild",
+  "occasion": "travel",
+  "base": "b-henley-oat",
+  "mid": "m-gilet-navy",
+  "outer": null,
+  "bottom": "p-chinos-khaki",
+  "shoes": "s-sneakers-white",
+  "idea": "Navy gilet over oatmeal henley, easy chinos"
+ },
+ {
+  "day": "warm",
+  "occasion": "office",
+  "base": "b-oxford-sky",
+  "mid": null,
+  "outer": null,
+  "bottom": "p-chinos-khaki",
+  "shoes": "s-sneakers-white",
+  "idea": "Sky oxford, khaki chinos, clean white sneakers"
+ },
+ {
+  "day": "warm",
+  "occasion": "office",
+  "base": "b-camp-stripe",
+  "mid": null,
+  "outer": null,
+  "bottom": "p-trousers-charcoal",
+  "shoes": "s-loafers-brown",
+  "idea": "Camp collar shirt with pleated charcoal trousers and loafers"
+ },
+ {
+  "day": "warm",
+  "occasion": "client",
+  "base": "b-oxford-white",
+  "mid": null,
+  "outer": "o-blazer-navy",
+  "bottom": "p-trousers-charcoal",
+  "shoes": "s-loafers-brown",
+  "idea": "Crisp white oxford, navy blazer, charcoal pleats"
+ },
+ {
+  "day": "warm",
+  "occasion": "client",
+  "base": "b-oxford-sky",
+  "mid": null,
+  "outer": "o-blazer-navy",
+  "bottom": "p-chinos-khaki",
+  "shoes": "s-loafers-brown",
+  "idea": "Summer classic: sky, navy, khaki, brown suede"
+ },
+ {
+  "day": "warm",
+  "occasion": "weekend",
+  "base": "b-polo-ecru",
+  "mid": null,
+  "outer": null,
+  "bottom": "p-chinos-olive",
+  "shoes": "s-runners-grey",
+  "idea": "Ecru knit polo, olive fatigues, grey suede runners"
+ },
+ {
+  "day": "warm",
+  "occasion": "weekend",
+  "base": "b-tee-navy",
+  "mid": null,
+  "outer": null,
+  "bottom": "p-carpenter-stone",
+  "shoes": "s-sneakers-white",
+  "idea": "Navy pocket tee, wide stone carpenters, white sneakers"
+ },
+ {
+  "day": "warm",
+  "occasion": "dinner",
+  "base": "b-oxford-white",
+  "mid": null,
+  "outer": null,
+  "bottom": "p-jeans-indigo",
+  "shoes": "s-loafers-brown",
+  "idea": "White oxford, indigo jeans, suede loafers, sleeves rolled"
+ },
+ {
+  "day": "warm",
+  "occasion": "dinner",
+  "base": "b-tee-black",
+  "mid": "b-camp-stripe",
+  "outer": null,
+  "bottom": "p-trousers-black",
+  "shoes": "s-sneakers-white",
+  "idea": "Camp shirt open over black tee, wide black trousers"
+ },
+ {
+  "day": "warm",
+  "occasion": "travel",
+  "base": "b-tee-white",
+  "mid": "m-overshirt-olive",
+  "outer": null,
+  "bottom": "p-chinos-khaki",
+  "shoes": "s-runners-grey",
+  "idea": "Olive overshirt as the cabin layer, khaki, runners"
+ },
+ {
+  "day": "warm",
+  "occasion": "travel",
+  "base": "b-henley-oat",
+  "mid": "m-cardigan-charcoal",
+  "outer": null,
+  "bottom": "p-jeans-indigo",
+  "shoes": "s-sneakers-white",
+  "idea": "Henley with a tossable charcoal cardigan, denim"
+ },
+ {
+  "day": "wetcold",
+  "occasion": "office",
+  "base": "b-oxford-sky",
+  "mid": "m-crew-navy",
+  "outer": "o-waxed-loden",
+  "bottom": "p-trousers-charcoal",
+  "shoes": "s-boots-chocolate",
+  "idea": "Navy knit and oxford under loden waxed jacket, chukkas"
+ },
+ {
+  "day": "wetcold",
+  "occasion": "office",
+  "base": "b-oxford-white",
+  "mid": "m-crew-rust",
+  "outer": "o-shell-black",
+  "bottom": "p-chinos-khaki",
+  "shoes": "s-boots-chocolate",
+  "idea": "Rust knit warms a black shell, khaki and boots"
+ },
+ {
+  "day": "wetcold",
+  "occasion": "client",
+  "base": "b-mock-charcoal",
+  "mid": null,
+  "outer": "o-shell-black",
+  "bottom": "p-trousers-charcoal",
+  "shoes": "s-boots-chocolate",
+  "idea": "Tonal charcoal and black, sharp under a rain shell"
+ },
+ {
+  "day": "wetcold",
+  "occasion": "client",
+  "base": "b-turtle-black",
+  "mid": null,
+  "outer": "o-waxed-loden",
+  "bottom": "p-trousers-black",
+  "shoes": "s-boots-chocolate",
+  "idea": "Black merino and trousers, loden waxed jacket for rain"
+ },
+ {
+  "day": "wetcold",
+  "occasion": "weekend",
+  "base": "b-tee-ecru",
+  "mid": "m-hoodie-grey",
+  "outer": "o-waxed-loden",
+  "bottom": "p-chinos-khaki",
+  "shoes": "s-boots-chocolate",
+  "idea": "Grey hoodie under waxed jacket, khaki, chukkas"
+ },
+ {
+  "day": "wetcold",
+  "occasion": "weekend",
+  "base": "b-tee-white",
+  "mid": "m-qzip-sage",
+  "outer": "o-shell-black",
+  "bottom": "p-jeans-indigo",
+  "shoes": "s-boots-chocolate",
+  "idea": "Sage quarter-zip, black shell, indigo jeans, boots"
+ },
+ {
+  "day": "wetcold",
+  "occasion": "dinner",
+  "base": "b-turtle-black",
+  "mid": null,
+  "outer": "o-waxed-loden",
+  "bottom": "p-jeans-indigo",
+  "shoes": "s-boots-chocolate",
+  "idea": "Black roll neck, loden waxed jacket, indigo denim"
+ },
+ {
+  "day": "wetcold",
+  "occasion": "dinner",
+  "base": "b-henley-oat",
+  "mid": "m-crew-navy",
+  "outer": "o-shell-black",
+  "bottom": "p-trousers-black",
+  "shoes": "s-boots-chocolate",
+  "idea": "Oatmeal and navy knits, black shell, wide black trousers"
+ },
+ {
+  "day": "wetcold",
+  "occasion": "travel",
+  "base": "b-tee-navy",
+  "mid": "m-sweat-ecru",
+  "outer": "o-shell-black",
+  "bottom": "p-chinos-khaki",
+  "shoes": "s-sneakers-white",
+  "idea": "Ecru sweatshirt under shell, leather sneakers shrug off rain"
+ },
+ {
+  "day": "wetcold",
+  "occasion": "travel",
+  "base": "b-tee-ecru",
+  "mid": "m-gilet-navy",
+  "outer": "o-waxed-loden",
+  "bottom": "p-chinos-olive",
+  "shoes": "s-boots-chocolate",
+  "idea": "Quilted gilet under waxed jacket, olive trousers"
+ }
+]

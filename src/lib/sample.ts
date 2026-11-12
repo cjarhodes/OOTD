@@ -36,7 +36,9 @@ export const SAMPLE_ITEMS: Item[] = [
   makeItem({ id: "o-waxed-loden", name: "Loden waxed jacket", kind: "waxed-jacket", color: "Loden" }),
   makeItem({ id: "o-chore-indigo", name: "Indigo chore coat", kind: "chore-coat", color: "Indigo" }),
   makeItem({ id: "o-blazer-navy", name: "Navy unstructured blazer", kind: "blazer", color: "Navy", fit: "relaxed" }),
-  makeItem({ id: "o-overcoat-camel", name: "Camel overcoat", kind: "overcoat", color: "Camel", boldness: 1 }),
+  makeItem({ id: "o-overcoat-camel", name: "Camel overcoat", kind: "overcoat", color: "Camel" }),
+  makeItem({ id: "o-overcoat-charcoal", name: "Charcoal herringbone overcoat", kind: "overcoat", color: "Charcoal" }),
+  makeItem({ id: "o-peacoat-navy", name: "Navy wool peacoat", kind: "overcoat", color: "Navy", length: 4, warmth: 5, thickness: 4, formality: 3 }),
   makeItem({ id: "o-shell-black", name: "Black rain shell", kind: "rain-shell", color: "Black" }),
   makeItem({ id: "o-bomber-black", name: "Black nylon bomber", kind: "bomber", color: "Black", boldness: 1 }),
 
