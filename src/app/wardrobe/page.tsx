@@ -210,10 +210,13 @@ export default function WardrobePage() {
     <>
       <div className="page-head">
         <span className="eyebrow">
-          {personal ? "Your wardrobe" : "Sample wardrobe"} · {active.length} pieces{ready && unworn > 0 ? ` · ${unworn} not worn yet` : ""}
+          {personal ? "Your wardrobe" : "Sample wardrobe"} · {active.length} pieces{ready && personal && unworn > 0 ? ` · ${unworn} not worn yet` : ""}
         </span>
         <h1 className="display page-title">Wardrobe</h1>
         <div className="head-actions">
+          <Link href="/lookbook" className="chip chip-add chip-strong">
+            Lookbook · loved looks
+          </Link>
           <Link href="/setup" className="chip chip-add chip-laptop">
             + Tick what you own
           </Link>
@@ -230,9 +233,6 @@ export default function WardrobePage() {
               </Link>
             </>
           )}
-          <Link href="/lookbook" className="chip chip-add">
-            Lookbook
-          </Link>
         </div>
       </div>
 
@@ -314,12 +314,18 @@ export default function WardrobePage() {
             </>
           )}
 
+          <p className="setting-note wardrobe-hint" hidden={filter === "wanted"}>
+            {personal
+              ? "Tap a piece to edit it, mark it as in the wash, or style a look around it."
+              : "Tap a piece to build today’s look around it. The sample pieces are illustrations, not real clothes."}
+          </p>
           <div className="wardrobe-grid" hidden={filter === "wanted"}>
             {visible.map((item) => {
               const worn = counts.get(item.id) ?? 0;
               const meta = (
-                <span className={`tile-meta${ready && worn === 0 ? " new" : ""}`}>
-                  {item.status === "laundry" ? "In the wash" : SLOT_LABEL[item.slot]} · {!ready ? "" : worn ? `Worn ${worn}×` : "Not worn yet"}
+                <span className="tile-meta">
+                  {item.status === "laundry" ? "In the wash" : SLOT_LABEL[item.slot]}
+                  {ready && worn > 0 ? ` · Worn ${worn}×` : ready && personal ? " · Not worn yet" : ""}
                 </span>
               );
               return personal ? (
@@ -339,11 +345,6 @@ export default function WardrobePage() {
               );
             })}
           </div>
-          <p className="footer-note">
-            {personal
-              ? "Tap a piece to edit it, mark it as in the wash, or style a look around it."
-              : "Tap a piece to build today’s look around it. The sample pieces are illustrations, not real clothes."}
-          </p>
         </>
       )}
 

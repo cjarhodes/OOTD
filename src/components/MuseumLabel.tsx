@@ -24,15 +24,15 @@ export function MuseumLabel({
           {sentence(upper.map((i) => i.name))}. {sentence([look.pieces.bottom.name, look.pieces.shoes.name])}.
         </p>
         <p className="museum-meta">
-          {materials.join(" · ")}
+          {/* Each part keeps together, and a dash travels with the part after it, so a wrap never leaves one dangling. */}
+          <span>{materials.join(" · ")}</span>
           {temps && (
-            <>
-              {" — "}
+            <span className="museum-part">
+              {"— "}
               {temps.low}°→{temps.high}°C
-            </>
+            </span>
           )}
-          {" — "}
-          {worn > 0 ? `Worn ${worn}×` : "First outing"}
+          {worn > 0 && <span className="museum-part">{`— Worn ${worn}×`}</span>}
         </p>
       </figcaption>
     </figure>

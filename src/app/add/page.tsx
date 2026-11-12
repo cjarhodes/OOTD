@@ -11,7 +11,9 @@ import { isOwned, KINDS } from "@/lib/kinds";
 import { preparePhoto, releasePhoto, taggingImage, type PreparedPhoto, type PhotoVersion } from "@/lib/photo";
 import type { Slot } from "@/lib/types";
 import { applyTags } from "@/lib/tagging";
+import { SignIn } from "@/components/SignIn";
 import { useAI } from "@/state/ai";
+import { useAuth } from "@/state/auth";
 import { newId, useWardrobe } from "@/state/wardrobe";
 
 interface Pending {
@@ -45,7 +47,7 @@ function chosen(p: Pending): PhotoVersion | null {
 
 const fileKey = (f: File) => `${f.name}:${f.size}:${f.lastModified}`;
 
-export default function AddPage() {
+function AddForm() {
   const { mode, setMode, addPieces, storageError, personalCount, items } = useWardrobe();
   const ai = useAI();
   const router = useRouter();
@@ -337,4 +339,51 @@ export default function AddPage() {
       )}
     </>
   );
+}
+
+/** What adding looks like, for a visitor who hasn't signed in: every card leads to sign-in. */
+function AddPreview() {
+  const toSignIn = () => {
+    const field = document.getElementById("signin-email");
+    field?.scrollIntoView({ behavior: "smooth", block: "center" });
+    field?.focus({ preventScroll: true });
+  };
+  const ways: { name: string; text: string; laptop?: boolean }[] = [
+    { name: "Tick it", text: "See every basic on one page and tick the ones you own. Made for a laptop.", laptop: true },
+    { name: "Type it", text: "Write or paste what you own, one piece per line. The quickest way to add a lot." },
+    { name: "Swipe it", text: "Flick through the basics most men own and keep what you have." },
+    { name: "Photograph it", text: "One piece per photo. The background is removed on your device." },
+  ];
+  return (
+    <>
+      <div className="page-head">
+        <span className="eyebrow">Your wardrobe</span>
+        <h1 className="display page-title">Add pieces</h1>
+      </div>
+      <section className="add-intro add-preview">
+        <p className="add-preview-line">Sign in to add your own clothes. Here is how adding works.</p>
+        <div className="add-preview-signin">
+          <SignIn compact />
+        </div>
+        <div className="add-ways">
+          {ways.map((w) => (
+            <button key={w.name} type="button" className={`add-way${w.laptop ? " add-way-laptop" : ""}`} onClick={toSignIn}>
+              <strong>{w.name}</strong>
+              <span>{w.text}</span>
+              <span className="add-way-cta label">Sign in to start</span>
+            </button>
+          ))}
+        </div>
+        <p className="setting-note">
+          Just looking? Go back to <Link href="/" className="text-link">today’s look</Link> and try the sample wardrobe.
+        </p>
+      </section>
+    </>
+  );
+}
+
+export default function AddPage() {
+  const auth = useAuth();
+  if (!auth.ready) return null;
+  return auth.user ? <AddForm /> : <AddPreview />;
 }

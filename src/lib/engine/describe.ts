@@ -211,13 +211,15 @@ export function lookNotes(p: Pieces, shed?: { layer: Item; backOn: boolean }, we
   else if (accent?.slot === "shoes") notes.push(`The ${lower(accent)} are the one bit of colour; everything else stays quiet.`);
   else if (accent && outer && accent !== outer) notes.push(`The ${lower(accent)} is the one colour, showing under the ${lower(outer)}.`);
   else if (accent) notes.push(`One colour does the talking: the ${lower(accent)}.`);
-  else if (accents.length === 0) notes.push(textureContrast(p) ? "Neutrals throughout, so the texture carries it." : "Neutrals throughout: quiet and easy.");
+  else if (accents.length === 0 && !textureContrast(p)) notes.push("Neutrals throughout: quiet and easy.");
 
   const idea = proportionIdea(p);
   if (idea && notes.length < 3) {
     const top = outer ?? mid ?? base;
     if (idea === "a-line") notes.push(`Slim on top, wide below: the ${lower(base)} keeps the ${lower(p.bottom)} looking deliberate.`);
-    else if (idea === "easy-line") notes.push(`Roomy through the top and the ${lower(p.bottom)}: one easy, generous line.`);
+    else if (idea === "easy-line") {
+      if (top !== outer) notes.push(`Roomy through the top and the ${lower(p.bottom)}: one easy, generous line.`);
+    }
     else notes.push(`The cropped ${lower(top)} stops at the waist, so let the layer underneath show below it.`);
   }
 

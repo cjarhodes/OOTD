@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/state/auth";
 import { FirstRun, missingEssentials } from "./FirstRun";
 import { FlatLay } from "./FlatLay";
 import { MuseumLabel } from "./MuseumLabel";
@@ -16,6 +17,39 @@ import { forecastLabel, useForecast } from "@/state/forecast";
 import { defaultOccasion, TIER_LABEL, useWardrobe } from "@/state/wardrobe";
 
 const OCCASIONS = Object.keys(OCCASION_LABEL) as Occasion[];
+const TIER_CAPTION: Record<View, string> = {
+  easy: "The safe choice.",
+  fresh: "A little more considered.",
+  bold: "One idea you might not have tried.",
+  saved: "The look you saved for this day.",
+};
+const INTRO_KEY = "ootd.intro";
+
+/** What OOTD is and what to try, for a first-time visitor on the sample wardrobe. */
+function Intro({ canSignIn, onDismiss }: { canSignIn: boolean; onDismiss: () => void }) {
+  return (
+    <aside className="intro" aria-label="About this demo">
+      <div className="intro-text">
+        <p>
+          <strong>OOTD picks what to wear from your wardrobe and today’s weather.</strong> This is a demo with a sample wardrobe.
+        </p>
+        <p className="intro-try">
+          Try changing the occasion, switching between Easy, Fresh and Bold, or swapping a piece. Open Wardrobe and tap a piece to build a look around it.
+        </p>
+      </div>
+      <div className="intro-actions">
+        {canSignIn && (
+          <Link href="/settings#account" className="btn alt">
+            Sign in to use your own clothes
+          </Link>
+        )}
+        <button type="button" className="text-link" onClick={onDismiss}>
+          Dismiss
+        </button>
+      </div>
+    </aside>
+  );
+}
 type View = Tier | "saved";
 
 function Heart() {
@@ -66,6 +100,25 @@ export function TodayView() {
   const forecast = useForecast();
   const params = useSearchParams();
   const router = useRouter();
+  const auth = useAuth();
+  // The intro is for signed-out visitors on the sample wardrobe; hidden until we know they haven't dismissed it.
+  const [introDismissed, setIntroDismissed] = useState(true);
+  useEffect(() => {
+    try {
+      setIntroDismissed(localStorage.getItem(INTRO_KEY) === "1");
+    } catch {
+      setIntroDismissed(false);
+    }
+  }, []);
+  const dismissIntro = () => {
+    setIntroDismissed(true);
+    try {
+      localStorage.setItem(INTRO_KEY, "1");
+    } catch {
+      // Dismissed for this visit only.
+    }
+  };
+  const showIntro = auth.ready && !auth.user && mode === "sample" && !introDismissed;
 
   const requested = params.get("date");
   const date = isDateKey(requested) && requested >= today ? requested : today;
@@ -148,6 +201,7 @@ export function TodayView() {
 
   return (
     <div className="today">
+      {showIntro && <Intro canSignIn={auth.configured} onDismiss={dismissIntro} />}
       <section className="today-stage" aria-labelledby="today-title">
         <div className="page-head">
           <span className="eyebrow">
@@ -211,6 +265,9 @@ export function TodayView() {
             </button>
           ))}
         </div>
+        <p className="tier-caption" aria-live="polite">
+          {fromTrip && shownView === "saved" ? "From your trip plan." : TIER_CAPTION[shownView]}
+        </p>
 
         {look?.warning && (
           <p className="banner" role="status">
@@ -295,12 +352,17 @@ export function TodayView() {
           </div>
 
           {swapOpen && (
-            <div className="swap-row" role="group" aria-label="Swap one piece">
-              {(["base", "mid", "outer", "bottom", "shoes"] as Slot[]).map((slot) => (
-                <button key={slot} type="button" className="chip" onClick={() => swap(slot)}>
-                  {look.pieces[slot] ? SLOT_LABEL[slot] : `Add ${SLOT_LABEL[slot].toLowerCase()}`}
-                </button>
-              ))}
+            <div>
+              <p className="eyebrow" id="swap-label" style={{ marginBottom: 8 }}>
+                Swap which piece?
+              </p>
+              <div className="swap-row" role="group" aria-labelledby="swap-label">
+                {(["base", "mid", "outer", "bottom", "shoes"] as Slot[]).map((slot) => (
+                  <button key={slot} type="button" className="chip" onClick={() => swap(slot)}>
+                    {look.pieces[slot] ? SLOT_LABEL[slot] : `Add ${SLOT_LABEL[slot].toLowerCase()}`}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -317,7 +379,10 @@ export function TodayView() {
 
           <div>
             <p className="eyebrow" style={{ marginBottom: 6 }}>
-              {tripDay ? `${tripDay.trip.city.name} · ${weather.source === "live" ? "forecast" : weather.source === "history" ? "last year’s weather, a guide" : "sample weather"}` : forecastLabel(weather, forecast)}
+              {tripDay
+                ? `${tripDay.trip.city.name} · ${weather.source === "live" ? "forecast" : weather.source === "history" ? "last year’s weather, a guide" : "sample weather"}`
+                : // Signed-out visitors can't set a city, so don't point them at it.
+                  forecastLabel(weather, forecast).replace(auth.user ? "" : " · set your city in Settings", "")}
             </p>
             <div className="weather">
               {(["morning", "midday", "evening"] as const).map((w) => (
@@ -335,7 +400,9 @@ export function TodayView() {
           <div className="actions">
             <button
               type="button"
-              className="btn quiet"
+              className="btn alt"
+              title="Show a different set of looks for this day"
+              aria-label="Fresh ideas: show a different set of looks"
               onClick={() => {
                 setShuffle((s) => s + 1);
                 setOverride(null);
@@ -346,7 +413,9 @@ export function TodayView() {
             </button>
             <button
               type="button"
-              className="btn quiet"
+              className="btn alt"
+              title="Hide this look and don’t suggest it again"
+              aria-label="Not for me: hide this look and don’t suggest it again"
               onClick={() => {
                 store.setFeedback(look.signature, "skip");
                 setOverride(null);
