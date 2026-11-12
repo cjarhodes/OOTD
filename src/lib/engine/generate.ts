@@ -13,7 +13,7 @@ import type {
 } from "../types";
 import { suitsOccasion } from "../kinds";
 import { lookName, lookNotes, recipeOf, tonalFamily } from "./describe";
-import { layersAreValid, layersFitWeather, lowerFitsWeather, patternsWork, stackIsValid, upperLayers, warmthOf, weatherFit } from "./rules";
+import { layersAreValid, layersFitWeather, lowerFitsWeather, patternsWork, stackIsValid, upperLayers, warmthOf, warmthScore, weatherFit } from "./rules";
 import { accentScore, asOpenShirt, creativityScore, occasionScore, OPEN_SHIRT_KINDS, openShirtFits, rainRuins, seasonScore, shoeScore, trendScore } from "./style";
 import {
   buildHistory,
@@ -57,6 +57,9 @@ const SHORTLIST = 1500;
 /** How far the day's mood moves a bold look, so one statement piece doesn't carry every bold look. */
 const SPARK = 2;
 
+/** What a look gives up for repeating the recipe of a look already chosen for the day. */
+const SAME_RECIPE = 1.5;
+
 export interface Candidate {
   pieces: Pieces;
   base: number;
@@ -96,7 +99,18 @@ function pools(input: GenerateInput, random: () => number): Record<Slot, Item[]>
     // On a wet day every waterproof layer stays in, so the one shell left is never the one that clashes.
     const keep = (i: Item) => i.id === input.pin || Boolean(input.prefer?.has(i.id)) || (wet && slot === "outer" && i.waterproof);
     const kept = ranked.filter(keep);
-    bySlot[slot] = [...kept, ...ranked.filter((i) => !keep(i)).slice(0, Math.max(0, POOL - kept.length))];
+    // A spread of kinds first (two of each at most), so a drawer full of Oxford shirts
+    // doesn't crowd the roll necks and polos out of the search; then the best of the rest.
+    const rest = ranked.filter((i) => !keep(i));
+    const perKind = new Map<string, number>();
+    const spread = rest.filter((i) => {
+      const n = perKind.get(i.kind) ?? 0;
+      perKind.set(i.kind, n + 1);
+      return n < 2;
+    });
+    const room = Math.max(0, POOL - kept.length);
+    const picked = spread.slice(0, room);
+    bySlot[slot] = [...kept, ...picked, ...rest.filter((i) => !picked.includes(i)).slice(0, room - picked.length)];
   }
   return bySlot;
 }
@@ -142,6 +156,7 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
         if (!layersAreValid(upper)) continue;
         const fit = ignoreWeather ? { ok: true, shed: undefined, backOn: false } : layersFitWeather(upper, needs, rainLayerAvailable, coatForRain);
         if (!fit.ok) continue;
+        const cold = warmthScore(upper, needs);
         const pinnedAbove = Boolean(input.pin && [base, mid, outer].some((i) => i?.id === input.pin));
         for (const bottom of pool.bottom) {
           for (const shoes of pool.shoes) {
@@ -164,7 +179,7 @@ function candidates(input: GenerateInput, requireRainLayer: boolean, ignoreWeath
               trendScore(pieces, input.occasion, ignoreWeather ? undefined : needs) +
               mood(base) + mood(mid) + mood(outer) + mood(bottom) + mood(shoes) +
               hist.fresh * 0.5 +
-              (ignoreWeather ? 0 : seasonScore(pieces, needs)) +
+              (ignoreWeather ? 0 : seasonScore(pieces, needs) + cold) +
               (random() - 0.5) * 0.9;
             out.push({ pieces, base: score, boldness, shed: fit.shed, backOn: fit.backOn, hist, spark: mood(base) + mood(mid) + mood(outer) });
           }
@@ -245,6 +260,7 @@ export function generateLooks(input: GenerateInput): Looks {
 
   const result: Looks = { easy: null, fresh: null, bold: null };
   const chosen: Pieces[] = [];
+  const recipes: RecipeId[] = [];
   let order: Tier[] = TIERS;
   if (warning) {
     // The closest look goes in the default tier. On a cold day every option keeps
@@ -277,6 +293,8 @@ export function generateLooks(input: GenerateInput): Looks {
           tierScore(c.boldness, tier) +
           creativityScore(c.pieces, c.recipe, c.tonal, tier) +
           accentScore(c.pieces, tier) +
+          // Three looks, three ideas: the same recipe again has to be clearly better to win.
+          (recipes.includes(c.recipe) ? -SAME_RECIPE : 0) +
           (tier === "bold" ? (c.spark ?? 0) * SPARK : 0) +
           (c.hist ?? historyScores(c.pieces, history, feedback))[tier] * 0.5;
         if (!best || s > best.s) best = { c, s };
@@ -287,6 +305,7 @@ export function generateLooks(input: GenerateInput): Looks {
         const look = toLook(best.c, best.s, input, wet);
         result[tier] = warning ? { ...look, warning } : look;
         chosen.push(best.c.pieces);
+        recipes.push(best.c.recipe ?? recipeOf(best.c.pieces));
         taken.add(signatureOf(best.c.pieces));
       }
     }

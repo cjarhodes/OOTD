@@ -21,9 +21,15 @@ export function warmthNeeded(feels: number, comfort: Comfort = "neutral"): numbe
 /** How far over the ideal warmth still feels fine before a layer should come off. */
 export const WARM_SLACK = 2.5;
 /** Maximum warmth above the ideal at the coldest point of the day. */
-export const COLD_CEILING = 2;
-/** How far under the ideal warmth is tolerable. */
-export const COOL_SLACK = 1;
+export const COLD_CEILING = 3;
+/**
+ * How far under the ideal warmth is tolerable. Two points is a knit: a cool
+ * first hour in a tee and an overshirt is how people dress on a mild day.
+ * The score still prefers the warmer look (see warmthScore).
+ */
+export const COOL_SLACK = 2;
+/** With the coat off you're mostly indoors, so what's under it can be a layer lighter still. */
+export const SHED_SLACK = 3;
 
 export interface DayNeeds {
   coldest: number;

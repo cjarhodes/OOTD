@@ -46,13 +46,18 @@ export function seasonScore(p: Pieces, needs: DayNeeds): number {
   const coolStart = needs.coldest <= 15;
   if (needs.warmest >= 24 && dry) {
     if (p.outer && !coolStart) score -= 3;
-    if (p.mid?.kind === "gilet") score -= 3;
+    if (p.mid?.kind === "gilet") score -= 6;
     else if (p.mid && KNIT_MIDS.has(p.mid.kind) && !coolStart) score -= 2.5;
     if (KNIT_BASES.has(p.base.kind)) score -= 2.5;
   } else if (needs.warmest >= 20 && dry) {
     if (p.mid?.kind === "gilet") score -= 1.5;
     if (p.base.kind === "turtleneck") score -= 1.2;
   }
+  // Style is often one layer fewer. On a warm day a third layer is a costume, and
+  // even on a mild one the look is two pieces, not a shirt, a jumper and a jacket.
+  const worn = (p.mid ? 1 : 0) + (p.outer ? 1 : 0);
+  if (needs.coldest >= 16) score -= worn >= 2 ? 2.5 : worn === 1 && needs.warmest >= 24 ? 0.8 : 0;
+  else if (needs.coldest >= 11 && needs.warmest >= 17 && worn >= 2) score -= 1.2;
   // A technical shell on a dry, calm day reads as a mistake.
   if (p.outer?.kind === "rain-shell" && dry) score -= needs.windy ? 2 : 2.5;
   // A camp collar is a summer shirt: fine on a warm day, lost in midwinter.
@@ -77,7 +82,7 @@ export function pairingScore(p: Pieces): number {
     if (outer?.kind === "blazer") score -= 3;
     else if (outer?.kind === "overcoat" && mid.kind !== "hoodie") score -= 3;
     // Fleece under a boxy jacket over roomy trousers is all bulk and no shape.
-    if (outer && VOLUME[fitOf(outer)] >= 2.5 && VOLUME[fitOf(p.bottom)] >= 2) score -= 2;
+    if (outer && VOLUME[fitOf(outer)] >= 2.5 && VOLUME[fitOf(p.bottom)] >= 3) score -= 1;
   }
   // Sweatpants are for a tee, a sweatshirt and trainers: not a shirt (buttoned or open), a coat or a leather jacket.
   if (p.bottom.kind === "sweatpants") {
@@ -92,6 +97,9 @@ export function pairingScore(p: Pieces): number {
   }
   // Loafers under a hoodie or a sweatshirt: the top and the shoes are dressed for different days.
   if (mid && FLEECE_MIDS.has(mid.kind) && p.shoes.kind === "loafers" && p.shoes.formality >= 3) score -= 2;
+  // A quilted gilet under a long coat is two outer layers; a polo collar under a zip neck is two collars.
+  if (mid?.kind === "gilet" && outer?.kind === "overcoat") score -= 2;
+  if (base.kind === "polo" && mid && (mid.kind === "quarter-zip" || mid.neckline === "zip")) score -= 2;
   // A rugby shirt's stripes are the point; a jumper hides them.
   if (base.kind === "rugby" && mid && mid.front === "closed") score -= 1.5;
   // Workwear trousers under a tailored coat look like two outfits.
@@ -175,14 +183,17 @@ export function fabricScore(p: Pieces, needs: DayNeeds): number {
   // And in real cold the coat is what keeps him warm: a bomber or chore coat won't, and no coat at all is a mistake.
   if (needs.coldest <= 5 && p.outer && p.outer.warmth < 5) score -= needs.coldest <= 0 ? 5 : 3;
   if (needs.coldest <= 12 && needs.warmest < 17 && !p.outer) score -= 3;
+  // A denim jacket or an unlined blazer is not the day's coat when the morning is properly cold.
+  if (needs.coldest <= 8 && p.outer && p.outer.warmth < 3) score -= 2.5;
   // Under a coat on a cold day there's a knit or a shirt, never bare arms. A shirt alone is thin.
   if (p.outer && !p.mid && needs.coldest <= 10) {
     if (SHORT_SLEEVED.has(p.base.kind)) score -= 6;
     else if (p.base.thickness <= 1) score -= 2.5;
   }
   // Canvas and denim let a cold wind straight through.
+  // Over a proper knit they're fine; over a shirt or a tee they aren't.
   if (p.outer && needs.windy && needs.coldest <= 9 && p.outer.thickness <= 3 && (p.outer.material === "canvas" || p.outer.material === "denim" || p.outer.material === "cotton" || p.outer.material === "linen"))
-    score -= 2.5;
+    score -= p.mid && p.mid.thickness >= 3 ? 0.8 : 2.5;
   // A blazer is no coat in a cold wind.
   if (p.outer?.kind === "blazer" && needs.windy && needs.coldest < 10) score -= 2;
   if (p.outer && p.outer.warmth >= 7 && needs.coldest >= 9) score -= 6;
@@ -214,8 +225,9 @@ export function fabricScore(p: Pieces, needs: DayNeeds): number {
   if (isBoatShoe(s) && needs.warmest < 20) score -= 2;
   // Boots in the heat.
   if (s.kind === "boots" && !needs.wet) {
-    if (needs.warmest >= 24) score -= 1.5;
-    else if (needs.warmest >= 20) score -= 0.6;
+    if (needs.warmest >= 27) score -= 5;
+    else if (needs.warmest >= 24) score -= 2.5;
+    else if (needs.warmest >= 17) score -= 1;
   }
   return score;
 }
@@ -233,11 +245,15 @@ export function occasionScore(p: Pieces, occasion: Occasion, needs?: DayNeeds): 
   if (s === "trail" && !["jeans", "cargos", "sweatpants", "shorts"].includes(p.bottom.kind)) score -= 2;
   if (SMART.includes(occasion) && isWorkBoot(p.shoes)) score -= occasion === "office" ? 2 : 4;
   // Trainers at dinner undercut it, most of all under proper trousers. At the office they're a second choice.
-  if (s === "sneakers" && occasion === "dinner") score -= p.bottom.kind === "trousers" ? 3 : 1.5;
+  // Clean white leather is the exception a stylist does make.
+  if (s === "sneakers" && occasion === "dinner") {
+    const clean = p.shoes.color === "White" && p.shoes.material === "leather";
+    score -= clean ? 0.8 : p.bottom.kind === "trousers" ? 3 : 1.5;
+  }
   if (s === "sneakers" && occasion === "office") score -= 0.8;
   if (occasion === "client") {
     if (sporty || s === "clogs" || casualCanvas) score -= 5;
-    else if (s === "sneakers") score -= PALETTE[p.shoes.color].neutral ? 1 : 2.5;
+    else if (s === "sneakers") score -= PALETTE[p.shoes.color].neutral ? 2.5 : 4;
   } else if (occasion === "office") {
     if (sporty || s === "clogs") score -= 4;
     else if (casualCanvas) score -= 2;
@@ -251,7 +267,7 @@ export function occasionScore(p: Pieces, occasion: Occasion, needs?: DayNeeds): 
     if (p.mid && FLEECE_MIDS.has(p.mid.kind)) score -= 5 * weight;
     if (p.outer) {
       // A technical or sporty jacket, unless it's there for the rain.
-      if (p.outer.formality <= 1) score -= 3 * weight;
+      if (p.outer.formality <= 1) score -= 3 * weight + (needs?.wet ? 0 : 1.5);
       // A customer gets a blazer or a proper coat; a chore coat is workwear. Dinner is looser.
       else if (p.outer.formality <= 2) score -= occasion === "client" ? 3 : occasion === "dinner" ? 1 : 0;
       // A bright jacket is a weekend piece.
@@ -427,7 +443,7 @@ export function shoeScore(p: Pieces, occasion: Occasion, needs?: DayNeeds): numb
   const legFam = PALETTE[p.bottom.color].family;
   // Black shoes go with black, grey, navy and dark denim; brown, olive and khaki want brown.
   if (shoeFam === "black" && (legFam === "brown" || legFam === "green" || p.bottom.color === "Stone")) score -= 0.9;
-  if (shoeFam === "brown" && legFam === "black") score -= SMART.includes(occasion) ? 1.5 : 0.6;
+  if (shoeFam === "brown" && legFam === "black") score -= SMART.includes(occasion) ? 3 : 1.2;
   if (shoeFam === "brown" && p.outer && PALETTE[p.outer.color].family === "black" && p.outer.formality >= 3) score -= 0.8;
   // Sandals under layers or with tailoring look like a mistake.
   if (s.kind === "sandals" && (p.outer || p.bottom.kind === "trousers")) score -= 1.5;
