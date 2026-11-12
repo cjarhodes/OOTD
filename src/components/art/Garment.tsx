@@ -66,13 +66,18 @@ function Jacket({ hem, color, state, children }: { hem: number; color: string; s
   if (state === "closed") return halves(jacketLeft(hem), color, children);
   if (state === "back") {
     // The lining: the whole shape with no gap down the middle, a shade darker.
+    const half = jacketLeft(hem);
     const middle = `M116 32 L144 32 L138 ${hem} L122 ${hem} Z`;
     return (
       <>
-        {halves(jacketLeft(hem), color)}
+        {halves(half, color)}
         <path d={middle} fill={color} />
-        {halves(jacketLeft(hem), "rgba(0,0,0,.28)")}
-        <path d={middle} fill="rgba(0,0,0,.28)" />
+        {/* One shape, so the shade is even where the parts overlap. */}
+        <g opacity=".2">
+          <path d={half} fill="#000" />
+          <path d={half} fill="#000" transform={MIRROR} />
+          <path d={middle} fill="#000" />
+        </g>
       </>
     );
   }
@@ -424,7 +429,8 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
       );
     case "blazer":
     case "overcoat": {
-      const hem = k === "overcoat" ? 250 : 214;
+      // A peacoat or car coat stops at the hip; a full overcoat reaches the knee.
+      const hem = k === "overcoat" ? (item.length >= 5 ? 250 : 226) : 214;
       return (
         <Jacket hem={hem} color={c} state={state}>
         <>

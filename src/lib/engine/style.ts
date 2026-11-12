@@ -54,10 +54,10 @@ export function seasonScore(p: Pieces, needs: DayNeeds): number {
     if (p.base.kind === "turtleneck") score -= 1.2;
   }
   // A technical shell on a dry, calm day reads as a mistake.
-  if (p.outer?.kind === "rain-shell" && dry && !needs.windy) score -= 2.5;
+  if (p.outer?.kind === "rain-shell" && dry) score -= needs.windy ? 2 : 2.5;
   // A camp collar is a summer shirt: fine on a warm day, lost in midwinter.
   const camp = p.base.kind === "camp-shirt" || p.mid?.kind === "camp-shirt";
-  if (camp && needs.coldest <= 8) score -= 4;
+  if (camp && needs.coldest <= 8) score -= 7;
   else if (camp && needs.coldest < 14) score -= 1.5;
   if (needs.coldest <= 4 && p.shoes.kind === "loafers") score -= 0.4;
   return score + fabricScore(p, needs) + pairingScore(p) + proportionScore(p);
