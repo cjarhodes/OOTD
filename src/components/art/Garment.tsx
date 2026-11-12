@@ -51,6 +51,52 @@ function jacketLeft(hem: number) {
   return `M116 32 L92 38 L55 58 L42 150 L62 154 L72 92 L74 ${hem} L122 ${hem} L124 110 Z`;
 }
 
+/** One front of a jacket worn open: the edge stands off centre so the layers under it show. */
+function jacketFrontLeft(hem: number) {
+  return `M116 32 L92 38 L55 58 L42 150 L62 154 L72 92 L74 ${hem} L95 ${hem} L98 110 Z`;
+}
+
+/**
+ * A jacket in three states. Closed, on its own. Worn open over other layers it
+ * is drawn twice: `back` (the whole shape, shaded like a lining) goes under
+ * the layers, `front` (two fronts, with the details clipped to them) goes over.
+ */
+function Jacket({ hem, color, state, children }: { hem: number; color: string; state: "closed" | "back" | "front"; children?: ReactNode }) {
+  const clip = useId();
+  if (state === "closed") return halves(jacketLeft(hem), color, children);
+  if (state === "back") {
+    // The lining: the whole shape with no gap down the middle, a shade darker.
+    const half = jacketLeft(hem);
+    const middle = `M116 32 L144 32 L138 ${hem} L122 ${hem} Z`;
+    return (
+      <>
+        {halves(half, color)}
+        <path d={middle} fill={color} />
+        {/* One shape, so the shade is even where the parts overlap. */}
+        <g opacity=".2">
+          <path d={half} fill="#000" />
+          <path d={half} fill="#000" transform={MIRROR} />
+          <path d={middle} fill="#000" />
+        </g>
+      </>
+    );
+  }
+  const left = jacketFrontLeft(hem);
+  const edge = `M116 32 L98 110 L95 ${hem}`;
+  return (
+    <>
+      <clipPath id={clip}>
+        <path d={left} />
+        <path d={left} transform={MIRROR} />
+      </clipPath>
+      {halves(left, color)}
+      <g clipPath={`url(#${clip})`}>{children}</g>
+      <path d={edge} fill="none" stroke={LINE} strokeWidth="1.2" />
+      <path d={edge} fill="none" stroke={LINE} strokeWidth="1.2" transform={MIRROR} />
+    </>
+  );
+}
+
 const CORK = "#c8a77e";
 const RUBBER = "#f4f2ec";
 
@@ -175,13 +221,16 @@ function bottomShape(color: string, kind: Kind, fit: Fit) {
   );
 }
 
-export type ArtPart = "body" | "top";
+/** `body` is the garment; `top` its collar, over the next layer; `back` and `front` an open jacket's two passes. */
+export type ArtPart = "body" | "top" | "back" | "front";
 
 /** Draw one garment. `top` is the part that sits over the next layer (a shirt collar). */
 export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPart }) {
   const c = PALETTE[item.color].hex;
   const k = item.kind;
   const stripe = item.pattern === "stripe";
+
+  const state = part === "back" ? "back" : part === "front" ? "front" : "closed";
 
   if (part === "top") {
     if (k === "oxford" || k === "flannel") return <path d={SHIRT_COLLAR} fill={c} stroke={LINE} strokeWidth="1" />;
@@ -360,70 +409,73 @@ export function GarmentShape({ item, part = "body" }: { item: Item; part?: ArtPa
         <path d="M90 90 L170 90 M88 115 L172 115 M88 140 L172 140 M88 165 L172 165" stroke={SHADE} strokeWidth="1.5" />,
       );
     case "chore-coat":
-      return halves(
-        jacketLeft(222),
-        c,
+      return (
+        <Jacket hem={222} color={c} state={state}>
         <>
           <path d="M116 32 L104 42 L114 60 Z M144 32 L156 42 L146 60 Z" fill={SHADE} />
           <path d="M84 120 L110 120 L110 146 L84 146 Z M150 120 L176 120 L176 146 L150 146 Z M90 80 L110 80 L110 98 L90 98 Z" fill="rgba(0,0,0,.1)" />
-        </>,
+        </>
+        </Jacket>
       );
     case "waxed-jacket":
-      return halves(
-        jacketLeft(222),
-        c,
+      return (
+        <Jacket hem={222} color={c} state={state}>
         <>
           <path d="M104 36 Q130 46 156 36 L152 28 Q130 38 108 28 Z" fill="#5b4636" />
           <path d="M82 140 L112 140 L112 150 L82 150 Z M148 140 L178 140 L178 150 L148 150 Z" fill="rgba(0,0,0,.16)" />
           <path d="M70 70 Q130 82 190 70" stroke="rgba(255,255,255,.08)" strokeWidth="10" fill="none" />
-        </>,
+        </>
+        </Jacket>
       );
     case "blazer":
     case "overcoat": {
-      const hem = k === "overcoat" ? 250 : 214;
-      return halves(
-        jacketLeft(hem),
-        c,
+      // A peacoat or car coat stops at the hip; a full overcoat reaches the knee.
+      const hem = k === "overcoat" ? (item.length >= 5 ? 250 : 226) : 214;
+      return (
+        <Jacket hem={hem} color={c} state={state}>
         <>
           <path d="M116 32 L124 110 L110 72 L102 40 Z M144 32 L136 110 L150 72 L158 40 Z" fill={SHADE} />
           <circle cx="124" cy="132" r="2.5" fill="rgba(0,0,0,.35)" />
           <path d={`M86 ${hem - 70} L110 ${hem - 72} M150 ${hem - 72} L174 ${hem - 70}`} stroke={LINE} strokeWidth="1.5" />
-        </>,
+        </>
+        </Jacket>
       );
     }
     case "bomber":
-      return halves(
-        jacketLeft(196),
-        c,
+      return (
+        <Jacket hem={196} color={c} state={state}>
         <>
           <path d="M108 30 Q130 40 152 30 L150 40 Q130 48 110 40 Z" fill="rgba(0,0,0,.25)" />
           <path d="M74 188 L122 188 L122 196 L74 196 Z M138 188 L186 188 L186 196 L138 196 Z" fill="rgba(0,0,0,.22)" />
-        </>,
+        </>
+        </Jacket>
       );
     case "denim-jacket":
-      return halves(
-        jacketLeft(186),
-        c,
+      return (
+        <Jacket hem={186} color={c} state={state}>
         <>
           <path d="M116 32 L100 40 L112 62 Z M144 32 L160 40 L148 62 Z" fill={SHADE} />
           <path d="M88 84 L112 84 L112 100 L88 100 Z M148 84 L172 84 L172 100 L148 100 Z" fill="rgba(0,0,0,.16)" />
           <path d="M72 112 L124 112 M136 112 L188 112 M74 176 L122 176 M138 176 L186 176" stroke="rgba(214,170,110,.6)" strokeWidth="1.2" />
           <circle cx="124" cy="130" r="2.5" fill="rgba(214,170,110,.9)" />
           <circle cx="124" cy="156" r="2.5" fill="rgba(214,170,110,.9)" />
-        </>,
+        </>
+        </Jacket>
       );
     case "rain-shell":
       return (
         <>
-          <path d="M106 40 Q100 14 130 12 Q160 14 154 40 Z" fill={c} />
-          {halves(jacketLeft(220), c, <path d="M124 40 L124 220 M136 40 L136 220" stroke="rgba(255,255,255,.12)" strokeWidth="1.5" />)}
+          {state !== "front" && <path d="M106 40 Q100 14 130 12 Q160 14 154 40 Z" fill={c} />}
+          <Jacket hem={220} color={c} state={state}>
+            <path d="M124 40 L124 220 M136 40 L136 220" stroke="rgba(255,255,255,.12)" strokeWidth="1.5" />
+          </Jacket>
         </>
       );
     case "puffer":
-      return halves(
-        jacketLeft(208),
-        c,
-        <path d="M50 80 L210 80 M47 110 L213 110 M45 140 L215 140 M74 170 L186 170 M74 196 L186 196" stroke="rgba(0,0,0,.18)" strokeWidth="2" />,
+      return (
+        <Jacket hem={208} color={c} state={state}>
+        <path d="M50 80 L210 80 M47 110 L213 110 M45 140 L215 140 M74 170 L186 170 M74 196 L186 196" stroke="rgba(0,0,0,.18)" strokeWidth="2" />
+        </Jacket>
       );
     case "jeans":
     case "chinos":
@@ -480,7 +532,7 @@ function fitScale(item: Item): [number, number] {
 
 export function GarmentArt({ item, part = "body", box }: { item: Item; part?: ArtPart; box?: [number, number, number, number] }) {
   if (item.image) {
-    if (part === "top") return null;
+    if (part !== "body") return null;
     const [x, y, w, h] = box ?? SLOT_BOX[item.slot];
     if (hasBackdrop(item.image)) return <PhotoPrint href={item.image} box={[x, y, w, h]} />;
     return <image href={item.image} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid meet" />;

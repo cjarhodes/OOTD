@@ -259,11 +259,15 @@ export function generateLooks(input: GenerateInput): Looks {
   // First ask for looks that share at most one piece, then two, then three. A small
   // wardrobe can't always manage that, so a last pass fills any empty tier
   // with any other valid look rather than leaving it blank.
+  // The first pass also asks for a different jacket or coat in each, so one good coat isn't all three answers.
+  // Unless the only other coats are clearly worse for the day.
+  const OWN_OUTER_COST = 1;
   for (const shared of [1, 2, 3, null]) {
     const taken = new Set(chosen.map(signatureOf));
     for (const tier of order) {
       if (result[tier]) continue;
       let best: { c: Candidate; s: number } | null = null;
+      let own: { c: Candidate; s: number } | null = null;
       for (const c of pool) {
         if (shared !== null ? chosen.some((p) => overlap(p, c.pieces) > shared || upperShared(p, c.pieces) > 1) : taken.has(signatureOf(c.pieces))) continue;
         c.recipe ??= recipeOf(c.pieces);
@@ -276,7 +280,9 @@ export function generateLooks(input: GenerateInput): Looks {
           (tier === "bold" ? (c.spark ?? 0) * SPARK : 0) +
           (c.hist ?? historyScores(c.pieces, history, feedback))[tier] * 0.5;
         if (!best || s > best.s) best = { c, s };
+        if (shared === 1 && (!own || s > own.s) && !(c.pieces.outer && chosen.some((p) => p.outer?.id === c.pieces.outer!.id))) own = { c, s };
       }
+      if (best && own && own.s >= best.s - OWN_OUTER_COST) best = own;
       if (best) {
         const look = toLook(best.c, best.s, input, wet);
         result[tier] = warning ? { ...look, warning } : look;

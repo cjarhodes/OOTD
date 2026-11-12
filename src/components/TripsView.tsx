@@ -109,7 +109,7 @@ function TripForm({ onCreated }: { onCreated: (id: string) => void }) {
                     setResults(await searchCities(query).catch(() => []));
                   }
                 }}
-                placeholder="Search for a city"
+                placeholder="Type a city, such as Lisbon"
                 aria-label="Destination"
               />
               <button type="button" className="btn alt" disabled={query.trim().length < 2} onClick={async () => setResults(await searchCities(query).catch(() => []))}>
@@ -158,9 +158,22 @@ function TripForm({ onCreated }: { onCreated: (id: string) => void }) {
             : "Choose your dates."}
       </p>
       {error && <p className="banner">{error}</p>}
-      <button type="submit" className="btn" disabled={!valid || Boolean(busy)}>
-        {busy ?? "Pack a capsule"}
-      </button>
+      <div className="trip-submit">
+        <button type="submit" className="btn" disabled={!valid || Boolean(busy)}>
+          {busy ?? "Pack a capsule"}
+        </button>
+        {!valid && !busy && (
+          <p className="setting-note" id="trip-why">
+            {!city
+              ? "Search for a city and choose it from the list to continue."
+              : tooLong
+                ? `Trips can be up to ${MAX_DAYS} days.`
+                : start < store.today
+                  ? "Choose a leaving date from today on."
+                  : "Choose a return date on or after you leave."}
+          </p>
+        )}
+      </div>
     </form>
   );
 }
@@ -382,7 +395,18 @@ export function TripsView() {
       {id && !trip && <p className="banner">That trip isn’t on this device.</p>}
 
       {planning || store.trips.length === 0 ? (
-        <TripForm onCreated={(newTripId) => router.replace(`/trips?id=${newTripId}`)} />
+        <div className="trip-layout">
+          <TripForm onCreated={(newTripId) => router.replace(`/trips?id=${newTripId}`)} />
+          <aside className="trip-aside plinth" aria-label="What you get">
+            <span className="label">What you get</span>
+            <ul>
+              <li>A small set of pieces that dresses every day of the trip.</li>
+              <li>The weather where you’re going, so you pack for it.</li>
+              <li>A look for each day, travel days included, that you can change.</li>
+              <li>A packing list to tick off as you go.</li>
+            </ul>
+          </aside>
+        </div>
       ) : (
         <button type="button" className="btn" onClick={() => setPlanning(true)}>
           Plan a trip

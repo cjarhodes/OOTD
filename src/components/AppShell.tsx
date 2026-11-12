@@ -23,7 +23,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const cloud = useCloud();
   const auth = useAuth();
   // Your own wardrobe needs an account; the sample wardrobe never does.
-  const needsSignIn = auth.ready && !auth.user && path !== "/settings" && (mode === "personal" || path === "/add" || path === "/start" || path === "/setup");
+  const needsSignIn = auth.ready && !auth.user && path !== "/settings" && (mode === "personal" || path === "/start" || path === "/setup");
+  // The /add page shows its own signed-out preview. The other gates carry the heading of the nav item they sit under.
+  const adding = path.startsWith("/add") || path.startsWith("/start") || path.startsWith("/setup");
+  const gateTitle = adding ? "Add pieces" : (NAV.find((n) => (n.href === "/" ? path === "/" : path.startsWith(n.href)))?.label ?? "My wardrobe");
   const [unsaved, setUnsaved] = useState(false);
   const [dismissed, setDismissed] = useState(true);
   useEffect(() => {
@@ -118,7 +121,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
         {needsSignIn ? (
           <section className="signin-gate">
-            <span className="eyebrow">My wardrobe</span>
+            <div className="page-head">
+              <span className="eyebrow">My wardrobe</span>
+              <h1 className="display page-title">{gateTitle}</h1>
+            </div>
             <SignIn />
             <p className="setting-note">
               Just looking?{" "}

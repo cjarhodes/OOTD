@@ -37,7 +37,9 @@ export default function SettingsPage() {
     try {
       setResults(await searchCities(query));
     } catch {
-      setMessage("The city search isn’t reachable right now. Try again in a moment.");
+      setMessage(
+        "The city search isn’t reachable right now. Try again in a moment.",
+      );
     } finally {
       setSearching(false);
     }
@@ -53,12 +55,20 @@ export default function SettingsPage() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    setMessage("Export downloaded. On iPhone it’s in Files, under Downloads; move it to iCloud Drive to keep it.");
+    setMessage(
+      "Export downloaded. On iPhone it’s in Files, under Downloads; move it to iCloud Drive to keep it.",
+    );
   }
 
   async function signOut() {
     const unsaved = cloud.status.phase !== "synced" && store.personalCount > 0;
-    if (unsaved && !window.confirm("Some changes on this device aren’t saved to your account yet. Sign out anyway?")) return;
+    if (
+      unsaved &&
+      !window.confirm(
+        "Some changes on this device aren’t saved to your account yet. Sign out anyway?",
+      )
+    )
+      return;
     await auth.signOut();
     setMessage("Signed out. Your wardrobe stays in your account.");
   }
@@ -81,17 +91,25 @@ export default function SettingsPage() {
     if (!auth.user || !params.has("signed-in")) return;
     landed.current = true;
     store.setMode("personal");
-    setMessage("You’re signed in. Your wardrobe is saved to your account from now on.");
+    setMessage(
+      "You’re signed in. Your wardrobe is saved to your account from now on.",
+    );
     window.history.replaceState(null, "", "/settings");
   }, [auth.user, store]);
 
+  // Nothing to export, switch to or delete until there is an account or a wardrobe of your own.
+  const bare = auth.ready && !auth.user && store.personalCount === 0;
   const [exported, setExported] = useState<ReturnType<typeof lastExport>>(null);
   useEffect(() => setExported(lastExport()), [message]);
 
   async function restore(file: File) {
     const result = await store.importBackup(file);
     setConfirmRestore(null);
-    setMessage(result.ok ? `Restored ${result.count} pieces from the backup.` : result.error);
+    setMessage(
+      result.ok
+        ? `Restored ${result.count} pieces from the backup.`
+        : result.error,
+    );
     if (result.ok) store.setMode("personal");
   }
 
@@ -100,12 +118,30 @@ export default function SettingsPage() {
       <div className="page-head">
         <span className="eyebrow">OOTD</span>
         <h1 className="display page-title">Settings</h1>
+        <div className="head-actions">
+          <a className="chip chip-add" href="#about">
+            About OOTD
+          </a>
+          <a
+            className="chip chip-add"
+            href={SOURCE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Source on GitHub ↗
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </div>
       </div>
 
       {message && (
         <p className="banner" role="status">
           <span>{message}</span>
-          <button type="button" className="text-link" onClick={() => setMessage(null)}>
+          <button
+            type="button"
+            className="text-link"
+            onClick={() => setMessage(null)}
+          >
             Dismiss
           </button>
         </p>
@@ -122,20 +158,30 @@ export default function SettingsPage() {
                 <span>
                   Signed in as <strong>{auth.user.email ?? "you"}</strong>
                 </span>
-                <button type="button" className="text-link" onClick={() => void signOut()}>
+                <button
+                  type="button"
+                  className="text-link"
+                  onClick={() => void signOut()}
+                >
                   Sign out
                 </button>
               </div>
               <CloudBackup onExport={() => void download()} />
               {store.mode === "personal" && store.personalCount === 0 && (
                 <p className="setting-note">
-                  You’re in. Next, <Link href="/add" className="text-link">add your first pieces</Link>: a top, trousers and shoes make a first look.
+                  You’re in. Next,{" "}
+                  <Link href="/add" className="text-link">
+                    add your first pieces
+                  </Link>
+                  : a top, trousers and shoes make a first look.
                 </p>
               )}
               {ai.status.configured && (
                 <p className="setting-note">
                   AI tagging is on.{" "}
-                  {ai.left === null ? "No monthly limit on this account." : `${ai.left} of ${ai.status.limit} AI tags left this month.`}
+                  {ai.left === null
+                    ? "No monthly limit on this account."
+                    : `${ai.left} of ${ai.status.limit} AI tags left this month.`}
                 </p>
               )}
             </>
@@ -144,21 +190,45 @@ export default function SettingsPage() {
           )}
         </section>
 
-        <section className="setting">
-          <h2 className="setting-title">Wardrobe</h2>
-          <div className="segmented" role="group" aria-label="Which wardrobe" style={{ ["--count" as string]: 2 }}>
-            <button type="button" aria-pressed={store.mode === "personal"} onClick={() => store.setMode("personal")}>
-              My wardrobe · {store.personalCount}
-            </button>
-            <button type="button" aria-pressed={store.mode === "sample"} onClick={() => store.setMode("sample")}>
-              Sample wardrobe
-            </button>
-          </div>
-          <p className="setting-note">
-            Your wardrobe, photos and history are saved to your account and kept on this device, so it works offline. The sample wardrobe is a demo
-            with illustrated pieces and needs no account.
-          </p>
-        </section>
+        {bare ? (
+          <section className="setting">
+            <h2 className="setting-title">Wardrobe</h2>
+            <p className="setting-note">
+              You’re using the sample wardrobe, a demo with illustrated pieces.
+              Sign in above to use your own clothes.
+            </p>
+          </section>
+        ) : (
+          <section className="setting">
+            <h2 className="setting-title">Wardrobe</h2>
+            <div
+              className="segmented"
+              role="group"
+              aria-label="Which wardrobe"
+              style={{ ["--count" as string]: 2 }}
+            >
+              <button
+                type="button"
+                aria-pressed={store.mode === "personal"}
+                onClick={() => store.setMode("personal")}
+              >
+                My wardrobe · {store.personalCount}
+              </button>
+              <button
+                type="button"
+                aria-pressed={store.mode === "sample"}
+                onClick={() => store.setMode("sample")}
+              >
+                Sample wardrobe
+              </button>
+            </div>
+            <p className="setting-note">
+              Your wardrobe, photos and history are saved to your account and
+              kept on this device, so it works offline. The sample wardrobe is a
+              demo with illustrated pieces and needs no account.
+            </p>
+          </section>
+        )}
 
         <section className="setting" id="weather">
           <h2 className="setting-title">Weather</h2>
@@ -167,12 +237,18 @@ export default function SettingsPage() {
               <span>
                 Live forecast for <strong>{cityLabel(store.city)}</strong>
               </span>
-              <button type="button" className="text-link" onClick={() => store.setCity(null)}>
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => store.setCity(null)}
+              >
                 Remove
               </button>
             </div>
           ) : (
-            <p className="setting-note">No city set, so looks use a sample forecast.</p>
+            <p className="setting-note">
+              No city set, so looks use a sample forecast.
+            </p>
           )}
           <form className="setting-row" onSubmit={search}>
             <input
@@ -184,13 +260,19 @@ export default function SettingsPage() {
               aria-label="City"
               autoComplete="address-level2"
             />
-            <button type="submit" className="btn alt" disabled={query.trim().length < 2 || searching}>
+            <button
+              type="submit"
+              className="btn alt"
+              disabled={query.trim().length < 2 || searching}
+            >
               {searching ? "Searching…" : "Search"}
             </button>
           </form>
           {results && (
             <ul className="results">
-              {results.length === 0 && <li className="setting-note">No places found.</li>}
+              {results.length === 0 && (
+                <li className="setting-note">No places found.</li>
+              )}
               {results.map((c) => (
                 <li key={`${c.latitude},${c.longitude}`}>
                   <button
@@ -207,79 +289,131 @@ export default function SettingsPage() {
               ))}
             </ul>
           )}
-          <p className="setting-note">Only the city name and its coordinates are sent to Open-Meteo. Your location is never requested.</p>
+          <p className="setting-note">
+            Only the city name and its coordinates are sent to Open-Meteo. Your
+            location is never requested.
+          </p>
         </section>
 
         <section className="setting">
           <h2 className="setting-title">How warm do you dress?</h2>
-          <div className="segmented" role="group" aria-label="Comfort" style={{ ["--count" as string]: 3 }}>
+          <div
+            className="segmented"
+            role="group"
+            aria-label="Comfort"
+            style={{ ["--count" as string]: 3 }}
+          >
             {COMFORT.map((c) => (
-              <button key={c.value} type="button" aria-pressed={store.comfort === c.value} onClick={() => store.setComfort(c.value)}>
+              <button
+                key={c.value}
+                type="button"
+                aria-pressed={store.comfort === c.value}
+                onClick={() => store.setComfort(c.value)}
+              >
                 {c.label}
               </button>
             ))}
           </div>
         </section>
 
-        <section className="setting">
-          <h2 className="setting-title">Export</h2>
-          <p className="setting-note">
-            A ZIP you can open anywhere: a spreadsheet of every piece, your wear log, the photos as ordinary image files, and a JSON file OOTD can
-            restore from. Your account keeps everything already; an export is yours to keep anywhere.
-            {exported && ` Last exported ${when(exported.at)} with ${exported.pieces} piece${exported.pieces === 1 ? "" : "s"}.`}
-          </p>
-          <div className="actions">
-            <button type="button" className="btn alt" disabled={store.personalCount === 0} onClick={() => void download()}>
-              Download export
-            </button>
-            <button type="button" className="btn quiet" onClick={() => fileInput.current?.click()}>
-              Restore from a file
-            </button>
-          </div>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="application/zip,.zip,application/json,.json"
-            hidden
-            aria-label="Choose an export or backup file"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) setConfirmRestore(f);
-              e.target.value = "";
-            }}
-          />
-          {confirmRestore && (
-            <div className="banner" role="alert">
-              <span>Replace your wardrobe on this device with “{confirmRestore.name}”?</span>
-              <span className="actions">
-                <button type="button" className="btn" onClick={() => void restore(confirmRestore)}>
-                  Replace
+        {!bare && (
+          <>
+            <section className="setting">
+              <h2 className="setting-title">Export</h2>
+              <p className="setting-note">
+                A ZIP you can open anywhere: a spreadsheet of every piece, your
+                wear log, the photos as ordinary image files, and a JSON file
+                OOTD can restore from. Your account keeps everything already; an
+                export is yours to keep anywhere.
+                {exported &&
+                  ` Last exported ${when(exported.at)} with ${exported.pieces} piece${exported.pieces === 1 ? "" : "s"}.`}
+              </p>
+              <div className="actions">
+                <button
+                  type="button"
+                  className="btn alt"
+                  disabled={store.personalCount === 0}
+                  onClick={() => void download()}
+                >
+                  Download export
                 </button>
-                <button type="button" className="btn quiet" onClick={() => setConfirmRestore(null)}>
-                  Cancel
+                <button
+                  type="button"
+                  className="btn quiet"
+                  onClick={() => fileInput.current?.click()}
+                >
+                  Restore from a file
                 </button>
-              </span>
-            </div>
-          )}
-        </section>
+              </div>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="application/zip,.zip,application/json,.json"
+                hidden
+                aria-label="Choose an export or backup file"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setConfirmRestore(f);
+                  e.target.value = "";
+                }}
+              />
+              {confirmRestore && (
+                <div className="banner" role="alert">
+                  <span>
+                    Replace your wardrobe on this device with “
+                    {confirmRestore.name}”?
+                  </span>
+                  <span className="actions">
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => void restore(confirmRestore)}
+                    >
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      className="btn quiet"
+                      onClick={() => setConfirmRestore(null)}
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                </div>
+              )}
+            </section>
 
-        <section className="setting" id="delete">
-          <h2 className="setting-title">Your data</h2>
-          <p className="setting-note">
-            Your wardrobe and photos are yours. Export them any time above, or delete your account and everything in it here.
-          </p>
-          <DeleteAccount onExport={() => void download()} />
-        </section>
+            <section className="setting" id="delete">
+              <h2 className="setting-title">Your data</h2>
+              <p className="setting-note">
+                Your wardrobe and photos are yours. Export them any time above,
+                or delete your account and everything in it here.
+              </p>
+              <DeleteAccount onExport={() => void download()} />
+            </section>
+          </>
+        )}
 
-        <section className="setting">
+        <section className="setting" id="about">
           <h2 className="setting-title">About</h2>
           <p className="setting-note">
             OOTD is an open-source project by{" "}
-            <a className="text-link" href="https://www.cjarhodes.com" target="_blank" rel="noopener noreferrer">
+            <a
+              className="text-link"
+              href="https://www.cjarhodes.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Alex Rhodes
             </a>
-            . No tracking or ads: your wardrobe is private to your account, and you can export all of it at any time. The{" "}
-            <a className="text-link" href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
+            . No tracking or ads: your wardrobe is private to your account, and
+            you can export all of it at any time. The{" "}
+            <a
+              className="text-link"
+              href={SOURCE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               source is on GitHub
             </a>{" "}
             under the MIT licence. Weather by Open-Meteo.

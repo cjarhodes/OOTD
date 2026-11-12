@@ -71,7 +71,7 @@ export default function WeekPage() {
                     {wet && <span className="wet"> · rain</span>}
                   </span>
                 </span>
-                <span className={`pill${d.planned ? " saved" : ""}`}>{trip ? trip.city.name : d.planned ? "Saved" : "Suggested"}</span>
+                {(trip || d.planned) && <span className="pill saved">{trip ? trip.city.name : "Saved"}</span>}
               </Link>
             );
           })}

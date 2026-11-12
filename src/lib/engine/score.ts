@@ -49,6 +49,10 @@ export function colourScore(p: Pieces): number {
   const coloured = pieces.filter((i) => !PALETTE[i.color].neutral).length;
   if (coloured >= 2 && !tonalFamily(p)) score -= 1.5 * (coloured - 1);
 
+  // Black beside navy reads as a near miss: too close to contrast, too far to match.
+  const body = [...layers, p.bottom].map((i) => i.color);
+  if (body.includes("Black") && body.includes("Navy")) score -= 1.5;
+
   // Tonal is a good idea, not a default: creativityScore also credits it.
   if (tonalFamily(p)) score += 0.6;
 
